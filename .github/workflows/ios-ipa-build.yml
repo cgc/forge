@@ -1,0 +1,62 @@
+name: Build iOS IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ipa:
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build all modules (Java compilation and dependency install)
+        run: |
+          export _JAVA_OPTIONS="-Xmx4g"
+          mvn -U -B clean install -pl forge-gui-ios -am -Dmaven.test.skip=true
+
+      - name: Build iOS IPA (unsigned — suitable for sideloading via AltStore etc.)
+        run: |
+          export _JAVA_OPTIONS="-Xmx4g"
+          cd forge-gui-ios
+          # robovm.iosSkipSigning=true produces an unsigned IPA that can be
+          # re-signed locally with AltStore, Sideloadly, or Xcode.
+          mvn -B package -P ios-device \
+            -Drobovm.iosSkipSigning=true \
+            -Dmaven.test.skip=true
+
+      - name: Locate and stage IPA
+        run: |
+          IPA=$(find forge-gui-ios/target -name "*.ipa" 2>/dev/null | head -1)
+          if [ -n "$IPA" ]; then
+            echo "IPA produced by create-ipa goal: $IPA"
+            cp "$IPA" forge-ios.ipa
+          else
+            echo "create-ipa did not produce an IPA; packaging .app bundle manually..."
+            APP=$(find forge-gui-ios -name "*.app" -type d 2>/dev/null | head -1)
+            if [ -n "$APP" ]; then
+              mkdir -p /tmp/ipa_build/Payload
+              cp -r "$APP" /tmp/ipa_build/Payload/
+              (cd /tmp/ipa_build && zip -r "$GITHUB_WORKSPACE/forge-ios.ipa" Payload/)
+              echo "IPA manually packaged from: $APP"
+            else
+              echo "::error::No .app bundle found; cannot create IPA."
+              exit 1
+            fi
+          fi
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: forge-ios-ipa
+          path: forge-ios.ipa
+          if-no-files-found: error

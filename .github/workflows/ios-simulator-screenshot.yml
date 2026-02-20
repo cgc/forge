@@ -1,0 +1,72 @@
+name: iOS Simulator Screenshot
+
+on:
+  workflow_dispatch:
+
+jobs:
+  screenshot:
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build all modules (Java compilation and dependency install)
+        run: |
+          export _JAVA_OPTIONS="-Xmx4g"
+          mvn -U -B clean install -pl forge-gui-ios -am -Dmaven.test.skip=true
+
+      - name: Start iOS Simulator app in background
+        run: |
+          export _JAVA_OPTIONS="-Xmx4g"
+          cd forge-gui-ios
+          # iphone-sim compiles with MobiVM, boots the simulator, installs and
+          # launches the app, then blocks until the app exits.  Run it in the
+          # background so the next step can poll the simulator state.
+          mvn -B package -P ios-simulator -Dmaven.test.skip=true &
+          echo "MVN_PID=$!" >> "$GITHUB_ENV"
+
+      - name: Wait for simulator to boot and app to launch, then screenshot
+        run: |
+          echo "Waiting for MobiVM AOT compilation and simulator launch..."
+          echo "(MobiVM compiles Java to native code on first run — this can take 30–45 min)"
+          SCREENSHOT_TAKEN=false
+          for i in $(seq 1 60); do
+            sleep 60
+            echo "Minute $i/60: checking for a booted simulator..."
+            BOOTED=$(xcrun simctl list devices booted 2>/dev/null | grep -c "Booted" || true)
+            if [ "${BOOTED:-0}" -gt "0" ]; then
+              echo "Simulator booted. Waiting 90 s for the app to start rendering..."
+              sleep 90
+              xcrun simctl io booted screenshot forge-screenshot.png
+              echo "Screenshot saved."
+              SCREENSHOT_TAKEN=true
+              break
+            fi
+          done
+          if [ "$SCREENSHOT_TAKEN" != "true" ]; then
+            echo "::warning::Timed out waiting for the simulator. Capturing the desktop as a fallback."
+            screencapture -x forge-screenshot.png || true
+          fi
+
+      - name: Stop simulator and clean up
+        if: always()
+        run: |
+          [ -n "${MVN_PID}" ] && kill "${MVN_PID}" 2>/dev/null || true
+          xcrun simctl shutdown all 2>/dev/null || true
+
+      - name: Upload screenshot
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: simulator-screenshot
+          path: forge-screenshot.png
+          if-no-files-found: warn
