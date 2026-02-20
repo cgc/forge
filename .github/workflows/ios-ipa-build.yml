@@ -34,10 +34,10 @@ jobs:
       - name: Build iOS IPA (unsigned — suitable for sideloading via AltStore etc.)
         run: |
           export _JAVA_OPTIONS="-Xmx4g"
-          cd forge-gui-ios
           # robovm.iosSkipSigning=true produces an unsigned IPA that can be
           # re-signed locally with AltStore, Sideloadly, or Xcode.
-          mvn -B package -P ios-device \
+          # Run from repo root so Maven picks up .mvn/local-settings.xml
+          mvn -B package -pl forge-gui-ios -P ios-device \
             -Drobovm.iosSkipSigning=true \
             -Dmaven.test.skip=true
 

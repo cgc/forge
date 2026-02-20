@@ -34,11 +34,11 @@ jobs:
       - name: Start iOS Simulator app in background
         run: |
           export _JAVA_OPTIONS="-Xmx4g"
-          cd forge-gui-ios
           # iphone-sim compiles with MobiVM, boots the simulator, installs and
           # launches the app, then blocks until the app exits.  Run it in the
           # background so the next step can poll the simulator state.
-          mvn -B package -P ios-simulator -Dmaven.test.skip=true &
+          # Run from repo root so Maven picks up .mvn/local-settings.xml
+          mvn -B package -pl forge-gui-ios -P ios-simulator -Dmaven.test.skip=true &
           echo "MVN_PID=$!" >> "$GITHUB_ENV"
 
       - name: Wait for simulator to boot and app to launch, then screenshot
