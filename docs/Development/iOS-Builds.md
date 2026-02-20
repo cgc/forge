@@ -116,6 +116,21 @@ The static native libraries in `forge-gui-ios/libs/` (`libgdx.a`, `libObjectAL.a
 files from the corresponding `gdx-backend-robovm-natives-ios.jar` artifact on Maven Central and
 replace the files in `libs/`.
 
+## MobiVM dependencies
+
+The iOS build uses [MobiVM](https://mobivm.github.io/) — the community-maintained fork of RoboVM —
+with group ID `com.mobidevelop.robovm` on Maven Central. The correct coordinates are:
+
+| Artifact | Maven coordinates |
+|---|---|
+| Compiler / Maven plugin | `com.mobidevelop.robovm:robovm-maven-plugin` |
+| Java runtime | `com.mobidevelop.robovm:robovm-rt` |
+| Objective-C bridge | `com.mobidevelop.robovm:robovm-objc` |
+| Cocoa Touch bindings | `com.mobidevelop.robovm:robovm-cocoatouch` |
+
+> **Note:** The legacy `org.robovm` group ID (original RoboVM, abandoned 2015) does not exist on
+> Maven Central. Always use `com.mobidevelop.robovm`.
+
 ## Architecture
 
 The build targets `arm64` (64-bit ARM) for physical devices and `x86_64` for the simulator.

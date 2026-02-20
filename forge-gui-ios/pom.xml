@@ -6,7 +6,7 @@
         <packaging.type>jar</packaging.type>
         <build.min.memory>-Xms128m</build.min.memory>
         <build.max.memory>-Xmx2048m</build.max.memory>
-        <robovm.version>2.3.22</robovm.version>
+        <robovm.version>2.3.23</robovm.version>
         <!-- Use arm64 on Apple Silicon Macs: -Dios.simulator.arch=arm64 -->
         <ios.simulator.arch>x86_64</ios.simulator.arch>
     </properties>
@@ -21,12 +21,6 @@
     <packaging>${packaging.type}</packaging>
     <name>Forge iOS</name>
 
-    <repositories>
-        <repository>
-            <id>MobiVM</id>
-            <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
-        </repository>
-    </repositories>
 
     <build>
         <sourceDirectory>src</sourceDirectory>
@@ -79,16 +73,6 @@
             <artifactId>gdx-backend-robovm</artifactId>
             <version>1.13.5</version>
         </dependency>
-        <dependency>
-            <groupId>org.robovm</groupId>
-            <artifactId>robovm-rt</artifactId>
-            <version>${robovm.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.robovm</groupId>
-            <artifactId>robovm-cocoa-touch</artifactId>
-            <version>${robovm.version}</version>
-        </dependency>
     </dependencies>
 
     <profiles>
@@ -97,7 +81,7 @@
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>org.robovm</groupId>
+                        <groupId>com.mobidevelop.robovm</groupId>
                         <artifactId>robovm-maven-plugin</artifactId>
                         <version>${robovm.version}</version>
                         <executions>
@@ -124,7 +108,7 @@
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>org.robovm</groupId>
+                        <groupId>com.mobidevelop.robovm</groupId>
                         <artifactId>robovm-maven-plugin</artifactId>
                         <version>${robovm.version}</version>
                         <executions>
