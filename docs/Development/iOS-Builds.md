@@ -138,47 +138,61 @@ Support for `thumbv7` (32-bit ARM) was removed because Apple dropped 32-bit app 
 
 ## Known Limitation: Java Records and MobiVM AOT Compilation
 
-### Root Cause (Identified)
+### Root Cause (Identified — two bugs)
 
 MobiVM's AOT compiler uses the [Soot](https://github.com/soot-oss/soot) framework with the
-`coffi` bytecode reader for class-file analysis. The bug is in
-`soot.coffi.CONSTANT_Fieldref_info.createJimpleConstantValue()`:
+`coffi` bytecode reader. Java records generate `equals()`/`hashCode()`/`toString()` via
+`invokedynamic` with `java.lang.runtime.ObjectMethods.bootstrap`. The bootstrap arguments
+include `CONSTANT_MethodHandle_info` entries with kind `REF_getField` (1) pointing to
+`CONSTANT_Fieldref_info` entries — one per record component. Processing these triggers two
+cascading bugs in `robovm-soot`:
+
+**Bug 1 — `CONSTANT_Fieldref_info.createJimpleConstantValue()`** (same class, missing fix):
 
 ```java
-// BUGGY (robovm-soot 2.5.0-5 and 2.5.0-9):
-String className = cc.toString(constant_pool);         // returns slash-format: "forge/util/HWInfo"
-// later: Scene.getSootClass("forge/util/HWInfo")       → RefType.v("forge/util/HWInfo") → BOOM
+// BUGGY: passes JVM slash-format class name to Scene.getSootClass()
+String className = cc.toString(constant_pool);          // "forge/util/HWInfo"
+// → RefType.v("forge/util/HWInfo") → throws RuntimeException:
+// "Attempt to create RefType containing a / --> forge/util/HWInfo"
 
-// FIXED (in CONSTANT_Methodref_info and CONSTANT_InterfaceMethodref_info, but NOT Fieldref):
-String className = cc.toString(constant_pool).replace('/', '.'); // RoboVM note: Replace / with .
+// FIXED (pattern already in CONSTANT_Methodref_info and CONSTANT_InterfaceMethodref_info):
+String className = cc.toString(constant_pool).replace('/', '.'); // "forge.util.HWInfo"
 ```
 
-Java records generate `equals()`/`hashCode()`/`toString()` via `invokedynamic` with
-`java.lang.runtime.ObjectMethods.bootstrap`. The bootstrap arguments include
-`CONSTANT_MethodHandle_info` entries with kind `REF_getField` (1) pointing to
-`CONSTANT_Fieldref_info` entries — one for each record component. When soot processes these
-bootstrap args, it calls `CONSTANT_Fieldref_info.createJimpleConstantValue()` which passes the
-JVM-slash class name (`forge/util/HWInfo`) directly to `Scene.getSootClass()`, which creates a new
-`SootClass` with the slash name, which calls `RefType.v("forge/util/HWInfo")`, and that throws:
+**Bug 2 — `CONSTANT_MethodHandle_info.createJimpleConstantValue()`** (now exposed after Bug 1 fix):
 
-```
-Attempt to create RefType containing a / --> forge/util/HWInfo
-```
+```java
+// BUGGY: unconditionally casts to InvokeExpr for ALL handle kinds, but field-ref
+// kinds (REF_getField=1 .. REF_putStatic=4) produce a StaticFieldRef, not InvokeExpr:
+InvokeExpr expr = (InvokeExpr) target.createJimpleConstantValue(constant_pool); // ClassCastException
 
-The `CONSTANT_Methodref_info` and `CONSTANT_InterfaceMethodref_info` variants already have the
-fix (`// RoboVM note: Replace / with .`), but it was never applied to `CONSTANT_Fieldref_info`
-because pre-record lambdas only use method handles, not field handles, in their bootstrap args.
+// FIXED: branch on kind; for field-ref handles, build a synthetic SootMethodRef
+// (JMethodHandle only stores SootMethodRef, modeling the field as a zero-arg getter):
+if (kind >= 1 && kind <= 4) {
+    // extract className/fieldName/fieldType from CONSTANT_Fieldref_info directly
+    SootMethodRef ref = Scene.v().makeMethodRef(declaringClass, fieldName,
+            Collections.emptyList(), fieldType, isStatic);
+    return Jimple.v().newMethodHandle(kind, ref);
+}
+// kinds 5-9: existing InvokeExpr cast path unchanged
+```
 
 ### Fix Applied
 
 A patched `robovm-soot` jar (`2.5.0-9-forge-patched`) is committed at
-`forge-gui-ios/local-repo/`. It contains a single fixed `.class` file that adds the missing
-`.replace('/', '.')` call. The fix is the **minimal possible one-line change** mirroring the
-pattern already present in `CONSTANT_Methodref_info`.
+`forge-gui-ios/local-repo/`. It contains two fixed `.class` files — one per bug above.
+Provenance sources are at `local-repo/patches/`.
 
 `forge-gui-ios/pom.xml` declares a local file repository and overrides the `robovm-soot`
 transitive dependency of the `robovm-maven-plugin` with the patched version. No external Maven
 repository server is required.
+
+> **Note:** The record's `invokedynamic` call is handled at runtime by
+> `InvokeDynamicCompilerPlugin.UnrecognizedBootstrapDelegate`, which replaces it with a
+> `NoSuchMethodError` throw. This means `equals()`/`hashCode()`/`toString()` on record
+> instances will throw at runtime on iOS. A future improvement would be to teach the
+> `InvokeDynamicCompilerPlugin` about `ObjectMethods.bootstrap` and inline proper
+> implementations — but that is out of scope for the initial iOS port.
 
 ### Possible Future Actions
 
