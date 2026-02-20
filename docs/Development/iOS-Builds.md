@@ -22,19 +22,68 @@ Building for iOS requires:
 - **Apple Developer account** — Required to sign and deploy to a physical device or submit to the
   App Store; the iOS Simulator does not require an account
 
+## Testing the Mobile UI without macOS
+
+The `forge-gui-mobile` module (which powers the iOS app) can be run on any desktop platform
+(Windows, Linux, macOS) using the `forge-gui-mobile-dev` module as a test runner.  This is the
+fastest way to test mobile-UI changes without needing an Apple device or Xcode.
+
+### Via Maven (command line)
+
+From the repository root, first build all modules, then run the mobile dev runner:
+
+```
+mvn -U -B clean -P windows-linux install
+cd forge-gui-mobile-dev
+mvn -P windows-linux exec:java -Dexec.mainClass=forge.app.Main
+```
+
+The window opens in landscape mode by default.  To test portrait layout (which more closely mirrors
+a phone), pass `portrait` as an argument:
+
+```
+mvn -P windows-linux exec:java -Dexec.mainClass=forge.app.Main -Dexec.args="portrait"
+```
+
+You can also set an explicit window size to match an iPhone or iPad viewport, for example:
+
+```
+mvn -P windows-linux exec:java -Dexec.mainClass=forge.app.Main -Dexec.args="width=390 height=844"
+```
+
+### Via IntelliJ IDEA
+
+1. Open the project as described in the [IntelliJ setup guide](IntelliJ-setup/IntelliJ-setup.md).
+2. Go to **Run → Edit Configurations…** and click **+** → **Application**.
+3. Set **Name** to `Forge Mobile Dev`.
+4. Set **Main class** to `forge.app.Main`.
+5. Set **Use classpath of module** to `forge-gui-mobile-dev`.
+6. Set **Working directory** to `$MODULE_WORKING_DIR$`.
+7. Click **Run** (or **Debug**).
+
+### What to verify
+
+After launch, confirm that:
+
+- The main menu renders without errors.
+- Card browsing and deck editing are functional.
+- Starting a game against the AI completes without crashes.
+
 ## Building for the iOS Simulator
 
 ```
 mvn -U -B clean -P ios-simulator install
 ```
 
-This compiles the Java code with MobiVM and launches the app in the iOS Simulator.
-The default simulator architecture is `x86_64`. On Apple Silicon Macs (M1/M2/M3+), pass
-`-Dios.simulator.arch=arm64` for a native arm64 simulator build:
+This compiles the Java code with MobiVM, opens the iOS Simulator, and installs and launches the
+app automatically.  The default simulator architecture is `x86_64`. On Apple Silicon Macs
+(M1/M2/M3+), pass `-Dios.simulator.arch=arm64` for a native arm64 simulator build:
 
 ```
 mvn -U -B clean -P ios-simulator install -Dios.simulator.arch=arm64
 ```
+
+After the app launches in Simulator, verify the same items listed under "What to verify" above.
 
 ## Building for a Physical Device
 
