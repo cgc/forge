@@ -34,8 +34,9 @@ jobs:
           # when running a second mvn invocation against an already-installed (flattened) parent POM.
           # iphone-sim boots the simulator, installs and launches the app, then blocks —
           # run in background so the next step can poll for the booted state.
+          # Tee output to a log file so it is available even if Maven fails.
           mvn -U -B clean install -pl forge-gui-ios -am -P ios-simulator \
-            -Dmaven.test.skip=true &
+            -Dmaven.test.skip=true > /tmp/mvn-simulator.log 2>&1 &
           echo "MVN_PID=$!" >> "$GITHUB_ENV"
 
       - name: Wait for simulator to boot and app to launch, then screenshot
@@ -70,8 +71,8 @@ jobs:
             fi
           fi
           if [ "$SCREENSHOT_TAKEN" != "true" ]; then
-            echo "::warning::Simulator did not boot. Capturing the desktop as a fallback."
-            screencapture -x forge-screenshot.png || true
+            echo "::error::Simulator did not boot. Check the mvn-simulator-log artifact for details."
+            exit 1
           fi
 
       - name: Stop simulator and clean up
@@ -80,10 +81,18 @@ jobs:
           [ -n "${MVN_PID}" ] && kill "${MVN_PID}" 2>/dev/null || true
           xcrun simctl shutdown all 2>/dev/null || true
 
-      - name: Upload screenshot
+      - name: Upload Maven build log
         uses: actions/upload-artifact@v4
         if: always()
         with:
+          name: mvn-simulator-log
+          path: /tmp/mvn-simulator.log
+          if-no-files-found: warn
+
+      - name: Upload screenshot
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
           name: simulator-screenshot
           path: forge-screenshot.png
-          if-no-files-found: warn
+          if-no-files-found: error
