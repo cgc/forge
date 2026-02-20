@@ -34,7 +34,7 @@ jobs:
           # Keeping both in one Maven reactor avoids the ${revision} resolution issue that occurs
           # when running a second mvn invocation against an already-installed (flattened) parent POM.
           # robovm.iosSkipSigning=true produces an unsigned IPA re-signable with AltStore/Sideloadly/Xcode.
-          mvn -U -B clean install -pl forge-gui-ios -am -P ios-device \
+          mvn -U -B -e clean install -pl forge-gui-ios -am -P ios-device \
             -Drobovm.iosSkipSigning=true \
             -Dmaven.test.skip=true
 

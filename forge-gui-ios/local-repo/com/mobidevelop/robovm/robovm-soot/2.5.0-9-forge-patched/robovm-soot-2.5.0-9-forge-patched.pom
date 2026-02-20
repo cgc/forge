@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project>
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.mobidevelop.robovm</groupId>
+  <artifactId>robovm-soot</artifactId>
+  <version>2.5.0-9-forge-patched</version>
+  <description>
+    robovm-soot 2.5.0-9 patched to fix CONSTANT_Fieldref_info.createJimpleConstantValue()
+    missing slash-to-dot conversion, causing "Attempt to create RefType containing a /"
+    when compiling classes that use invokedynamic with REF_getField method handles
+    (e.g. Java records whose equals/hashCode/toString bootstrap via ObjectMethods).
+  </description>
+</project>

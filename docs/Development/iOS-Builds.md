@@ -138,54 +138,56 @@ Support for `thumbv7` (32-bit ARM) was removed because Apple dropped 32-bit app 
 
 ## Known Limitation: Java Records and MobiVM AOT Compilation
 
-### Problem
+### Root Cause (Identified)
 
 MobiVM's AOT compiler uses the [Soot](https://github.com/soot-oss/soot) framework with the
-`coffi` bytecode reader for class-file analysis. Neither the version bundled with MobiVM 2.3.23
-(`robovm-soot:2.5.0-5`) nor the version in 2.3.24 (`robovm-soot:2.5.0-9`) handles the `Record`
-bytecode attribute introduced in Java 16. When the compiler encounters a class file that contains
-a `Record` attribute, it reads the `RecordComponent` descriptors (which use JVM internal slash
-notation, e.g. `Lforge/util/HWInfo;`) and passes them to `soot.RefType.v()`, which expects
-dot-separated class names (`forge.util.HWInfo`). This triggers:
+`coffi` bytecode reader for class-file analysis. The bug is in
+`soot.coffi.CONSTANT_Fieldref_info.createJimpleConstantValue()`:
+
+```java
+// BUGGY (robovm-soot 2.5.0-5 and 2.5.0-9):
+String className = cc.toString(constant_pool);         // returns slash-format: "forge/util/HWInfo"
+// later: Scene.getSootClass("forge/util/HWInfo")       → RefType.v("forge/util/HWInfo") → BOOM
+
+// FIXED (in CONSTANT_Methodref_info and CONSTANT_InterfaceMethodref_info, but NOT Fieldref):
+String className = cc.toString(constant_pool).replace('/', '.'); // RoboVM note: Replace / with .
+```
+
+Java records generate `equals()`/`hashCode()`/`toString()` via `invokedynamic` with
+`java.lang.runtime.ObjectMethods.bootstrap`. The bootstrap arguments include
+`CONSTANT_MethodHandle_info` entries with kind `REF_getField` (1) pointing to
+`CONSTANT_Fieldref_info` entries — one for each record component. When soot processes these
+bootstrap args, it calls `CONSTANT_Fieldref_info.createJimpleConstantValue()` which passes the
+JVM-slash class name (`forge/util/HWInfo`) directly to `Scene.getSootClass()`, which creates a new
+`SootClass` with the slash name, which calls `RefType.v("forge/util/HWInfo")`, and that throws:
 
 ```
 Attempt to create RefType containing a / --> forge/util/HWInfo
 ```
 
-The forge codebase uses `record` types extensively (~85 files in modules compiled into the iOS
-binary: `forge-core`, `forge-game`, `forge-ai`, `forge-gui`, `forge-gui-mobile`).
+The `CONSTANT_Methodref_info` and `CONSTANT_InterfaceMethodref_info` variants already have the
+fix (`// RoboVM note: Replace / with .`), but it was never applied to `CONSTANT_Fieldref_info`
+because pre-record lambdas only use method handles, not field handles, in their bootstrap args.
 
-### Investigation Summary
+### Fix Applied
 
-| Item | Finding |
-|---|---|
-| MobiVM 2.3.23 `robovm-soot` | `2.5.0-5` — no `Record_attribute` class in coffi |
-| MobiVM 2.3.24 `robovm-soot` | `2.5.0-9` — adds `NestHost`/`NestMembers` but still no `Record_attribute` class |
-| `RefType.v(String)` constructor | Throws `RuntimeException` if the argument contains `/` |
-| Root cause | `coffi` reads `RecordComponent` descriptor bytes as a raw type string without stripping `L` prefix or converting `/` to `.` |
+A patched `robovm-soot` jar (`2.5.0-9-forge-patched`) is committed at
+`forge-gui-ios/local-repo/`. It contains a single fixed `.class` file that adds the missing
+`.replace('/', '.')` call. The fix is the **minimal possible one-line change** mirroring the
+pattern already present in `CONSTANT_Methodref_info`.
 
-### Possible Solutions (for decision)
+`forge-gui-ios/pom.xml` declares a local file repository and overrides the `robovm-soot`
+transitive dependency of the `robovm-maven-plugin` with the patched version. No external Maven
+repository server is required.
 
-1. **Convert all records to regular final classes** — The most mechanical and reliable fix.
-   ~85 source files would need to be updated. Can be done with a script. No MobiVM changes
-   required. Main downside: diverges from the codebase style used by other platforms (Android, desktop).
+### Possible Future Actions
 
-2. **Patch `robovm-soot`** — Add a `Record_attribute` class to the `soot/coffi` package that
-   correctly ignores or converts `RecordComponent` type descriptors (strip `L`/`;` wrapper and
-   replace `/` with `.`). The patched jar can be deployed to a local/private Maven repository and
-   overridden in `forge-gui-ios/pom.xml` without any public publishing requirement. Upstream
-   contribution would benefit all MobiVM users.
-
-3. **Target Java 15 bytecode for the iOS module** — Records are a Java 16 feature. Compiling
-   `forge-gui-ios` and its transitive dependencies with `-target 15` would produce class files
-   without `Record` attributes, sidestepping the issue without modifying source. In practice this
-   is hard because the upstream modules (e.g. `forge-game`) are independently compiled at Java 17.
-   Would require adding a source-compatible `--release 15` flag during AOT compilation, not during
-   `javac`.
-
-4. **Use `--release 16` / downgrade source compatibility** — Compile the entire project with Java
-   source compatibility ≤ 15, removing record syntax across all modules. Larger change than option 1
-   since it also affects desktop and Android.
+- **Upstream contribution** — Submit the fix to the [MobiVM soot fork](https://github.com/MobiVM/soot)
+  so that future `robovm-soot` releases include it. The fix is the same one-liner already in
+  `CONSTANT_Methodref_info.java`.
+- **Remove the local repo** — Once a fixed `robovm-soot` is published to Maven Central, delete
+  `forge-gui-ios/local-repo/` and remove the `<repositories>`, `<pluginRepositories>`, and
+  plugin `<dependencies>` overrides from `forge-gui-ios/pom.xml`.
 
 ## Troubleshooting
 

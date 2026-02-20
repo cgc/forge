@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>com.mobidevelop.robovm</groupId>
+  <artifactId>robovm-soot</artifactId>
+  <versioning>
+    <versions>
+      <version>2.5.0-9-forge-patched</version>
+    </versions>
+  </versioning>
+</metadata>

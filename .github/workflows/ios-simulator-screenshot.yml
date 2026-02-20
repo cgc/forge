@@ -36,7 +36,7 @@ jobs:
           # iphone-sim boots the simulator, installs and launches the app, then blocks —
           # run in background so the next step can poll for the booted state.
           # Tee output to a log file so it is available even if Maven fails.
-          mvn -U -B clean install -pl forge-gui-ios -am -P ios-simulator \
+          mvn -U -B -e clean install -pl forge-gui-ios -am -P ios-simulator \
             -Dmaven.test.skip=true > /tmp/mvn-simulator.log 2>&1 &
           echo "MVN_PID=$!" >> "$GITHUB_ENV"
 
