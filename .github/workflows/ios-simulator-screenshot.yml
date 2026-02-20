@@ -46,6 +46,11 @@ jobs:
           for i in $(seq 1 60); do
             sleep 60
             echo "Minute $i/60: checking for a booted simulator..."
+            # Exit early if Maven has already finished (success or failure).
+            if ! kill -0 "${MVN_PID}" 2>/dev/null; then
+              echo "Maven process has exited."
+              break
+            fi
             BOOTED=$(xcrun simctl list devices booted 2>/dev/null | grep -c "Booted" || true)
             if [ "${BOOTED:-0}" -gt "0" ]; then
               echo "Simulator booted. Waiting 90 s for the app to start rendering..."
@@ -56,8 +61,16 @@ jobs:
               break
             fi
           done
+          # If Maven exited but the simulator was already booted, try to screenshot now.
           if [ "$SCREENSHOT_TAKEN" != "true" ]; then
-            echo "::warning::Timed out waiting for the simulator. Capturing the desktop as a fallback."
+            BOOTED=$(xcrun simctl list devices booted 2>/dev/null | grep -c "Booted" || true)
+            if [ "${BOOTED:-0}" -gt "0" ]; then
+              echo "Simulator is booted (Maven just exited). Taking screenshot..."
+              xcrun simctl io booted screenshot forge-screenshot.png && SCREENSHOT_TAKEN=true
+            fi
+          fi
+          if [ "$SCREENSHOT_TAKEN" != "true" ]; then
+            echo "::warning::Simulator did not boot. Capturing the desktop as a fallback."
             screencapture -x forge-screenshot.png || true
           fi
 

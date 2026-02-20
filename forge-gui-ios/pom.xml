@@ -97,7 +97,6 @@
                             <propertiesFile>robovm.properties</propertiesFile>
                             <configFile>robovm.xml</configFile>
                             <arch>arm64</arch>
-                            <targetType>Device</targetType>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -124,7 +123,6 @@
                             <propertiesFile>robovm.properties</propertiesFile>
                             <configFile>robovm.xml</configFile>
                             <arch>${ios.simulator.arch}</arch>
-                            <targetType>Simulator</targetType>
                         </configuration>
                     </plugin>
                 </plugins>
