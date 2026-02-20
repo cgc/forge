@@ -6,6 +6,9 @@
         <packaging.type>jar</packaging.type>
         <build.min.memory>-Xms128m</build.min.memory>
         <build.max.memory>-Xmx2048m</build.max.memory>
+        <robovm.version>2.3.22</robovm.version>
+        <!-- Use arm64 on Apple Silicon Macs: -Dios.simulator.arch=arm64 -->
+        <ios.simulator.arch>x86_64</ios.simulator.arch>
     </properties>
 
     <parent>
@@ -17,6 +20,13 @@
     <artifactId>forge-gui-ios</artifactId>
     <packaging>${packaging.type}</packaging>
     <name>Forge iOS</name>
+
+    <repositories>
+        <repository>
+            <id>MobiVM</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+        </repository>
+    </repositories>
 
     <build>
         <sourceDirectory>src</sourceDirectory>
@@ -69,5 +79,72 @@
             <artifactId>gdx-backend-robovm</artifactId>
             <version>1.13.5</version>
         </dependency>
+        <dependency>
+            <groupId>org.robovm</groupId>
+            <artifactId>robovm-rt</artifactId>
+            <version>${robovm.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.robovm</groupId>
+            <artifactId>robovm-cocoa-touch</artifactId>
+            <version>${robovm.version}</version>
+        </dependency>
     </dependencies>
+
+    <profiles>
+        <profile>
+            <id>ios-device</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.robovm</groupId>
+                        <artifactId>robovm-maven-plugin</artifactId>
+                        <version>${robovm.version}</version>
+                        <executions>
+                            <execution>
+                                <id>ios-device-build</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>create-ipa</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <propertiesFile>robovm.properties</propertiesFile>
+                            <configFile>robovm.xml</configFile>
+                            <arch>arm64</arch>
+                            <targetType>Device</targetType>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>ios-simulator</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.robovm</groupId>
+                        <artifactId>robovm-maven-plugin</artifactId>
+                        <version>${robovm.version}</version>
+                        <executions>
+                            <execution>
+                                <id>ios-simulator-build</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>iphone-sim</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <propertiesFile>robovm.properties</propertiesFile>
+                            <configFile>robovm.xml</configFile>
+                            <arch>${ios.simulator.arch}</arch>
+                            <targetType>Simulator</targetType>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
