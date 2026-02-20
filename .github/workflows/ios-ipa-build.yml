@@ -1,6 +1,13 @@
 name: Build iOS IPA
 
 on:
+  push:
+    branches:
+      - 'copilot/spec-out-forge-ios-support'
+    paths:
+      - 'forge-gui-ios/**'
+      - 'forge-gui-mobile/**'
+      - '.github/workflows/ios-ipa-build.yml'
   workflow_dispatch:
 
 jobs:

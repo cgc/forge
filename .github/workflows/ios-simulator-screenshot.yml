@@ -1,6 +1,13 @@
 name: iOS Simulator Screenshot
 
 on:
+  push:
+    branches:
+      - 'copilot/spec-out-forge-ios-support'
+    paths:
+      - 'forge-gui-ios/**'
+      - 'forge-gui-mobile/**'
+      - '.github/workflows/ios-simulator-screenshot.yml'
   workflow_dispatch:
 
 jobs:
