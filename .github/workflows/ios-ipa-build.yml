@@ -26,18 +26,14 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Build all modules (Java compilation and dependency install)
+      - name: Build all modules and package iOS IPA (unsigned)
         run: |
           export _JAVA_OPTIONS="-Xmx4g"
-          mvn -U -B clean install -pl forge-gui-ios -am -Dmaven.test.skip=true
-
-      - name: Build iOS IPA (unsigned — suitable for sideloading via AltStore etc.)
-        run: |
-          export _JAVA_OPTIONS="-Xmx4g"
-          # robovm.iosSkipSigning=true produces an unsigned IPA that can be
-          # re-signed locally with AltStore, Sideloadly, or Xcode.
-          # Run from repo root so Maven picks up .mvn/local-settings.xml
-          mvn -B package -pl forge-gui-ios -P ios-device \
+          # -am builds all upstream modules first, then forge-gui-ios with the ios-device profile.
+          # Keeping both in one Maven reactor avoids the ${revision} resolution issue that occurs
+          # when running a second mvn invocation against an already-installed (flattened) parent POM.
+          # robovm.iosSkipSigning=true produces an unsigned IPA re-signable with AltStore/Sideloadly/Xcode.
+          mvn -U -B clean install -pl forge-gui-ios -am -P ios-device \
             -Drobovm.iosSkipSigning=true \
             -Dmaven.test.skip=true
 
