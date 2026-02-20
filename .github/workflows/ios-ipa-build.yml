@@ -7,6 +7,7 @@ on:
     paths:
       - 'forge-gui-ios/**'
       - 'forge-gui-mobile/**'
+      - 'forge-gui/**'
       - '.github/workflows/ios-ipa-build.yml'
   workflow_dispatch:
 
