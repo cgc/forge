@@ -43,9 +43,13 @@ import org.robovm.rt.bro.annotation.Bridge;
 import org.robovm.rt.bro.annotation.Library;
 import org.robovm.rt.bro.annotation.Pointer;
 
-// @Library("OpenGLES") tells the RoboVM AOT compiler to resolve @Bridge
-// symbols against OpenGLES.framework (not the main executable).
-@Library("OpenGLES")
+// @Library(Library.INTERNAL) tells RoboVM to resolve @Bridge symbols in the
+// main executable binary.  The forge_gl* wrappers in native/gl_bridge.m are
+// compiled into the main binary by RoboVM's Clang, so they ARE findable by
+// dlsym(dlopen(NULL,...), "forge_glViewport").  We cannot use @Library("OpenGLES")
+// because the iOS 26 simulator's OpenGLES.framework is a stub dylib whose GL
+// symbols are not resolvable via dlsym() at runtime.
+@Library(Library.INTERNAL)
 public class IOSGLES20 implements GL20 {
 
     final boolean shouldConvert16bit = IOSApplication.IS_METALANGLE
@@ -62,444 +66,444 @@ public class IOSGLES20 implements GL20 {
     // Static @Bridge declarations — each maps to a C function in OpenGLES.framework
     // -------------------------------------------------------------------------
 
-    @Bridge(symbol = "glActiveTexture")
+    @Bridge(symbol = "forge_glActiveTexture")
     private static native void _glActiveTexture(int texture);
 
-    @Bridge(symbol = "glAttachShader")
+    @Bridge(symbol = "forge_glAttachShader")
     private static native void _glAttachShader(int program, int shader);
 
-    @Bridge(symbol = "glBindAttribLocation")
+    @Bridge(symbol = "forge_glBindAttribLocation")
     private static native void _glBindAttribLocation(int program, int index, String name);
 
-    @Bridge(symbol = "glBindBuffer")
+    @Bridge(symbol = "forge_glBindBuffer")
     private static native void _glBindBuffer(int target, int buffer);
 
-    @Bridge(symbol = "glBindFramebuffer")
+    @Bridge(symbol = "forge_glBindFramebuffer")
     private static native void _glBindFramebuffer(int target, int framebuffer);
 
-    @Bridge(symbol = "glBindRenderbuffer")
+    @Bridge(symbol = "forge_glBindRenderbuffer")
     private static native void _glBindRenderbuffer(int target, int renderbuffer);
 
-    @Bridge(symbol = "glBindTexture")
+    @Bridge(symbol = "forge_glBindTexture")
     private static native void _glBindTexture(int target, int texture);
 
-    @Bridge(symbol = "glBlendColor")
+    @Bridge(symbol = "forge_glBlendColor")
     private static native void _glBlendColor(float red, float green, float blue, float alpha);
 
-    @Bridge(symbol = "glBlendEquation")
+    @Bridge(symbol = "forge_glBlendEquation")
     private static native void _glBlendEquation(int mode);
 
-    @Bridge(symbol = "glBlendEquationSeparate")
+    @Bridge(symbol = "forge_glBlendEquationSeparate")
     private static native void _glBlendEquationSeparate(int modeRGB, int modeAlpha);
 
-    @Bridge(symbol = "glBlendFunc")
+    @Bridge(symbol = "forge_glBlendFunc")
     private static native void _glBlendFunc(int sfactor, int dfactor);
 
-    @Bridge(symbol = "glBlendFuncSeparate")
+    @Bridge(symbol = "forge_glBlendFuncSeparate")
     private static native void _glBlendFuncSeparate(int srcRGB, int dstRGB, int srcAlpha, int dstAlpha);
 
-    @Bridge(symbol = "glBufferData")
+    @Bridge(symbol = "forge_glBufferData")
     private static native void _glBufferData(int target, int size, Buffer data, int usage);
 
-    @Bridge(symbol = "glBufferSubData")
+    @Bridge(symbol = "forge_glBufferSubData")
     private static native void _glBufferSubData(int target, int offset, int size, Buffer data);
 
-    @Bridge(symbol = "glCheckFramebufferStatus")
+    @Bridge(symbol = "forge_glCheckFramebufferStatus")
     private static native int _glCheckFramebufferStatus(int target);
 
-    @Bridge(symbol = "glClear")
+    @Bridge(symbol = "forge_glClear")
     private static native void _glClear(int mask);
 
-    @Bridge(symbol = "glClearColor")
+    @Bridge(symbol = "forge_glClearColor")
     private static native void _glClearColor(float red, float green, float blue, float alpha);
 
-    @Bridge(symbol = "glClearDepthf")
+    @Bridge(symbol = "forge_glClearDepthf")
     private static native void _glClearDepthf(float depth);
 
-    @Bridge(symbol = "glClearStencil")
+    @Bridge(symbol = "forge_glClearStencil")
     private static native void _glClearStencil(int s);
 
-    @Bridge(symbol = "glColorMask")
+    @Bridge(symbol = "forge_glColorMask")
     private static native void _glColorMask(boolean red, boolean green, boolean blue, boolean alpha);
 
-    @Bridge(symbol = "glCompileShader")
+    @Bridge(symbol = "forge_glCompileShader")
     private static native void _glCompileShader(int shader);
 
-    @Bridge(symbol = "glCompressedTexImage2D")
+    @Bridge(symbol = "forge_glCompressedTexImage2D")
     private static native void _glCompressedTexImage2D(int target, int level, int internalformat,
         int width, int height, int border, int imageSize, Buffer data);
 
-    @Bridge(symbol = "glCompressedTexSubImage2D")
+    @Bridge(symbol = "forge_glCompressedTexSubImage2D")
     private static native void _glCompressedTexSubImage2D(int target, int level, int xoffset,
         int yoffset, int width, int height, int format, int imageSize, Buffer data);
 
-    @Bridge(symbol = "glCopyTexImage2D")
+    @Bridge(symbol = "forge_glCopyTexImage2D")
     private static native void _glCopyTexImage2D(int target, int level, int internalformat,
         int x, int y, int width, int height, int border);
 
-    @Bridge(symbol = "glCopyTexSubImage2D")
+    @Bridge(symbol = "forge_glCopyTexSubImage2D")
     private static native void _glCopyTexSubImage2D(int target, int level, int xoffset, int yoffset,
         int x, int y, int width, int height);
 
-    @Bridge(symbol = "glCreateProgram")
+    @Bridge(symbol = "forge_glCreateProgram")
     private static native int _glCreateProgram();
 
-    @Bridge(symbol = "glCreateShader")
+    @Bridge(symbol = "forge_glCreateShader")
     private static native int _glCreateShader(int type);
 
-    @Bridge(symbol = "glCullFace")
+    @Bridge(symbol = "forge_glCullFace")
     private static native void _glCullFace(int mode);
 
-    @Bridge(symbol = "glDeleteBuffers")
+    @Bridge(symbol = "forge_glDeleteBuffers")
     private static native void _glDeleteBuffers(int n, IntBuffer buffers);
 
-    @Bridge(symbol = "glDeleteFramebuffers")
+    @Bridge(symbol = "forge_glDeleteFramebuffers")
     private static native void _glDeleteFramebuffers(int n, IntBuffer framebuffers);
 
-    @Bridge(symbol = "glDeleteProgram")
+    @Bridge(symbol = "forge_glDeleteProgram")
     private static native void _glDeleteProgram(int program);
 
-    @Bridge(symbol = "glDeleteRenderbuffers")
+    @Bridge(symbol = "forge_glDeleteRenderbuffers")
     private static native void _glDeleteRenderbuffers(int n, IntBuffer renderbuffers);
 
-    @Bridge(symbol = "glDeleteShader")
+    @Bridge(symbol = "forge_glDeleteShader")
     private static native void _glDeleteShader(int shader);
 
-    @Bridge(symbol = "glDeleteTextures")
+    @Bridge(symbol = "forge_glDeleteTextures")
     private static native void _glDeleteTextures(int n, IntBuffer textures);
 
-    @Bridge(symbol = "glDepthFunc")
+    @Bridge(symbol = "forge_glDepthFunc")
     private static native void _glDepthFunc(int func);
 
-    @Bridge(symbol = "glDepthMask")
+    @Bridge(symbol = "forge_glDepthMask")
     private static native void _glDepthMask(boolean flag);
 
-    @Bridge(symbol = "glDepthRangef")
+    @Bridge(symbol = "forge_glDepthRangef")
     private static native void _glDepthRangef(float zNear, float zFar);
 
-    @Bridge(symbol = "glDetachShader")
+    @Bridge(symbol = "forge_glDetachShader")
     private static native void _glDetachShader(int program, int shader);
 
-    @Bridge(symbol = "glDisable")
+    @Bridge(symbol = "forge_glDisable")
     private static native void _glDisable(int cap);
 
-    @Bridge(symbol = "glDisableVertexAttribArray")
+    @Bridge(symbol = "forge_glDisableVertexAttribArray")
     private static native void _glDisableVertexAttribArray(int index);
 
-    @Bridge(symbol = "glDrawArrays")
+    @Bridge(symbol = "forge_glDrawArrays")
     private static native void _glDrawArrays(int mode, int first, int count);
 
-    @Bridge(symbol = "glDrawElements")
+    @Bridge(symbol = "forge_glDrawElements")
     private static native void _glDrawElementsB(int mode, int count, int type, Buffer indices);
 
-    @Bridge(symbol = "glDrawElements")
+    @Bridge(symbol = "forge_glDrawElementsI")
     private static native void _glDrawElementsI(int mode, int count, int type, int indices);
 
-    @Bridge(symbol = "glEnable")
+    @Bridge(symbol = "forge_glEnable")
     private static native void _glEnable(int cap);
 
-    @Bridge(symbol = "glEnableVertexAttribArray")
+    @Bridge(symbol = "forge_glEnableVertexAttribArray")
     private static native void _glEnableVertexAttribArray(int index);
 
-    @Bridge(symbol = "glFinish")
+    @Bridge(symbol = "forge_glFinish")
     private static native void _glFinish();
 
-    @Bridge(symbol = "glFlush")
+    @Bridge(symbol = "forge_glFlush")
     private static native void _glFlush();
 
-    @Bridge(symbol = "glFramebufferRenderbuffer")
+    @Bridge(symbol = "forge_glFramebufferRenderbuffer")
     private static native void _glFramebufferRenderbuffer(int target, int attachment,
         int renderbuffertarget, int renderbuffer);
 
-    @Bridge(symbol = "glFramebufferTexture2D")
+    @Bridge(symbol = "forge_glFramebufferTexture2D")
     private static native void _glFramebufferTexture2D(int target, int attachment, int textarget,
         int texture, int level);
 
-    @Bridge(symbol = "glFrontFace")
+    @Bridge(symbol = "forge_glFrontFace")
     private static native void _glFrontFace(int mode);
 
-    @Bridge(symbol = "glGenBuffers")
+    @Bridge(symbol = "forge_glGenBuffers")
     private static native void _glGenBuffers(int n, IntBuffer buffers);
 
-    @Bridge(symbol = "glGenerateMipmap")
+    @Bridge(symbol = "forge_glGenerateMipmap")
     private static native void _glGenerateMipmap(int target);
 
-    @Bridge(symbol = "glGenFramebuffers")
+    @Bridge(symbol = "forge_glGenFramebuffers")
     private static native void _glGenFramebuffers(int n, IntBuffer framebuffers);
 
-    @Bridge(symbol = "glGenRenderbuffers")
+    @Bridge(symbol = "forge_glGenRenderbuffers")
     private static native void _glGenRenderbuffers(int n, IntBuffer renderbuffers);
 
-    @Bridge(symbol = "glGenTextures")
+    @Bridge(symbol = "forge_glGenTextures")
     private static native void _glGenTextures(int n, IntBuffer textures);
 
-    @Bridge(symbol = "glGetActiveAttrib")
+    @Bridge(symbol = "forge_glGetActiveAttrib")
     private static native void _glGetActiveAttrib(int program, int index, int bufSize,
         IntBuffer length, IntBuffer size, IntBuffer type, ByteBuffer name);
 
-    @Bridge(symbol = "glGetActiveUniform")
+    @Bridge(symbol = "forge_glGetActiveUniform")
     private static native void _glGetActiveUniform(int program, int index, int bufSize,
         IntBuffer length, IntBuffer size, IntBuffer type, ByteBuffer name);
 
-    @Bridge(symbol = "glGetAttachedShaders")
+    @Bridge(symbol = "forge_glGetAttachedShaders")
     private static native void _glGetAttachedShaders(int program, int maxcount, Buffer count, IntBuffer shaders);
 
-    @Bridge(symbol = "glGetAttribLocation")
+    @Bridge(symbol = "forge_glGetAttribLocation")
     private static native int _glGetAttribLocation(int program, String name);
 
-    @Bridge(symbol = "glGetBooleanv")
+    @Bridge(symbol = "forge_glGetBooleanv")
     private static native void _glGetBooleanv(int pname, Buffer params);
 
-    @Bridge(symbol = "glGetBufferParameteriv")
+    @Bridge(symbol = "forge_glGetBufferParameteriv")
     private static native void _glGetBufferParameteriv(int target, int pname, IntBuffer params);
 
-    @Bridge(symbol = "glGetError")
+    @Bridge(symbol = "forge_glGetError")
     private static native int _glGetError();
 
-    @Bridge(symbol = "glGetFloatv")
+    @Bridge(symbol = "forge_glGetFloatv")
     private static native void _glGetFloatv(int pname, FloatBuffer params);
 
-    @Bridge(symbol = "glGetFramebufferAttachmentParameteriv")
+    @Bridge(symbol = "forge_glGetFramebufferAttachmentParameteriv")
     private static native void _glGetFramebufferAttachmentParameteriv(int target, int attachment,
         int pname, IntBuffer params);
 
-    @Bridge(symbol = "glGetIntegerv")
+    @Bridge(symbol = "forge_glGetIntegerv")
     private static native void _glGetIntegerv(int pname, IntBuffer params);
 
-    @Bridge(symbol = "glGetProgramInfoLog")
+    @Bridge(symbol = "forge_glGetProgramInfoLog")
     private static native void _glGetProgramInfoLog(int program, int bufSize, IntBuffer length, ByteBuffer infoLog);
 
-    @Bridge(symbol = "glGetProgramiv")
+    @Bridge(symbol = "forge_glGetProgramiv")
     private static native void _glGetProgramiv(int program, int pname, IntBuffer params);
 
-    @Bridge(symbol = "glGetRenderbufferParameteriv")
+    @Bridge(symbol = "forge_glGetRenderbufferParameteriv")
     private static native void _glGetRenderbufferParameteriv(int target, int pname, IntBuffer params);
 
-    @Bridge(symbol = "glGetShaderInfoLog")
+    @Bridge(symbol = "forge_glGetShaderInfoLog")
     private static native void _glGetShaderInfoLog(int shader, int bufSize, IntBuffer length, ByteBuffer infoLog);
 
-    @Bridge(symbol = "glGetShaderiv")
+    @Bridge(symbol = "forge_glGetShaderiv")
     private static native void _glGetShaderiv(int shader, int pname, IntBuffer params);
 
-    @Bridge(symbol = "glGetShaderPrecisionFormat")
+    @Bridge(symbol = "forge_glGetShaderPrecisionFormat")
     private static native void _glGetShaderPrecisionFormat(int shadertype, int precisiontype,
         IntBuffer range, IntBuffer precision);
 
-    @Bridge(symbol = "glGetString")
+    @Bridge(symbol = "forge_glGetString")
     private static native @Pointer long _glGetString(int name);
 
-    @Bridge(symbol = "glGetTexParameterfv")
+    @Bridge(symbol = "forge_glGetTexParameterfv")
     private static native void _glGetTexParameterfv(int target, int pname, FloatBuffer params);
 
-    @Bridge(symbol = "glGetTexParameteriv")
+    @Bridge(symbol = "forge_glGetTexParameteriv")
     private static native void _glGetTexParameteriv(int target, int pname, IntBuffer params);
 
-    @Bridge(symbol = "glGetUniformfv")
+    @Bridge(symbol = "forge_glGetUniformfv")
     private static native void _glGetUniformfv(int program, int location, FloatBuffer params);
 
-    @Bridge(symbol = "glGetUniformiv")
+    @Bridge(symbol = "forge_glGetUniformiv")
     private static native void _glGetUniformiv(int program, int location, IntBuffer params);
 
-    @Bridge(symbol = "glGetUniformLocation")
+    @Bridge(symbol = "forge_glGetUniformLocation")
     private static native int _glGetUniformLocation(int program, String name);
 
-    @Bridge(symbol = "glGetVertexAttribfv")
+    @Bridge(symbol = "forge_glGetVertexAttribfv")
     private static native void _glGetVertexAttribfv(int index, int pname, FloatBuffer params);
 
-    @Bridge(symbol = "glGetVertexAttribiv")
+    @Bridge(symbol = "forge_glGetVertexAttribiv")
     private static native void _glGetVertexAttribiv(int index, int pname, IntBuffer params);
 
-    @Bridge(symbol = "glHint")
+    @Bridge(symbol = "forge_glHint")
     private static native void _glHint(int target, int mode);
 
-    @Bridge(symbol = "glIsBuffer")
+    @Bridge(symbol = "forge_glIsBuffer")
     private static native boolean _glIsBuffer(int buffer);
 
-    @Bridge(symbol = "glIsEnabled")
+    @Bridge(symbol = "forge_glIsEnabled")
     private static native boolean _glIsEnabled(int cap);
 
-    @Bridge(symbol = "glIsFramebuffer")
+    @Bridge(symbol = "forge_glIsFramebuffer")
     private static native boolean _glIsFramebuffer(int framebuffer);
 
-    @Bridge(symbol = "glIsProgram")
+    @Bridge(symbol = "forge_glIsProgram")
     private static native boolean _glIsProgram(int program);
 
-    @Bridge(symbol = "glIsRenderbuffer")
+    @Bridge(symbol = "forge_glIsRenderbuffer")
     private static native boolean _glIsRenderbuffer(int renderbuffer);
 
-    @Bridge(symbol = "glIsShader")
+    @Bridge(symbol = "forge_glIsShader")
     private static native boolean _glIsShader(int shader);
 
-    @Bridge(symbol = "glIsTexture")
+    @Bridge(symbol = "forge_glIsTexture")
     private static native boolean _glIsTexture(int texture);
 
-    @Bridge(symbol = "glLineWidth")
+    @Bridge(symbol = "forge_glLineWidth")
     private static native void _glLineWidth(float width);
 
-    @Bridge(symbol = "glLinkProgram")
+    @Bridge(symbol = "forge_glLinkProgram")
     private static native void _glLinkProgram(int program);
 
-    @Bridge(symbol = "glPixelStorei")
+    @Bridge(symbol = "forge_glPixelStorei")
     private static native void _glPixelStorei(int pname, int param);
 
-    @Bridge(symbol = "glPolygonOffset")
+    @Bridge(symbol = "forge_glPolygonOffset")
     private static native void _glPolygonOffset(float factor, float units);
 
-    @Bridge(symbol = "glReadPixels")
+    @Bridge(symbol = "forge_glReadPixels")
     private static native void _glReadPixels(int x, int y, int width, int height, int format, int type, Buffer pixels);
 
-    @Bridge(symbol = "glReleaseShaderCompiler")
+    @Bridge(symbol = "forge_glReleaseShaderCompiler")
     private static native void _glReleaseShaderCompiler();
 
-    @Bridge(symbol = "glRenderbufferStorage")
+    @Bridge(symbol = "forge_glRenderbufferStorage")
     private static native void _glRenderbufferStorage(int target, int internalformat, int width, int height);
 
-    @Bridge(symbol = "glSampleCoverage")
+    @Bridge(symbol = "forge_glSampleCoverage")
     private static native void _glSampleCoverage(float value, boolean invert);
 
-    @Bridge(symbol = "glScissor")
+    @Bridge(symbol = "forge_glScissor")
     private static native void _glScissor(int x, int y, int width, int height);
 
     // glShaderSource expects const char** for its third argument.  RoboVM has no
     // built-in marshaler for String[], so we pass a ByteBuffer whose contents are
     // the native pointer(s) to the null-terminated UTF-8 string(s).
-    @Bridge(symbol = "glShaderSource")
+    @Bridge(symbol = "forge_glShaderSource")
     private static native void _glShaderSource(int shader, int count, ByteBuffer stringPtrs, IntBuffer length);
 
-    @Bridge(symbol = "glStencilFunc")
+    @Bridge(symbol = "forge_glStencilFunc")
     private static native void _glStencilFunc(int func, int ref, int mask);
 
-    @Bridge(symbol = "glStencilFuncSeparate")
+    @Bridge(symbol = "forge_glStencilFuncSeparate")
     private static native void _glStencilFuncSeparate(int face, int func, int ref, int mask);
 
-    @Bridge(symbol = "glStencilMask")
+    @Bridge(symbol = "forge_glStencilMask")
     private static native void _glStencilMask(int mask);
 
-    @Bridge(symbol = "glStencilMaskSeparate")
+    @Bridge(symbol = "forge_glStencilMaskSeparate")
     private static native void _glStencilMaskSeparate(int face, int mask);
 
-    @Bridge(symbol = "glStencilOp")
+    @Bridge(symbol = "forge_glStencilOp")
     private static native void _glStencilOp(int fail, int zfail, int zpass);
 
-    @Bridge(symbol = "glStencilOpSeparate")
+    @Bridge(symbol = "forge_glStencilOpSeparate")
     private static native void _glStencilOpSeparate(int face, int fail, int zfail, int zpass);
 
-    @Bridge(symbol = "glTexImage2D")
+    @Bridge(symbol = "forge_glTexImage2D")
     private static native void _glTexImage2D(int target, int level, int internalformat, int width,
         int height, int border, int format, int type, Buffer pixels);
 
-    @Bridge(symbol = "glTexParameterf")
+    @Bridge(symbol = "forge_glTexParameterf")
     private static native void _glTexParameterf(int target, int pname, float param);
 
-    @Bridge(symbol = "glTexParameterfv")
+    @Bridge(symbol = "forge_glTexParameterfv")
     private static native void _glTexParameterfv(int target, int pname, FloatBuffer params);
 
-    @Bridge(symbol = "glTexParameteri")
+    @Bridge(symbol = "forge_glTexParameteri")
     private static native void _glTexParameteri(int target, int pname, int param);
 
-    @Bridge(symbol = "glTexParameteriv")
+    @Bridge(symbol = "forge_glTexParameteriv")
     private static native void _glTexParameteriv(int target, int pname, IntBuffer params);
 
-    @Bridge(symbol = "glTexSubImage2D")
+    @Bridge(symbol = "forge_glTexSubImage2D")
     private static native void _glTexSubImage2D(int target, int level, int xoffset, int yoffset,
         int width, int height, int format, int type, Buffer pixels);
 
-    @Bridge(symbol = "glUniform1f")
+    @Bridge(symbol = "forge_glUniform1f")
     private static native void _glUniform1f(int location, float x);
 
-    @Bridge(symbol = "glUniform1fv")
+    @Bridge(symbol = "forge_glUniform1fv")
     private static native void _glUniform1fv(int location, int count, FloatBuffer v);
 
-    @Bridge(symbol = "glUniform1i")
+    @Bridge(symbol = "forge_glUniform1i")
     private static native void _glUniform1i(int location, int x);
 
-    @Bridge(symbol = "glUniform1iv")
+    @Bridge(symbol = "forge_glUniform1iv")
     private static native void _glUniform1iv(int location, int count, IntBuffer v);
 
-    @Bridge(symbol = "glUniform2f")
+    @Bridge(symbol = "forge_glUniform2f")
     private static native void _glUniform2f(int location, float x, float y);
 
-    @Bridge(symbol = "glUniform2fv")
+    @Bridge(symbol = "forge_glUniform2fv")
     private static native void _glUniform2fv(int location, int count, FloatBuffer v);
 
-    @Bridge(symbol = "glUniform2i")
+    @Bridge(symbol = "forge_glUniform2i")
     private static native void _glUniform2i(int location, int x, int y);
 
-    @Bridge(symbol = "glUniform2iv")
+    @Bridge(symbol = "forge_glUniform2iv")
     private static native void _glUniform2iv(int location, int count, IntBuffer v);
 
-    @Bridge(symbol = "glUniform3f")
+    @Bridge(symbol = "forge_glUniform3f")
     private static native void _glUniform3f(int location, float x, float y, float z);
 
-    @Bridge(symbol = "glUniform3fv")
+    @Bridge(symbol = "forge_glUniform3fv")
     private static native void _glUniform3fv(int location, int count, FloatBuffer v);
 
-    @Bridge(symbol = "glUniform3i")
+    @Bridge(symbol = "forge_glUniform3i")
     private static native void _glUniform3i(int location, int x, int y, int z);
 
-    @Bridge(symbol = "glUniform3iv")
+    @Bridge(symbol = "forge_glUniform3iv")
     private static native void _glUniform3iv(int location, int count, IntBuffer v);
 
-    @Bridge(symbol = "glUniform4f")
+    @Bridge(symbol = "forge_glUniform4f")
     private static native void _glUniform4f(int location, float x, float y, float z, float w);
 
-    @Bridge(symbol = "glUniform4fv")
+    @Bridge(symbol = "forge_glUniform4fv")
     private static native void _glUniform4fv(int location, int count, FloatBuffer v);
 
-    @Bridge(symbol = "glUniform4i")
+    @Bridge(symbol = "forge_glUniform4i")
     private static native void _glUniform4i(int location, int x, int y, int z, int w);
 
-    @Bridge(symbol = "glUniform4iv")
+    @Bridge(symbol = "forge_glUniform4iv")
     private static native void _glUniform4iv(int location, int count, IntBuffer v);
 
-    @Bridge(symbol = "glUniformMatrix2fv")
+    @Bridge(symbol = "forge_glUniformMatrix2fv")
     private static native void _glUniformMatrix2fv(int location, int count, boolean transpose, FloatBuffer value);
 
-    @Bridge(symbol = "glUniformMatrix3fv")
+    @Bridge(symbol = "forge_glUniformMatrix3fv")
     private static native void _glUniformMatrix3fv(int location, int count, boolean transpose, FloatBuffer value);
 
-    @Bridge(symbol = "glUniformMatrix4fv")
+    @Bridge(symbol = "forge_glUniformMatrix4fv")
     private static native void _glUniformMatrix4fv(int location, int count, boolean transpose, FloatBuffer value);
 
-    @Bridge(symbol = "glUseProgram")
+    @Bridge(symbol = "forge_glUseProgram")
     private static native void _glUseProgram(int program);
 
-    @Bridge(symbol = "glValidateProgram")
+    @Bridge(symbol = "forge_glValidateProgram")
     private static native void _glValidateProgram(int program);
 
-    @Bridge(symbol = "glVertexAttrib1f")
+    @Bridge(symbol = "forge_glVertexAttrib1f")
     private static native void _glVertexAttrib1f(int indx, float x);
 
-    @Bridge(symbol = "glVertexAttrib1fv")
+    @Bridge(symbol = "forge_glVertexAttrib1fv")
     private static native void _glVertexAttrib1fv(int indx, FloatBuffer values);
 
-    @Bridge(symbol = "glVertexAttrib2f")
+    @Bridge(symbol = "forge_glVertexAttrib2f")
     private static native void _glVertexAttrib2f(int indx, float x, float y);
 
-    @Bridge(symbol = "glVertexAttrib2fv")
+    @Bridge(symbol = "forge_glVertexAttrib2fv")
     private static native void _glVertexAttrib2fv(int indx, FloatBuffer values);
 
-    @Bridge(symbol = "glVertexAttrib3f")
+    @Bridge(symbol = "forge_glVertexAttrib3f")
     private static native void _glVertexAttrib3f(int indx, float x, float y, float z);
 
-    @Bridge(symbol = "glVertexAttrib3fv")
+    @Bridge(symbol = "forge_glVertexAttrib3fv")
     private static native void _glVertexAttrib3fv(int indx, FloatBuffer values);
 
-    @Bridge(symbol = "glVertexAttrib4f")
+    @Bridge(symbol = "forge_glVertexAttrib4f")
     private static native void _glVertexAttrib4f(int indx, float x, float y, float z, float w);
 
-    @Bridge(symbol = "glVertexAttrib4fv")
+    @Bridge(symbol = "forge_glVertexAttrib4fv")
     private static native void _glVertexAttrib4fv(int indx, FloatBuffer values);
 
-    @Bridge(symbol = "glVertexAttribPointer")
+    @Bridge(symbol = "forge_glVertexAttribPointerB")
     private static native void _glVertexAttribPointerB(int indx, int size, int type,
         boolean normalized, int stride, Buffer ptr);
 
-    @Bridge(symbol = "glVertexAttribPointer")
+    @Bridge(symbol = "forge_glVertexAttribPointerI")
     private static native void _glVertexAttribPointerI(int indx, int size, int type,
         boolean normalized, int stride, int ptr);
 
-    @Bridge(symbol = "glViewport")
+    @Bridge(symbol = "forge_glViewport")
     private static native void _glViewport(int x, int y, int width, int height);
 
     // -------------------------------------------------------------------------

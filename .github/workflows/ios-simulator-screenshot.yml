@@ -31,7 +31,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.robovm/cache
-          key: robovm-${{ runner.os }}-${{ hashFiles('forge-gui-ios/pom.xml', 'forge-gui-ios/robovm-simulator.xml', 'forge-gui-ios/robovm.properties') }}
+          key: robovm-${{ runner.os }}-${{ hashFiles('forge-gui-ios/pom.xml', 'forge-gui-ios/robovm-simulator.xml', 'forge-gui-ios/robovm.properties', 'forge-gui-ios/native/**', 'forge-gui-ios/src/com/badlogic/gdx/backends/iosrobovm/IOSGLES20.java') }}
           restore-keys: |
             robovm-${{ runner.os }}-
 
