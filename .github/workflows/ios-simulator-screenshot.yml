@@ -62,22 +62,29 @@ jobs:
             -Dmaven.test.skip=true 2>&1 | tee /tmp/mvn-build.log
 
       - name: Verify GL bridge symbols in binary
-        # Confirm that forge_gl* symbols survived the linker's -exported_symbols_list
-        # + -dead_strip pass.  If this step reports 0 symbols, the app will crash with
-        # UnsatisfiedLinkError for every @Bridge GL method.
+        # Confirm that forge_gl* symbols are in the *dynamic* symbol table — the table
+        # that dlsym() actually searches at runtime.  Plain nm shows the static table
+        # (which includes private-extern and dead-stripped symbols); nm -D shows only
+        # what dlsym can find.  If this step reports 0 dynamic symbols, the app will
+        # crash with UnsatisfiedLinkError for every @Bridge GL method.
         run: |
           BINARY=$(find forge-gui-ios/target/robovm -maxdepth 1 -type f -perm +111 2>/dev/null | head -1)
           if [ -z "$BINARY" ]; then
             echo "::warning::Could not find app binary to inspect"
           else
             echo "Inspecting binary: $BINARY"
-            COUNT=$(nm "$BINARY" 2>/dev/null | grep -c "forge_gl" || echo 0)
-            echo "forge_gl* symbols in binary: $COUNT"
-            if [ "$COUNT" -eq 0 ]; then
-              echo "::error::No forge_gl* symbols found in binary — @Bridge methods will fail at runtime"
+            # Check static symbol table (should have all 130+ forge_gl* functions)
+            STATIC_COUNT=$(nm "$BINARY" 2>/dev/null | grep -c "forge_gl" || echo 0)
+            echo "forge_gl* symbols in static table: $STATIC_COUNT"
+            # Check dynamic symbol table (must be > 0 for dlsym to work)
+            DYN_COUNT=$(nm -D "$BINARY" 2>/dev/null | grep -c "forge_gl" || echo 0)
+            echo "forge_gl* symbols in dynamic table: $DYN_COUNT"
+            if [ "$DYN_COUNT" -eq 0 ]; then
+              echo "::error::No forge_gl* in dynamic symbol table — dlsym() will fail; @Bridge methods will throw UnsatisfiedLinkError"
+              nm "$BINARY" 2>/dev/null | grep "forge_gl" | head -10
               exit 1
             fi
-            nm "$BINARY" 2>/dev/null | grep "forge_gl" | head -10
+            nm -D "$BINARY" 2>/dev/null | grep "forge_gl" | head -10
           fi
 
       - name: Boot simulator and launch app

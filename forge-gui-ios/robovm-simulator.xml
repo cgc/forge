@@ -44,21 +44,24 @@
     force=null (the default) triggers -force_load so the archive members are
     included even though nothing references them from compiled Java code.
 
-    The <exportedSymbols> entry below prevents the Darwin linker's -dead_strip
-    pass from removing forge_gl* despite their inclusion via -force_load:
-    MobiVM uses -exported_symbols_list which keeps only listed symbols in the
-    dynamic symbol table.  Without this entry dlsym(NULL,"forge_glViewport")
-    returns NULL and every @Bridge method throws UnsatisfiedLinkError at
-    class-init time.  The leading * makes RoboVM treat the entry as a glob
-    (skipping the automatic _ prefix), so *forge_gl* matches _forge_glViewport,
-    _forge_glClear, etc.
+    Dead-stripping is defeated by two complementary mechanisms:
+
+    1. __attribute__((used)) on every function in gl_bridge.m marks them with
+       the .no_dead_strip flag in the object file, telling ld64 never to remove
+       them regardless of whether they are directly referenced.
+
+    2. -export_dynamic (see <ldFlags> below) exports ALL global symbols to the
+       dynamic linker table, so dlsym(NULL,"forge_glViewport") succeeds at
+       runtime.  Without this, symbols not in MobiVM's exported_symbols_list
+       are marked N_PEXT (private extern) and invisible to dlsym even if they
+       survive dead-stripping.
   -->
   <libs>
     <lib>native/gl_bridge.a</lib>
   </libs>
-  <exportedSymbols>
-    <symbol>*forge_gl*</symbol>
-  </exportedSymbols>
+  <ldFlags>
+    <ldFlag>-export_dynamic</ldFlag>
+  </ldFlags>
   <frameworks>
     <framework>UIKit</framework>
     <framework>OpenGLES</framework>
