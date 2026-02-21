@@ -18,14 +18,22 @@ jobs:
       contents: read
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'maven'
+
+      - name: Cache RoboVM compiler output
+        uses: actions/cache@v4
+        with:
+          path: ~/.robovm/cache
+          key: robovm-${{ runner.os }}-${{ hashFiles('forge-gui-ios/pom.xml', 'forge-gui-ios/robovm.xml', 'forge-gui-ios/robovm.properties') }}
+          restore-keys: |
+            robovm-${{ runner.os }}-
 
       - name: Build all modules and package iOS IPA (unsigned)
         run: |
@@ -34,7 +42,7 @@ jobs:
           # Keeping both in one Maven reactor avoids the ${revision} resolution issue that occurs
           # when running a second mvn invocation against an already-installed (flattened) parent POM.
           # robovm.iosSkipSigning=true produces an unsigned IPA re-signable with AltStore/Sideloadly/Xcode.
-          mvn -U -B -e clean install -pl forge-gui-ios -am -P ios-device \
+          mvn -B -e clean install -pl forge-gui-ios -am -P ios-device \
             -Drobovm.iosSkipSigning=true \
             -Dmaven.test.skip=true
 
