@@ -22,10 +22,14 @@
  * *device* slices and cannot be linked into an arm64-simulator binary.
  *
  * This replacement uses RoboVM @Bridge annotations to call the OpenGL ES C
- * functions directly via the already-linked OpenGLES framework, so no JNI
- * wrappers are needed at all.  It is compiled only for simulator builds because
- * robovm-simulator.xml points MobiVM at forge-gui-ios/src as an extra source
- * root, where it takes precedence over the same class in gdx-backend-robovm.jar.
+ * functions directly via the already-linked OpenGLES framework, without any
+ * JNI wrappers from libgdx.a.
+ *
+ * Key constraint: RoboVM's @Bridge processor requires bridge methods to be
+ * *static* when calling plain C functions (the compiler cannot marshal the
+ * Java `this` reference as a C function parameter).  All bridge methods are
+ * therefore declared as private static native, and the GL20 interface is
+ * fulfilled by non-static wrappers that delegate to them.
  */
 
 package com.badlogic.gdx.backends.iosrobovm;
@@ -46,455 +50,762 @@ public class IOSGLES20 implements GL20 {
         && NSProcessInfo.getSharedProcessInfo().getEnvironment().containsKey("SIMULATOR_DEVICE_NAME");
 
     public IOSGLES20 () {
-        init();
+        // No-op: static @Bridge methods don't need JNI initialisation.
     }
 
-    /** last viewport set, needed because GLKView resets the viewport on each call to render */
+    /** Last viewport set; GLKView resets the viewport on each draw call. */
     public static int x, y, width, height;
 
-    /** No-op: @Bridge methods do not need JNI initialisation. */
-    private static void init () {}
-
     // -------------------------------------------------------------------------
-    // GL20 interface — all backed by direct @Bridge calls into OpenGLES.framework
+    // Static @Bridge declarations — each maps to a C function in OpenGLES.framework
     // -------------------------------------------------------------------------
 
     @Bridge(symbol = "glActiveTexture")
-    public native void glActiveTexture (int texture);
+    private static native void _glActiveTexture(int texture);
 
     @Bridge(symbol = "glAttachShader")
-    public native void glAttachShader (int program, int shader);
+    private static native void _glAttachShader(int program, int shader);
 
     @Bridge(symbol = "glBindAttribLocation")
-    public native void glBindAttribLocation (int program, int index, String name);
+    private static native void _glBindAttribLocation(int program, int index, String name);
 
     @Bridge(symbol = "glBindBuffer")
-    public native void glBindBuffer (int target, int buffer);
+    private static native void _glBindBuffer(int target, int buffer);
 
     @Bridge(symbol = "glBindFramebuffer")
-    public native void glBindFramebuffer (int target, int framebuffer);
+    private static native void _glBindFramebuffer(int target, int framebuffer);
 
     @Bridge(symbol = "glBindRenderbuffer")
-    public native void glBindRenderbuffer (int target, int renderbuffer);
+    private static native void _glBindRenderbuffer(int target, int renderbuffer);
 
     @Bridge(symbol = "glBindTexture")
-    public native void glBindTexture (int target, int texture);
+    private static native void _glBindTexture(int target, int texture);
 
     @Bridge(symbol = "glBlendColor")
-    public native void glBlendColor (float red, float green, float blue, float alpha);
+    private static native void _glBlendColor(float red, float green, float blue, float alpha);
 
     @Bridge(symbol = "glBlendEquation")
-    public native void glBlendEquation (int mode);
+    private static native void _glBlendEquation(int mode);
 
     @Bridge(symbol = "glBlendEquationSeparate")
-    public native void glBlendEquationSeparate (int modeRGB, int modeAlpha);
+    private static native void _glBlendEquationSeparate(int modeRGB, int modeAlpha);
 
     @Bridge(symbol = "glBlendFunc")
-    public native void glBlendFunc (int sfactor, int dfactor);
+    private static native void _glBlendFunc(int sfactor, int dfactor);
 
     @Bridge(symbol = "glBlendFuncSeparate")
-    public native void glBlendFuncSeparate (int srcRGB, int dstRGB, int srcAlpha, int dstAlpha);
+    private static native void _glBlendFuncSeparate(int srcRGB, int dstRGB, int srcAlpha, int dstAlpha);
 
     @Bridge(symbol = "glBufferData")
-    public native void glBufferData (int target, int size, Buffer data, int usage);
+    private static native void _glBufferData(int target, int size, Buffer data, int usage);
 
     @Bridge(symbol = "glBufferSubData")
-    public native void glBufferSubData (int target, int offset, int size, Buffer data);
+    private static native void _glBufferSubData(int target, int offset, int size, Buffer data);
 
     @Bridge(symbol = "glCheckFramebufferStatus")
-    public native int glCheckFramebufferStatus (int target);
+    private static native int _glCheckFramebufferStatus(int target);
 
     @Bridge(symbol = "glClear")
-    public native void glClear (int mask);
+    private static native void _glClear(int mask);
 
     @Bridge(symbol = "glClearColor")
-    public native void glClearColor (float red, float green, float blue, float alpha);
+    private static native void _glClearColor(float red, float green, float blue, float alpha);
 
     @Bridge(symbol = "glClearDepthf")
-    public native void glClearDepthf (float depth);
+    private static native void _glClearDepthf(float depth);
 
     @Bridge(symbol = "glClearStencil")
-    public native void glClearStencil (int s);
+    private static native void _glClearStencil(int s);
 
     @Bridge(symbol = "glColorMask")
-    public native void glColorMask (boolean red, boolean green, boolean blue, boolean alpha);
+    private static native void _glColorMask(boolean red, boolean green, boolean blue, boolean alpha);
 
     @Bridge(symbol = "glCompileShader")
-    public native void glCompileShader (int shader);
+    private static native void _glCompileShader(int shader);
 
     @Bridge(symbol = "glCompressedTexImage2D")
-    public native void glCompressedTexImage2D (int target, int level, int internalformat, int width, int height,
-        int border, int imageSize, Buffer data);
+    private static native void _glCompressedTexImage2D(int target, int level, int internalformat,
+        int width, int height, int border, int imageSize, Buffer data);
 
     @Bridge(symbol = "glCompressedTexSubImage2D")
-    public native void glCompressedTexSubImage2D (int target, int level, int xoffset, int yoffset, int width,
-        int height, int format, int imageSize, Buffer data);
+    private static native void _glCompressedTexSubImage2D(int target, int level, int xoffset,
+        int yoffset, int width, int height, int format, int imageSize, Buffer data);
 
     @Bridge(symbol = "glCopyTexImage2D")
-    public native void glCopyTexImage2D (int target, int level, int internalformat, int x, int y, int width,
-        int height, int border);
+    private static native void _glCopyTexImage2D(int target, int level, int internalformat,
+        int x, int y, int width, int height, int border);
 
     @Bridge(symbol = "glCopyTexSubImage2D")
-    public native void glCopyTexSubImage2D (int target, int level, int xoffset, int yoffset, int x, int y,
-        int width, int height);
+    private static native void _glCopyTexSubImage2D(int target, int level, int xoffset, int yoffset,
+        int x, int y, int width, int height);
 
     @Bridge(symbol = "glCreateProgram")
-    public native int glCreateProgram ();
+    private static native int _glCreateProgram();
 
     @Bridge(symbol = "glCreateShader")
-    public native int glCreateShader (int type);
+    private static native int _glCreateShader(int type);
 
     @Bridge(symbol = "glCullFace")
-    public native void glCullFace (int mode);
+    private static native void _glCullFace(int mode);
 
     @Bridge(symbol = "glDeleteBuffers")
-    public native void glDeleteBuffers (int n, IntBuffer buffers);
-
-    public void glDeleteBuffer (int buffer) {
-        IntBuffer buf = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
-        buf.put(0, buffer);
-        glDeleteBuffers(1, buf);
-    }
+    private static native void _glDeleteBuffers(int n, IntBuffer buffers);
 
     @Bridge(symbol = "glDeleteFramebuffers")
-    public native void glDeleteFramebuffers (int n, IntBuffer framebuffers);
-
-    public void glDeleteFramebuffer (int framebuffer) {
-        IntBuffer buf = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
-        buf.put(0, framebuffer);
-        glDeleteFramebuffers(1, buf);
-    }
+    private static native void _glDeleteFramebuffers(int n, IntBuffer framebuffers);
 
     @Bridge(symbol = "glDeleteProgram")
-    public native void glDeleteProgram (int program);
+    private static native void _glDeleteProgram(int program);
 
     @Bridge(symbol = "glDeleteRenderbuffers")
-    public native void glDeleteRenderbuffers (int n, IntBuffer renderbuffers);
-
-    public void glDeleteRenderbuffer (int renderbuffer) {
-        IntBuffer buf = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
-        buf.put(0, renderbuffer);
-        glDeleteRenderbuffers(1, buf);
-    }
+    private static native void _glDeleteRenderbuffers(int n, IntBuffer renderbuffers);
 
     @Bridge(symbol = "glDeleteShader")
-    public native void glDeleteShader (int shader);
+    private static native void _glDeleteShader(int shader);
 
     @Bridge(symbol = "glDeleteTextures")
-    public native void glDeleteTextures (int n, IntBuffer textures);
-
-    public void glDeleteTexture (int texture) {
-        IntBuffer buf = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
-        buf.put(0, texture);
-        glDeleteTextures(1, buf);
-    }
+    private static native void _glDeleteTextures(int n, IntBuffer textures);
 
     @Bridge(symbol = "glDepthFunc")
-    public native void glDepthFunc (int func);
+    private static native void _glDepthFunc(int func);
 
     @Bridge(symbol = "glDepthMask")
-    public native void glDepthMask (boolean flag);
+    private static native void _glDepthMask(boolean flag);
 
     @Bridge(symbol = "glDepthRangef")
-    public native void glDepthRangef (float zNear, float zFar);
+    private static native void _glDepthRangef(float zNear, float zFar);
 
     @Bridge(symbol = "glDetachShader")
-    public native void glDetachShader (int program, int shader);
+    private static native void _glDetachShader(int program, int shader);
 
     @Bridge(symbol = "glDisable")
-    public native void glDisable (int cap);
+    private static native void _glDisable(int cap);
 
     @Bridge(symbol = "glDisableVertexAttribArray")
-    public native void glDisableVertexAttribArray (int index);
+    private static native void _glDisableVertexAttribArray(int index);
 
     @Bridge(symbol = "glDrawArrays")
-    public native void glDrawArrays (int mode, int first, int count);
+    private static native void _glDrawArrays(int mode, int first, int count);
 
     @Bridge(symbol = "glDrawElements")
-    public native void glDrawElements (int mode, int count, int type, Buffer indices);
+    private static native void _glDrawElementsB(int mode, int count, int type, Buffer indices);
 
     @Bridge(symbol = "glDrawElements")
-    public native void glDrawElements (int mode, int count, int type, int indices);
+    private static native void _glDrawElementsI(int mode, int count, int type, int indices);
 
     @Bridge(symbol = "glEnable")
-    public native void glEnable (int cap);
+    private static native void _glEnable(int cap);
 
     @Bridge(symbol = "glEnableVertexAttribArray")
-    public native void glEnableVertexAttribArray (int index);
+    private static native void _glEnableVertexAttribArray(int index);
 
     @Bridge(symbol = "glFinish")
-    public native void glFinish ();
+    private static native void _glFinish();
 
     @Bridge(symbol = "glFlush")
-    public native void glFlush ();
+    private static native void _glFlush();
 
     @Bridge(symbol = "glFramebufferRenderbuffer")
-    public native void glFramebufferRenderbuffer (int target, int attachment, int renderbuffertarget,
-        int renderbuffer);
+    private static native void _glFramebufferRenderbuffer(int target, int attachment,
+        int renderbuffertarget, int renderbuffer);
 
     @Bridge(symbol = "glFramebufferTexture2D")
-    public native void glFramebufferTexture2D (int target, int attachment, int textarget, int texture, int level);
+    private static native void _glFramebufferTexture2D(int target, int attachment, int textarget,
+        int texture, int level);
 
     @Bridge(symbol = "glFrontFace")
-    public native void glFrontFace (int mode);
+    private static native void _glFrontFace(int mode);
 
     @Bridge(symbol = "glGenBuffers")
-    public native void glGenBuffers (int n, IntBuffer buffers);
-
-    public int glGenBuffer () {
-        IntBuffer buf = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
-        glGenBuffers(1, buf);
-        return buf.get(0);
-    }
+    private static native void _glGenBuffers(int n, IntBuffer buffers);
 
     @Bridge(symbol = "glGenerateMipmap")
-    public native void glGenerateMipmap (int target);
+    private static native void _glGenerateMipmap(int target);
 
     @Bridge(symbol = "glGenFramebuffers")
-    public native void glGenFramebuffers (int n, IntBuffer framebuffers);
-
-    public int glGenFramebuffer () {
-        IntBuffer buf = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
-        glGenFramebuffers(1, buf);
-        return buf.get(0);
-    }
+    private static native void _glGenFramebuffers(int n, IntBuffer framebuffers);
 
     @Bridge(symbol = "glGenRenderbuffers")
-    public native void glGenRenderbuffers (int n, IntBuffer renderbuffers);
-
-    public int glGenRenderbuffer () {
-        IntBuffer buf = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
-        glGenRenderbuffers(1, buf);
-        return buf.get(0);
-    }
+    private static native void _glGenRenderbuffers(int n, IntBuffer renderbuffers);
 
     @Bridge(symbol = "glGenTextures")
-    public native void glGenTextures (int n, IntBuffer textures);
+    private static native void _glGenTextures(int n, IntBuffer textures);
 
-    public int glGenTexture () {
+    @Bridge(symbol = "glGetActiveAttrib")
+    private static native void _glGetActiveAttrib(int program, int index, int bufSize,
+        IntBuffer length, IntBuffer size, IntBuffer type, ByteBuffer name);
+
+    @Bridge(symbol = "glGetActiveUniform")
+    private static native void _glGetActiveUniform(int program, int index, int bufSize,
+        IntBuffer length, IntBuffer size, IntBuffer type, ByteBuffer name);
+
+    @Bridge(symbol = "glGetAttachedShaders")
+    private static native void _glGetAttachedShaders(int program, int maxcount, Buffer count, IntBuffer shaders);
+
+    @Bridge(symbol = "glGetAttribLocation")
+    private static native int _glGetAttribLocation(int program, String name);
+
+    @Bridge(symbol = "glGetBooleanv")
+    private static native void _glGetBooleanv(int pname, Buffer params);
+
+    @Bridge(symbol = "glGetBufferParameteriv")
+    private static native void _glGetBufferParameteriv(int target, int pname, IntBuffer params);
+
+    @Bridge(symbol = "glGetError")
+    private static native int _glGetError();
+
+    @Bridge(symbol = "glGetFloatv")
+    private static native void _glGetFloatv(int pname, FloatBuffer params);
+
+    @Bridge(symbol = "glGetFramebufferAttachmentParameteriv")
+    private static native void _glGetFramebufferAttachmentParameteriv(int target, int attachment,
+        int pname, IntBuffer params);
+
+    @Bridge(symbol = "glGetIntegerv")
+    private static native void _glGetIntegerv(int pname, IntBuffer params);
+
+    @Bridge(symbol = "glGetProgramInfoLog")
+    private static native void _glGetProgramInfoLog(int program, int bufSize, IntBuffer length, ByteBuffer infoLog);
+
+    @Bridge(symbol = "glGetProgramiv")
+    private static native void _glGetProgramiv(int program, int pname, IntBuffer params);
+
+    @Bridge(symbol = "glGetRenderbufferParameteriv")
+    private static native void _glGetRenderbufferParameteriv(int target, int pname, IntBuffer params);
+
+    @Bridge(symbol = "glGetShaderInfoLog")
+    private static native void _glGetShaderInfoLog(int shader, int bufSize, IntBuffer length, ByteBuffer infoLog);
+
+    @Bridge(symbol = "glGetShaderiv")
+    private static native void _glGetShaderiv(int shader, int pname, IntBuffer params);
+
+    @Bridge(symbol = "glGetShaderPrecisionFormat")
+    private static native void _glGetShaderPrecisionFormat(int shadertype, int precisiontype,
+        IntBuffer range, IntBuffer precision);
+
+    @Bridge(symbol = "glGetString")
+    private static native @Pointer long _glGetString(int name);
+
+    @Bridge(symbol = "glGetTexParameterfv")
+    private static native void _glGetTexParameterfv(int target, int pname, FloatBuffer params);
+
+    @Bridge(symbol = "glGetTexParameteriv")
+    private static native void _glGetTexParameteriv(int target, int pname, IntBuffer params);
+
+    @Bridge(symbol = "glGetUniformfv")
+    private static native void _glGetUniformfv(int program, int location, FloatBuffer params);
+
+    @Bridge(symbol = "glGetUniformiv")
+    private static native void _glGetUniformiv(int program, int location, IntBuffer params);
+
+    @Bridge(symbol = "glGetUniformLocation")
+    private static native int _glGetUniformLocation(int program, String name);
+
+    @Bridge(symbol = "glGetVertexAttribfv")
+    private static native void _glGetVertexAttribfv(int index, int pname, FloatBuffer params);
+
+    @Bridge(symbol = "glGetVertexAttribiv")
+    private static native void _glGetVertexAttribiv(int index, int pname, IntBuffer params);
+
+    @Bridge(symbol = "glHint")
+    private static native void _glHint(int target, int mode);
+
+    @Bridge(symbol = "glIsBuffer")
+    private static native boolean _glIsBuffer(int buffer);
+
+    @Bridge(symbol = "glIsEnabled")
+    private static native boolean _glIsEnabled(int cap);
+
+    @Bridge(symbol = "glIsFramebuffer")
+    private static native boolean _glIsFramebuffer(int framebuffer);
+
+    @Bridge(symbol = "glIsProgram")
+    private static native boolean _glIsProgram(int program);
+
+    @Bridge(symbol = "glIsRenderbuffer")
+    private static native boolean _glIsRenderbuffer(int renderbuffer);
+
+    @Bridge(symbol = "glIsShader")
+    private static native boolean _glIsShader(int shader);
+
+    @Bridge(symbol = "glIsTexture")
+    private static native boolean _glIsTexture(int texture);
+
+    @Bridge(symbol = "glLineWidth")
+    private static native void _glLineWidth(float width);
+
+    @Bridge(symbol = "glLinkProgram")
+    private static native void _glLinkProgram(int program);
+
+    @Bridge(symbol = "glPixelStorei")
+    private static native void _glPixelStorei(int pname, int param);
+
+    @Bridge(symbol = "glPolygonOffset")
+    private static native void _glPolygonOffset(float factor, float units);
+
+    @Bridge(symbol = "glReadPixels")
+    private static native void _glReadPixels(int x, int y, int width, int height, int format, int type, Buffer pixels);
+
+    @Bridge(symbol = "glReleaseShaderCompiler")
+    private static native void _glReleaseShaderCompiler();
+
+    @Bridge(symbol = "glRenderbufferStorage")
+    private static native void _glRenderbufferStorage(int target, int internalformat, int width, int height);
+
+    @Bridge(symbol = "glSampleCoverage")
+    private static native void _glSampleCoverage(float value, boolean invert);
+
+    @Bridge(symbol = "glScissor")
+    private static native void _glScissor(int x, int y, int width, int height);
+
+    @Bridge(symbol = "glShaderSource")
+    private static native void _glShaderSource(int shader, int count, String[] string, IntBuffer length);
+
+    @Bridge(symbol = "glStencilFunc")
+    private static native void _glStencilFunc(int func, int ref, int mask);
+
+    @Bridge(symbol = "glStencilFuncSeparate")
+    private static native void _glStencilFuncSeparate(int face, int func, int ref, int mask);
+
+    @Bridge(symbol = "glStencilMask")
+    private static native void _glStencilMask(int mask);
+
+    @Bridge(symbol = "glStencilMaskSeparate")
+    private static native void _glStencilMaskSeparate(int face, int mask);
+
+    @Bridge(symbol = "glStencilOp")
+    private static native void _glStencilOp(int fail, int zfail, int zpass);
+
+    @Bridge(symbol = "glStencilOpSeparate")
+    private static native void _glStencilOpSeparate(int face, int fail, int zfail, int zpass);
+
+    @Bridge(symbol = "glTexImage2D")
+    private static native void _glTexImage2D(int target, int level, int internalformat, int width,
+        int height, int border, int format, int type, Buffer pixels);
+
+    @Bridge(symbol = "glTexParameterf")
+    private static native void _glTexParameterf(int target, int pname, float param);
+
+    @Bridge(symbol = "glTexParameterfv")
+    private static native void _glTexParameterfv(int target, int pname, FloatBuffer params);
+
+    @Bridge(symbol = "glTexParameteri")
+    private static native void _glTexParameteri(int target, int pname, int param);
+
+    @Bridge(symbol = "glTexParameteriv")
+    private static native void _glTexParameteriv(int target, int pname, IntBuffer params);
+
+    @Bridge(symbol = "glTexSubImage2D")
+    private static native void _glTexSubImage2D(int target, int level, int xoffset, int yoffset,
+        int width, int height, int format, int type, Buffer pixels);
+
+    @Bridge(symbol = "glUniform1f")
+    private static native void _glUniform1f(int location, float x);
+
+    @Bridge(symbol = "glUniform1fv")
+    private static native void _glUniform1fv(int location, int count, FloatBuffer v);
+
+    @Bridge(symbol = "glUniform1i")
+    private static native void _glUniform1i(int location, int x);
+
+    @Bridge(symbol = "glUniform1iv")
+    private static native void _glUniform1iv(int location, int count, IntBuffer v);
+
+    @Bridge(symbol = "glUniform2f")
+    private static native void _glUniform2f(int location, float x, float y);
+
+    @Bridge(symbol = "glUniform2fv")
+    private static native void _glUniform2fv(int location, int count, FloatBuffer v);
+
+    @Bridge(symbol = "glUniform2i")
+    private static native void _glUniform2i(int location, int x, int y);
+
+    @Bridge(symbol = "glUniform2iv")
+    private static native void _glUniform2iv(int location, int count, IntBuffer v);
+
+    @Bridge(symbol = "glUniform3f")
+    private static native void _glUniform3f(int location, float x, float y, float z);
+
+    @Bridge(symbol = "glUniform3fv")
+    private static native void _glUniform3fv(int location, int count, FloatBuffer v);
+
+    @Bridge(symbol = "glUniform3i")
+    private static native void _glUniform3i(int location, int x, int y, int z);
+
+    @Bridge(symbol = "glUniform3iv")
+    private static native void _glUniform3iv(int location, int count, IntBuffer v);
+
+    @Bridge(symbol = "glUniform4f")
+    private static native void _glUniform4f(int location, float x, float y, float z, float w);
+
+    @Bridge(symbol = "glUniform4fv")
+    private static native void _glUniform4fv(int location, int count, FloatBuffer v);
+
+    @Bridge(symbol = "glUniform4i")
+    private static native void _glUniform4i(int location, int x, int y, int z, int w);
+
+    @Bridge(symbol = "glUniform4iv")
+    private static native void _glUniform4iv(int location, int count, IntBuffer v);
+
+    @Bridge(symbol = "glUniformMatrix2fv")
+    private static native void _glUniformMatrix2fv(int location, int count, boolean transpose, FloatBuffer value);
+
+    @Bridge(symbol = "glUniformMatrix3fv")
+    private static native void _glUniformMatrix3fv(int location, int count, boolean transpose, FloatBuffer value);
+
+    @Bridge(symbol = "glUniformMatrix4fv")
+    private static native void _glUniformMatrix4fv(int location, int count, boolean transpose, FloatBuffer value);
+
+    @Bridge(symbol = "glUseProgram")
+    private static native void _glUseProgram(int program);
+
+    @Bridge(symbol = "glValidateProgram")
+    private static native void _glValidateProgram(int program);
+
+    @Bridge(symbol = "glVertexAttrib1f")
+    private static native void _glVertexAttrib1f(int indx, float x);
+
+    @Bridge(symbol = "glVertexAttrib1fv")
+    private static native void _glVertexAttrib1fv(int indx, FloatBuffer values);
+
+    @Bridge(symbol = "glVertexAttrib2f")
+    private static native void _glVertexAttrib2f(int indx, float x, float y);
+
+    @Bridge(symbol = "glVertexAttrib2fv")
+    private static native void _glVertexAttrib2fv(int indx, FloatBuffer values);
+
+    @Bridge(symbol = "glVertexAttrib3f")
+    private static native void _glVertexAttrib3f(int indx, float x, float y, float z);
+
+    @Bridge(symbol = "glVertexAttrib3fv")
+    private static native void _glVertexAttrib3fv(int indx, FloatBuffer values);
+
+    @Bridge(symbol = "glVertexAttrib4f")
+    private static native void _glVertexAttrib4f(int indx, float x, float y, float z, float w);
+
+    @Bridge(symbol = "glVertexAttrib4fv")
+    private static native void _glVertexAttrib4fv(int indx, FloatBuffer values);
+
+    @Bridge(symbol = "glVertexAttribPointer")
+    private static native void _glVertexAttribPointerB(int indx, int size, int type,
+        boolean normalized, int stride, Buffer ptr);
+
+    @Bridge(symbol = "glVertexAttribPointer")
+    private static native void _glVertexAttribPointerI(int indx, int size, int type,
+        boolean normalized, int stride, int ptr);
+
+    @Bridge(symbol = "glViewport")
+    private static native void _glViewport(int x, int y, int width, int height);
+
+    // -------------------------------------------------------------------------
+    // GL20 interface implementations — delegate to static @Bridge methods above
+    // -------------------------------------------------------------------------
+
+    @Override public void glActiveTexture(int texture) { _glActiveTexture(texture); }
+    @Override public void glAttachShader(int program, int shader) { _glAttachShader(program, shader); }
+    @Override public void glBindAttribLocation(int program, int index, String name) { _glBindAttribLocation(program, index, name); }
+    @Override public void glBindBuffer(int target, int buffer) { _glBindBuffer(target, buffer); }
+    @Override public void glBindFramebuffer(int target, int framebuffer) { _glBindFramebuffer(target, framebuffer); }
+    @Override public void glBindRenderbuffer(int target, int renderbuffer) { _glBindRenderbuffer(target, renderbuffer); }
+    @Override public void glBindTexture(int target, int texture) { _glBindTexture(target, texture); }
+    @Override public void glBlendColor(float red, float green, float blue, float alpha) { _glBlendColor(red, green, blue, alpha); }
+    @Override public void glBlendEquation(int mode) { _glBlendEquation(mode); }
+    @Override public void glBlendEquationSeparate(int modeRGB, int modeAlpha) { _glBlendEquationSeparate(modeRGB, modeAlpha); }
+    @Override public void glBlendFunc(int sfactor, int dfactor) { _glBlendFunc(sfactor, dfactor); }
+    @Override public void glBlendFuncSeparate(int srcRGB, int dstRGB, int srcAlpha, int dstAlpha) { _glBlendFuncSeparate(srcRGB, dstRGB, srcAlpha, dstAlpha); }
+    @Override public void glBufferData(int target, int size, Buffer data, int usage) { _glBufferData(target, size, data, usage); }
+    @Override public void glBufferSubData(int target, int offset, int size, Buffer data) { _glBufferSubData(target, offset, size, data); }
+    @Override public int glCheckFramebufferStatus(int target) { return _glCheckFramebufferStatus(target); }
+    @Override public void glClear(int mask) { _glClear(mask); }
+    @Override public void glClearColor(float red, float green, float blue, float alpha) { _glClearColor(red, green, blue, alpha); }
+    @Override public void glClearDepthf(float depth) { _glClearDepthf(depth); }
+    @Override public void glClearStencil(int s) { _glClearStencil(s); }
+    @Override public void glColorMask(boolean red, boolean green, boolean blue, boolean alpha) { _glColorMask(red, green, blue, alpha); }
+    @Override public void glCompileShader(int shader) { _glCompileShader(shader); }
+
+    @Override
+    public void glCompressedTexImage2D(int target, int level, int internalformat, int width, int height,
+        int border, int imageSize, Buffer data) {
+        _glCompressedTexImage2D(target, level, internalformat, width, height, border, imageSize, data);
+    }
+
+    @Override
+    public void glCompressedTexSubImage2D(int target, int level, int xoffset, int yoffset, int width,
+        int height, int format, int imageSize, Buffer data) {
+        _glCompressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, imageSize, data);
+    }
+
+    @Override
+    public void glCopyTexImage2D(int target, int level, int internalformat, int x, int y, int width, int height, int border) {
+        _glCopyTexImage2D(target, level, internalformat, x, y, width, height, border);
+    }
+
+    @Override
+    public void glCopyTexSubImage2D(int target, int level, int xoffset, int yoffset, int x, int y, int width, int height) {
+        _glCopyTexSubImage2D(target, level, xoffset, yoffset, x, y, width, height);
+    }
+
+    @Override public int glCreateProgram() { return _glCreateProgram(); }
+    @Override public int glCreateShader(int type) { return _glCreateShader(type); }
+    @Override public void glCullFace(int mode) { _glCullFace(mode); }
+
+    @Override
+    public void glDeleteBuffers(int n, IntBuffer buffers) { _glDeleteBuffers(n, buffers); }
+
+    @Override
+    public void glDeleteBuffer(int buffer) {
         IntBuffer buf = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
-        glGenTextures(1, buf);
+        buf.put(0, buffer);
+        _glDeleteBuffers(1, buf);
+    }
+
+    @Override
+    public void glDeleteFramebuffers(int n, IntBuffer framebuffers) { _glDeleteFramebuffers(n, framebuffers); }
+
+    @Override
+    public void glDeleteFramebuffer(int framebuffer) {
+        IntBuffer buf = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
+        buf.put(0, framebuffer);
+        _glDeleteFramebuffers(1, buf);
+    }
+
+    @Override public void glDeleteProgram(int program) { _glDeleteProgram(program); }
+
+    @Override
+    public void glDeleteRenderbuffers(int n, IntBuffer renderbuffers) { _glDeleteRenderbuffers(n, renderbuffers); }
+
+    @Override
+    public void glDeleteRenderbuffer(int renderbuffer) {
+        IntBuffer buf = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
+        buf.put(0, renderbuffer);
+        _glDeleteRenderbuffers(1, buf);
+    }
+
+    @Override public void glDeleteShader(int shader) { _glDeleteShader(shader); }
+
+    @Override
+    public void glDeleteTextures(int n, IntBuffer textures) { _glDeleteTextures(n, textures); }
+
+    @Override
+    public void glDeleteTexture(int texture) {
+        IntBuffer buf = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
+        buf.put(0, texture);
+        _glDeleteTextures(1, buf);
+    }
+
+    @Override public void glDepthFunc(int func) { _glDepthFunc(func); }
+    @Override public void glDepthMask(boolean flag) { _glDepthMask(flag); }
+    @Override public void glDepthRangef(float zNear, float zFar) { _glDepthRangef(zNear, zFar); }
+    @Override public void glDetachShader(int program, int shader) { _glDetachShader(program, shader); }
+    @Override public void glDisable(int cap) { _glDisable(cap); }
+    @Override public void glDisableVertexAttribArray(int index) { _glDisableVertexAttribArray(index); }
+    @Override public void glDrawArrays(int mode, int first, int count) { _glDrawArrays(mode, first, count); }
+    @Override public void glDrawElements(int mode, int count, int type, Buffer indices) { _glDrawElementsB(mode, count, type, indices); }
+    @Override public void glDrawElements(int mode, int count, int type, int indices) { _glDrawElementsI(mode, count, type, indices); }
+    @Override public void glEnable(int cap) { _glEnable(cap); }
+    @Override public void glEnableVertexAttribArray(int index) { _glEnableVertexAttribArray(index); }
+    @Override public void glFinish() { _glFinish(); }
+    @Override public void glFlush() { _glFlush(); }
+
+    @Override
+    public void glFramebufferRenderbuffer(int target, int attachment, int renderbuffertarget, int renderbuffer) {
+        _glFramebufferRenderbuffer(target, attachment, renderbuffertarget, renderbuffer);
+    }
+
+    @Override
+    public void glFramebufferTexture2D(int target, int attachment, int textarget, int texture, int level) {
+        _glFramebufferTexture2D(target, attachment, textarget, texture, level);
+    }
+
+    @Override public void glFrontFace(int mode) { _glFrontFace(mode); }
+
+    @Override
+    public void glGenBuffers(int n, IntBuffer buffers) { _glGenBuffers(n, buffers); }
+
+    @Override
+    public int glGenBuffer() {
+        IntBuffer buf = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
+        _glGenBuffers(1, buf);
         return buf.get(0);
     }
 
-    public String glGetActiveAttrib (int program, int index, IntBuffer size, IntBuffer type) {
+    @Override public void glGenerateMipmap(int target) { _glGenerateMipmap(target); }
+
+    @Override
+    public void glGenFramebuffers(int n, IntBuffer framebuffers) { _glGenFramebuffers(n, framebuffers); }
+
+    @Override
+    public int glGenFramebuffer() {
+        IntBuffer buf = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
+        _glGenFramebuffers(1, buf);
+        return buf.get(0);
+    }
+
+    @Override
+    public void glGenRenderbuffers(int n, IntBuffer renderbuffers) { _glGenRenderbuffers(n, renderbuffers); }
+
+    @Override
+    public int glGenRenderbuffer() {
+        IntBuffer buf = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
+        _glGenRenderbuffers(1, buf);
+        return buf.get(0);
+    }
+
+    @Override
+    public void glGenTextures(int n, IntBuffer textures) { _glGenTextures(n, textures); }
+
+    @Override
+    public int glGenTexture() {
+        IntBuffer buf = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
+        _glGenTextures(1, buf);
+        return buf.get(0);
+    }
+
+    @Override
+    public String glGetActiveAttrib(int program, int index, IntBuffer size, IntBuffer type) {
         IntBuffer lenBuf = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
         ByteBuffer nameBuf = ByteBuffer.allocateDirect(256);
-        glGetActiveAttrib0(program, index, 256, lenBuf, size, type, nameBuf);
+        _glGetActiveAttrib(program, index, 256, lenBuf, size, type, nameBuf);
         int len = lenBuf.get(0);
         byte[] bytes = new byte[len];
         nameBuf.get(bytes);
         return new String(bytes);
     }
 
-    @Bridge(symbol = "glGetActiveAttrib")
-    private static native void glGetActiveAttrib0 (int program, int index, int bufSize, IntBuffer length,
-        IntBuffer size, IntBuffer type, ByteBuffer name);
-
-    public String glGetActiveUniform (int program, int index, IntBuffer size, IntBuffer type) {
+    @Override
+    public String glGetActiveUniform(int program, int index, IntBuffer size, IntBuffer type) {
         IntBuffer lenBuf = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
         ByteBuffer nameBuf = ByteBuffer.allocateDirect(256);
-        glGetActiveUniform0(program, index, 256, lenBuf, size, type, nameBuf);
+        _glGetActiveUniform(program, index, 256, lenBuf, size, type, nameBuf);
         int len = lenBuf.get(0);
         byte[] bytes = new byte[len];
         nameBuf.get(bytes);
         return new String(bytes);
     }
 
-    @Bridge(symbol = "glGetActiveUniform")
-    private static native void glGetActiveUniform0 (int program, int index, int bufSize, IntBuffer length,
-        IntBuffer size, IntBuffer type, ByteBuffer name);
-
-    public void glGetAttachedShaders (int program, int maxcount, Buffer count, IntBuffer shaders) {
-        glGetAttachedShaders0(program, maxcount, count, shaders);
+    @Override
+    public void glGetAttachedShaders(int program, int maxcount, Buffer count, IntBuffer shaders) {
+        _glGetAttachedShaders(program, maxcount, count, shaders);
     }
 
-    @Bridge(symbol = "glGetAttachedShaders")
-    private static native void glGetAttachedShaders0 (int program, int maxcount, Buffer count, IntBuffer shaders);
+    @Override public int glGetAttribLocation(int program, String name) { return _glGetAttribLocation(program, name); }
+    @Override public void glGetBooleanv(int pname, Buffer params) { _glGetBooleanv(pname, params); }
+    @Override public void glGetBufferParameteriv(int target, int pname, IntBuffer params) { _glGetBufferParameteriv(target, pname, params); }
+    @Override public int glGetError() { return _glGetError(); }
+    @Override public void glGetFloatv(int pname, FloatBuffer params) { _glGetFloatv(pname, params); }
 
-    @Bridge(symbol = "glGetAttribLocation")
-    public native int glGetAttribLocation (int program, String name);
+    @Override
+    public void glGetFramebufferAttachmentParameteriv(int target, int attachment, int pname, IntBuffer params) {
+        _glGetFramebufferAttachmentParameteriv(target, attachment, pname, params);
+    }
 
-    @Bridge(symbol = "glGetBooleanv")
-    public native void glGetBooleanv (int pname, Buffer params);
+    @Override public void glGetIntegerv(int pname, IntBuffer params) { _glGetIntegerv(pname, params); }
 
-    @Bridge(symbol = "glGetBufferParameteriv")
-    public native void glGetBufferParameteriv (int target, int pname, IntBuffer params);
+    @Override
+    public void glGetProgramiv(int program, int pname, IntBuffer params) { _glGetProgramiv(program, pname, params); }
 
-    @Bridge(symbol = "glGetError")
-    public native int glGetError ();
-
-    @Bridge(symbol = "glGetFloatv")
-    public native void glGetFloatv (int pname, FloatBuffer params);
-
-    @Bridge(symbol = "glGetFramebufferAttachmentParameteriv")
-    public native void glGetFramebufferAttachmentParameteriv (int target, int attachment, int pname,
-        IntBuffer params);
-
-    @Bridge(symbol = "glGetIntegerv")
-    public native void glGetIntegerv (int pname, IntBuffer params);
-
-    @Bridge(symbol = "glGetProgramiv")
-    public native void glGetProgramiv (int program, int pname, IntBuffer params);
-
-    public String glGetProgramInfoLog (int program) {
+    @Override
+    public String glGetProgramInfoLog(int program) {
         IntBuffer lenBuf = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
-        glGetProgramiv(program, GL_INFO_LOG_LENGTH, lenBuf);
+        _glGetProgramiv(program, GL_INFO_LOG_LENGTH, lenBuf);
         int logLen = lenBuf.get(0);
         if (logLen <= 1) return "";
         ByteBuffer buf = ByteBuffer.allocateDirect(logLen);
-        glGetProgramInfoLog0(program, logLen, null, buf);
+        _glGetProgramInfoLog(program, logLen, null, buf);
         byte[] bytes = new byte[logLen - 1];
         buf.get(bytes);
         return new String(bytes);
     }
 
-    @Bridge(symbol = "glGetProgramInfoLog")
-    private static native void glGetProgramInfoLog0 (int program, int bufSize, IntBuffer length, ByteBuffer infoLog);
+    @Override
+    public void glGetRenderbufferParameteriv(int target, int pname, IntBuffer params) {
+        _glGetRenderbufferParameteriv(target, pname, params);
+    }
 
-    @Bridge(symbol = "glGetRenderbufferParameteriv")
-    public native void glGetRenderbufferParameteriv (int target, int pname, IntBuffer params);
+    @Override public void glGetShaderiv(int shader, int pname, IntBuffer params) { _glGetShaderiv(shader, pname, params); }
 
-    @Bridge(symbol = "glGetShaderiv")
-    public native void glGetShaderiv (int shader, int pname, IntBuffer params);
-
-    public String glGetShaderInfoLog (int shader) {
+    @Override
+    public String glGetShaderInfoLog(int shader) {
         IntBuffer lenBuf = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asIntBuffer();
-        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, lenBuf);
+        _glGetShaderiv(shader, GL_INFO_LOG_LENGTH, lenBuf);
         int logLen = lenBuf.get(0);
         if (logLen <= 1) return "";
         ByteBuffer buf = ByteBuffer.allocateDirect(logLen);
-        glGetShaderInfoLog0(shader, logLen, null, buf);
+        _glGetShaderInfoLog(shader, logLen, null, buf);
         byte[] bytes = new byte[logLen - 1];
         buf.get(bytes);
         return new String(bytes);
     }
 
-    @Bridge(symbol = "glGetShaderInfoLog")
-    private static native void glGetShaderInfoLog0 (int shader, int bufSize, IntBuffer length, ByteBuffer infoLog);
-
-    @Bridge(symbol = "glGetShaderPrecisionFormat")
-    public native void glGetShaderPrecisionFormat (int shadertype, int precisiontype, IntBuffer range,
-        IntBuffer precision);
-
-    public void glGetShaderSource (int shader, int bufsize, Buffer length, String source) {
-        // query-only; rarely used at runtime
+    @Override
+    public void glGetShaderPrecisionFormat(int shadertype, int precisiontype, IntBuffer range, IntBuffer precision) {
+        _glGetShaderPrecisionFormat(shadertype, precisiontype, range, precision);
     }
 
-    @Bridge(symbol = "glGetString")
-    private static native @Pointer long glGetStringPtr (int name);
+    public void glGetShaderSource(int shader, int bufsize, Buffer length, String source) {
+        // query-only; not needed at runtime
+    }
 
-    public String glGetString (int name) {
-        long ptr = glGetStringPtr(name);
+    @Override
+    public String glGetString(int name) {
+        long ptr = _glGetString(name);
         return ptr == 0 ? "" : VM.newStringUTF(ptr);
     }
 
-    @Bridge(symbol = "glGetTexParameterfv")
-    public native void glGetTexParameterfv (int target, int pname, FloatBuffer params);
+    @Override public void glGetTexParameterfv(int target, int pname, FloatBuffer params) { _glGetTexParameterfv(target, pname, params); }
+    @Override public void glGetTexParameteriv(int target, int pname, IntBuffer params) { _glGetTexParameteriv(target, pname, params); }
+    @Override public void glGetUniformfv(int program, int location, FloatBuffer params) { _glGetUniformfv(program, location, params); }
+    @Override public void glGetUniformiv(int program, int location, IntBuffer params) { _glGetUniformiv(program, location, params); }
+    @Override public int glGetUniformLocation(int program, String name) { return _glGetUniformLocation(program, name); }
+    @Override public void glGetVertexAttribfv(int index, int pname, FloatBuffer params) { _glGetVertexAttribfv(index, pname, params); }
+    @Override public void glGetVertexAttribiv(int index, int pname, IntBuffer params) { _glGetVertexAttribiv(index, pname, params); }
 
-    @Bridge(symbol = "glGetTexParameteriv")
-    public native void glGetTexParameteriv (int target, int pname, IntBuffer params);
-
-    @Bridge(symbol = "glGetUniformfv")
-    public native void glGetUniformfv (int program, int location, FloatBuffer params);
-
-    @Bridge(symbol = "glGetUniformiv")
-    public native void glGetUniformiv (int program, int location, IntBuffer params);
-
-    @Bridge(symbol = "glGetUniformLocation")
-    public native int glGetUniformLocation (int program, String name);
-
-    @Bridge(symbol = "glGetVertexAttribfv")
-    public native void glGetVertexAttribfv (int index, int pname, FloatBuffer params);
-
-    @Bridge(symbol = "glGetVertexAttribiv")
-    public native void glGetVertexAttribiv (int index, int pname, IntBuffer params);
-
-    public void glGetVertexAttribPointerv (int index, int pname, Buffer pointer) {
-        // pointer-query; rarely needed at runtime
+    @Override
+    public void glGetVertexAttribPointerv(int index, int pname, Buffer pointer) {
+        // pointer-query; not needed at runtime
     }
 
-    @Bridge(symbol = "glHint")
-    public native void glHint (int target, int mode);
+    @Override public void glHint(int target, int mode) { _glHint(target, mode); }
+    @Override public boolean glIsBuffer(int buffer) { return _glIsBuffer(buffer); }
+    @Override public boolean glIsEnabled(int cap) { return _glIsEnabled(cap); }
+    @Override public boolean glIsFramebuffer(int framebuffer) { return _glIsFramebuffer(framebuffer); }
+    @Override public boolean glIsProgram(int program) { return _glIsProgram(program); }
+    @Override public boolean glIsRenderbuffer(int renderbuffer) { return _glIsRenderbuffer(renderbuffer); }
+    @Override public boolean glIsShader(int shader) { return _glIsShader(shader); }
+    @Override public boolean glIsTexture(int texture) { return _glIsTexture(texture); }
+    @Override public void glLineWidth(float width) { _glLineWidth(width); }
+    @Override public void glLinkProgram(int program) { _glLinkProgram(program); }
+    @Override public void glPixelStorei(int pname, int param) { _glPixelStorei(pname, param); }
+    @Override public void glPolygonOffset(float factor, float units) { _glPolygonOffset(factor, units); }
 
-    @Bridge(symbol = "glIsBuffer")
-    public native boolean glIsBuffer (int buffer);
+    @Override
+    public void glReadPixels(int x, int y, int width, int height, int format, int type, Buffer pixels) {
+        _glReadPixels(x, y, width, height, format, type, pixels);
+    }
 
-    @Bridge(symbol = "glIsEnabled")
-    public native boolean glIsEnabled (int cap);
+    @Override public void glReleaseShaderCompiler() { _glReleaseShaderCompiler(); }
+    @Override public void glRenderbufferStorage(int target, int internalformat, int width, int height) { _glRenderbufferStorage(target, internalformat, width, height); }
+    @Override public void glSampleCoverage(float value, boolean invert) { _glSampleCoverage(value, invert); }
+    @Override public void glScissor(int x, int y, int width, int height) { _glScissor(x, y, width, height); }
 
-    @Bridge(symbol = "glIsFramebuffer")
-    public native boolean glIsFramebuffer (int framebuffer);
-
-    @Bridge(symbol = "glIsProgram")
-    public native boolean glIsProgram (int program);
-
-    @Bridge(symbol = "glIsRenderbuffer")
-    public native boolean glIsRenderbuffer (int renderbuffer);
-
-    @Bridge(symbol = "glIsShader")
-    public native boolean glIsShader (int shader);
-
-    @Bridge(symbol = "glIsTexture")
-    public native boolean glIsTexture (int texture);
-
-    @Bridge(symbol = "glLineWidth")
-    public native void glLineWidth (float width);
-
-    @Bridge(symbol = "glLinkProgram")
-    public native void glLinkProgram (int program);
-
-    @Bridge(symbol = "glPixelStorei")
-    public native void glPixelStorei (int pname, int param);
-
-    @Bridge(symbol = "glPolygonOffset")
-    public native void glPolygonOffset (float factor, float units);
-
-    @Bridge(symbol = "glReadPixels")
-    public native void glReadPixels (int x, int y, int width, int height, int format, int type, Buffer pixels);
-
-    @Bridge(symbol = "glReleaseShaderCompiler")
-    public native void glReleaseShaderCompiler ();
-
-    @Bridge(symbol = "glRenderbufferStorage")
-    public native void glRenderbufferStorage (int target, int internalformat, int width, int height);
-
-    @Bridge(symbol = "glSampleCoverage")
-    public native void glSampleCoverage (float value, boolean invert);
-
-    @Bridge(symbol = "glScissor")
-    public native void glScissor (int x, int y, int width, int height);
-
-    public void glShaderBinary (int n, IntBuffer shaders, int binaryformat, Buffer binary, int length) {
+    @Override
+    public void glShaderBinary(int n, IntBuffer shaders, int binaryformat, Buffer binary, int length) {
         // binary shaders not typically used with GLSL
     }
 
-    @Bridge(symbol = "glShaderSource")
-    public native void glShaderSource (int shader, int count, String[] string, IntBuffer length);
-
-    public void glShaderSource (int shader, String string) {
-        glShaderSource(shader, 1, new String[] {string}, null);
+    @Override
+    public void glShaderSource(int shader, String string) {
+        _glShaderSource(shader, 1, new String[]{string}, null);
     }
 
-    @Bridge(symbol = "glStencilFunc")
-    public native void glStencilFunc (int func, int ref, int mask);
+    @Override public void glStencilFunc(int func, int ref, int mask) { _glStencilFunc(func, ref, mask); }
+    @Override public void glStencilFuncSeparate(int face, int func, int ref, int mask) { _glStencilFuncSeparate(face, func, ref, mask); }
+    @Override public void glStencilMask(int mask) { _glStencilMask(mask); }
+    @Override public void glStencilMaskSeparate(int face, int mask) { _glStencilMaskSeparate(face, mask); }
+    @Override public void glStencilOp(int fail, int zfail, int zpass) { _glStencilOp(fail, zfail, zpass); }
+    @Override public void glStencilOpSeparate(int face, int fail, int zfail, int zpass) { _glStencilOpSeparate(face, fail, zfail, zpass); }
 
-    @Bridge(symbol = "glStencilFuncSeparate")
-    public native void glStencilFuncSeparate (int face, int func, int ref, int mask);
-
-    @Bridge(symbol = "glStencilMask")
-    public native void glStencilMask (int mask);
-
-    @Bridge(symbol = "glStencilMaskSeparate")
-    public native void glStencilMaskSeparate (int face, int mask);
-
-    @Bridge(symbol = "glStencilOp")
-    public native void glStencilOp (int fail, int zfail, int zpass);
-
-    @Bridge(symbol = "glStencilOpSeparate")
-    public native void glStencilOpSeparate (int face, int fail, int zfail, int zpass);
-
-    static Buffer convert16bitBufferToRGBA8888 (Buffer buffer, int type) {
+    static Buffer convert16bitBufferToRGBA8888(Buffer buffer, int type) {
         ByteBuffer byteBuffer = (ByteBuffer)buffer;
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
         ByteBuffer converted = ByteBuffer.allocateDirect(byteBuffer.limit() * 2);
@@ -526,234 +837,203 @@ public class IOSGLES20 implements GL20 {
         return converted;
     }
 
-    public void glTexImage2D (int target, int level, int internalformat, int width, int height, int border,
-        int format, int type, Buffer pixels) {
+    @Override
+    public void glTexImage2D(int target, int level, int internalformat, int width, int height,
+        int border, int format, int type, Buffer pixels) {
         if (!shouldConvert16bit) {
-            glTexImage2DJNI(target, level, internalformat, width, height, border, format, type, pixels);
+            _glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
             return;
         }
         if (type != GL_UNSIGNED_SHORT_5_6_5 && type != GL_UNSIGNED_SHORT_5_5_5_1 && type != GL_UNSIGNED_SHORT_4_4_4_4) {
-            glTexImage2DJNI(target, level, internalformat, width, height, border, format, type, pixels);
+            _glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
             return;
         }
         Buffer converted = convert16bitBufferToRGBA8888(pixels, type);
-        glTexImage2DJNI(target, level, GL_RGBA, width, height, border, GL_RGBA, GL_UNSIGNED_BYTE, converted);
+        _glTexImage2D(target, level, GL_RGBA, width, height, border, GL_RGBA, GL_UNSIGNED_BYTE, converted);
     }
 
-    @Bridge(symbol = "glTexImage2D")
-    public native void glTexImage2DJNI (int target, int level, int internalformat, int width, int height,
-        int border, int format, int type, Buffer pixels);
+    // Kept for compatibility with any code that calls glTexImage2DJNI directly
+    public void glTexImage2DJNI(int target, int level, int internalformat, int width, int height,
+        int border, int format, int type, Buffer pixels) {
+        _glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+    }
 
-    @Bridge(symbol = "glTexParameterf")
-    public native void glTexParameterf (int target, int pname, float param);
+    @Override public void glTexParameterf(int target, int pname, float param) { _glTexParameterf(target, pname, param); }
+    @Override public void glTexParameterfv(int target, int pname, FloatBuffer params) { _glTexParameterfv(target, pname, params); }
+    @Override public void glTexParameteri(int target, int pname, int param) { _glTexParameteri(target, pname, param); }
+    @Override public void glTexParameteriv(int target, int pname, IntBuffer params) { _glTexParameteriv(target, pname, params); }
 
-    @Bridge(symbol = "glTexParameterfv")
-    public native void glTexParameterfv (int target, int pname, FloatBuffer params);
-
-    @Bridge(symbol = "glTexParameteri")
-    public native void glTexParameteri (int target, int pname, int param);
-
-    @Bridge(symbol = "glTexParameteriv")
-    public native void glTexParameteriv (int target, int pname, IntBuffer params);
-
-    public void glTexSubImage2D (int target, int level, int xoffset, int yoffset, int width, int height,
+    @Override
+    public void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height,
         int format, int type, Buffer pixels) {
         if (!shouldConvert16bit) {
-            glTexSubImage2DJNI(target, level, xoffset, yoffset, width, height, format, type, pixels);
+            _glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
             return;
         }
         if (type != GL_UNSIGNED_SHORT_5_6_5 && type != GL_UNSIGNED_SHORT_5_5_5_1 && type != GL_UNSIGNED_SHORT_4_4_4_4) {
-            glTexSubImage2DJNI(target, level, xoffset, yoffset, width, height, format, type, pixels);
+            _glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
             return;
         }
         Buffer converted = convert16bitBufferToRGBA8888(pixels, type);
-        glTexSubImage2DJNI(target, level, xoffset, yoffset, width, height, GL_RGBA, GL_UNSIGNED_BYTE, converted);
+        _glTexSubImage2D(target, level, xoffset, yoffset, width, height, GL_RGBA, GL_UNSIGNED_BYTE, converted);
     }
 
-    @Bridge(symbol = "glTexSubImage2D")
-    public native void glTexSubImage2DJNI (int target, int level, int xoffset, int yoffset, int width,
-        int height, int format, int type, Buffer pixels);
+    // Kept for compatibility with any code that calls glTexSubImage2DJNI directly
+    public void glTexSubImage2DJNI(int target, int level, int xoffset, int yoffset, int width, int height,
+        int format, int type, Buffer pixels) {
+        _glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
+    }
 
-    @Bridge(symbol = "glUniform1f")
-    public native void glUniform1f (int location, float x);
+    @Override public void glUniform1f(int location, float x) { _glUniform1f(location, x); }
+    @Override public void glUniform1fv(int location, int count, FloatBuffer v) { _glUniform1fv(location, count, v); }
 
-    @Bridge(symbol = "glUniform1fv")
-    public native void glUniform1fv (int location, int count, FloatBuffer v);
-
-    public void glUniform1fv (int location, int count, float[] v, int offset) {
+    @Override
+    public void glUniform1fv(int location, int count, float[] v, int offset) {
         FloatBuffer buf = ByteBuffer.allocateDirect(count * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
         buf.put(v, offset, count);
         buf.rewind();
-        glUniform1fv(location, count, buf);
+        _glUniform1fv(location, count, buf);
     }
 
-    @Bridge(symbol = "glUniform1i")
-    public native void glUniform1i (int location, int x);
+    @Override public void glUniform1i(int location, int x) { _glUniform1i(location, x); }
+    @Override public void glUniform1iv(int location, int count, IntBuffer v) { _glUniform1iv(location, count, v); }
 
-    @Bridge(symbol = "glUniform1iv")
-    public native void glUniform1iv (int location, int count, IntBuffer v);
-
-    public void glUniform1iv (int location, int count, int[] v, int offset) {
+    @Override
+    public void glUniform1iv(int location, int count, int[] v, int offset) {
         IntBuffer buf = ByteBuffer.allocateDirect(count * 4).order(ByteOrder.nativeOrder()).asIntBuffer();
         buf.put(v, offset, count);
         buf.rewind();
-        glUniform1iv(location, count, buf);
+        _glUniform1iv(location, count, buf);
     }
 
-    @Bridge(symbol = "glUniform2f")
-    public native void glUniform2f (int location, float x, float y);
+    @Override public void glUniform2f(int location, float x, float y) { _glUniform2f(location, x, y); }
+    @Override public void glUniform2fv(int location, int count, FloatBuffer v) { _glUniform2fv(location, count, v); }
 
-    @Bridge(symbol = "glUniform2fv")
-    public native void glUniform2fv (int location, int count, FloatBuffer v);
-
-    public void glUniform2fv (int location, int count, float[] v, int offset) {
+    @Override
+    public void glUniform2fv(int location, int count, float[] v, int offset) {
         FloatBuffer buf = ByteBuffer.allocateDirect(count * 8).order(ByteOrder.nativeOrder()).asFloatBuffer();
         buf.put(v, offset, count * 2);
         buf.rewind();
-        glUniform2fv(location, count, buf);
+        _glUniform2fv(location, count, buf);
     }
 
-    @Bridge(symbol = "glUniform2i")
-    public native void glUniform2i (int location, int x, int y);
+    @Override public void glUniform2i(int location, int x, int y) { _glUniform2i(location, x, y); }
+    @Override public void glUniform2iv(int location, int count, IntBuffer v) { _glUniform2iv(location, count, v); }
 
-    @Bridge(symbol = "glUniform2iv")
-    public native void glUniform2iv (int location, int count, IntBuffer v);
-
-    public void glUniform2iv (int location, int count, int[] v, int offset) {
+    @Override
+    public void glUniform2iv(int location, int count, int[] v, int offset) {
         IntBuffer buf = ByteBuffer.allocateDirect(count * 8).order(ByteOrder.nativeOrder()).asIntBuffer();
         buf.put(v, offset, count * 2);
         buf.rewind();
-        glUniform2iv(location, count, buf);
+        _glUniform2iv(location, count, buf);
     }
 
-    @Bridge(symbol = "glUniform3f")
-    public native void glUniform3f (int location, float x, float y, float z);
+    @Override public void glUniform3f(int location, float x, float y, float z) { _glUniform3f(location, x, y, z); }
+    @Override public void glUniform3fv(int location, int count, FloatBuffer v) { _glUniform3fv(location, count, v); }
 
-    @Bridge(symbol = "glUniform3fv")
-    public native void glUniform3fv (int location, int count, FloatBuffer v);
-
-    public void glUniform3fv (int location, int count, float[] v, int offset) {
+    @Override
+    public void glUniform3fv(int location, int count, float[] v, int offset) {
         FloatBuffer buf = ByteBuffer.allocateDirect(count * 12).order(ByteOrder.nativeOrder()).asFloatBuffer();
         buf.put(v, offset, count * 3);
         buf.rewind();
-        glUniform3fv(location, count, buf);
+        _glUniform3fv(location, count, buf);
     }
 
-    @Bridge(symbol = "glUniform3i")
-    public native void glUniform3i (int location, int x, int y, int z);
+    @Override public void glUniform3i(int location, int x, int y, int z) { _glUniform3i(location, x, y, z); }
+    @Override public void glUniform3iv(int location, int count, IntBuffer v) { _glUniform3iv(location, count, v); }
 
-    @Bridge(symbol = "glUniform3iv")
-    public native void glUniform3iv (int location, int count, IntBuffer v);
-
-    public void glUniform3iv (int location, int count, int[] v, int offset) {
+    @Override
+    public void glUniform3iv(int location, int count, int[] v, int offset) {
         IntBuffer buf = ByteBuffer.allocateDirect(count * 12).order(ByteOrder.nativeOrder()).asIntBuffer();
         buf.put(v, offset, count * 3);
         buf.rewind();
-        glUniform3iv(location, count, buf);
+        _glUniform3iv(location, count, buf);
     }
 
-    @Bridge(symbol = "glUniform4f")
-    public native void glUniform4f (int location, float x, float y, float z, float w);
+    @Override public void glUniform4f(int location, float x, float y, float z, float w) { _glUniform4f(location, x, y, z, w); }
+    @Override public void glUniform4fv(int location, int count, FloatBuffer v) { _glUniform4fv(location, count, v); }
 
-    @Bridge(symbol = "glUniform4fv")
-    public native void glUniform4fv (int location, int count, FloatBuffer v);
-
-    public void glUniform4fv (int location, int count, float[] v, int offset) {
+    @Override
+    public void glUniform4fv(int location, int count, float[] v, int offset) {
         FloatBuffer buf = ByteBuffer.allocateDirect(count * 16).order(ByteOrder.nativeOrder()).asFloatBuffer();
         buf.put(v, offset, count * 4);
         buf.rewind();
-        glUniform4fv(location, count, buf);
+        _glUniform4fv(location, count, buf);
     }
 
-    @Bridge(symbol = "glUniform4i")
-    public native void glUniform4i (int location, int x, int y, int z, int w);
+    @Override public void glUniform4i(int location, int x, int y, int z, int w) { _glUniform4i(location, x, y, z, w); }
+    @Override public void glUniform4iv(int location, int count, IntBuffer v) { _glUniform4iv(location, count, v); }
 
-    @Bridge(symbol = "glUniform4iv")
-    public native void glUniform4iv (int location, int count, IntBuffer v);
-
-    public void glUniform4iv (int location, int count, int[] v, int offset) {
+    @Override
+    public void glUniform4iv(int location, int count, int[] v, int offset) {
         IntBuffer buf = ByteBuffer.allocateDirect(count * 16).order(ByteOrder.nativeOrder()).asIntBuffer();
         buf.put(v, offset, count * 4);
         buf.rewind();
-        glUniform4iv(location, count, buf);
+        _glUniform4iv(location, count, buf);
     }
 
-    @Bridge(symbol = "glUniformMatrix2fv")
-    public native void glUniformMatrix2fv (int location, int count, boolean transpose, FloatBuffer value);
+    @Override public void glUniformMatrix2fv(int location, int count, boolean transpose, FloatBuffer value) { _glUniformMatrix2fv(location, count, transpose, value); }
 
-    public void glUniformMatrix2fv (int location, int count, boolean transpose, float[] value, int offset) {
+    @Override
+    public void glUniformMatrix2fv(int location, int count, boolean transpose, float[] value, int offset) {
         FloatBuffer buf = ByteBuffer.allocateDirect(count * 16).order(ByteOrder.nativeOrder()).asFloatBuffer();
         buf.put(value, offset, count * 4);
         buf.rewind();
-        glUniformMatrix2fv(location, count, transpose, buf);
+        _glUniformMatrix2fv(location, count, transpose, buf);
     }
 
-    @Bridge(symbol = "glUniformMatrix3fv")
-    public native void glUniformMatrix3fv (int location, int count, boolean transpose, FloatBuffer value);
+    @Override public void glUniformMatrix3fv(int location, int count, boolean transpose, FloatBuffer value) { _glUniformMatrix3fv(location, count, transpose, value); }
 
-    public void glUniformMatrix3fv (int location, int count, boolean transpose, float[] value, int offset) {
+    @Override
+    public void glUniformMatrix3fv(int location, int count, boolean transpose, float[] value, int offset) {
         FloatBuffer buf = ByteBuffer.allocateDirect(count * 36).order(ByteOrder.nativeOrder()).asFloatBuffer();
         buf.put(value, offset, count * 9);
         buf.rewind();
-        glUniformMatrix3fv(location, count, transpose, buf);
+        _glUniformMatrix3fv(location, count, transpose, buf);
     }
 
-    @Bridge(symbol = "glUniformMatrix4fv")
-    public native void glUniformMatrix4fv (int location, int count, boolean transpose, FloatBuffer value);
+    @Override public void glUniformMatrix4fv(int location, int count, boolean transpose, FloatBuffer value) { _glUniformMatrix4fv(location, count, transpose, value); }
 
-    public void glUniformMatrix4fv (int location, int count, boolean transpose, float[] value, int offset) {
+    @Override
+    public void glUniformMatrix4fv(int location, int count, boolean transpose, float[] value, int offset) {
         FloatBuffer buf = ByteBuffer.allocateDirect(count * 64).order(ByteOrder.nativeOrder()).asFloatBuffer();
         buf.put(value, offset, count * 16);
         buf.rewind();
-        glUniformMatrix4fv(location, count, transpose, buf);
+        _glUniformMatrix4fv(location, count, transpose, buf);
     }
 
-    @Bridge(symbol = "glUseProgram")
-    public native void glUseProgram (int program);
+    @Override public void glUseProgram(int program) { _glUseProgram(program); }
+    @Override public void glValidateProgram(int program) { _glValidateProgram(program); }
+    @Override public void glVertexAttrib1f(int indx, float x) { _glVertexAttrib1f(indx, x); }
+    @Override public void glVertexAttrib1fv(int indx, FloatBuffer values) { _glVertexAttrib1fv(indx, values); }
+    @Override public void glVertexAttrib2f(int indx, float x, float y) { _glVertexAttrib2f(indx, x, y); }
+    @Override public void glVertexAttrib2fv(int indx, FloatBuffer values) { _glVertexAttrib2fv(indx, values); }
+    @Override public void glVertexAttrib3f(int indx, float x, float y, float z) { _glVertexAttrib3f(indx, x, y, z); }
+    @Override public void glVertexAttrib3fv(int indx, FloatBuffer values) { _glVertexAttrib3fv(indx, values); }
+    @Override public void glVertexAttrib4f(int indx, float x, float y, float z, float w) { _glVertexAttrib4f(indx, x, y, z, w); }
+    @Override public void glVertexAttrib4fv(int indx, FloatBuffer values) { _glVertexAttrib4fv(indx, values); }
 
-    @Bridge(symbol = "glValidateProgram")
-    public native void glValidateProgram (int program);
+    @Override
+    public void glVertexAttribPointer(int indx, int size, int type, boolean normalized, int stride, Buffer ptr) {
+        _glVertexAttribPointerB(indx, size, type, normalized, stride, ptr);
+    }
 
-    @Bridge(symbol = "glVertexAttrib1f")
-    public native void glVertexAttrib1f (int indx, float x);
+    @Override
+    public void glVertexAttribPointer(int indx, int size, int type, boolean normalized, int stride, int ptr) {
+        _glVertexAttribPointerI(indx, size, type, normalized, stride, ptr);
+    }
 
-    @Bridge(symbol = "glVertexAttrib1fv")
-    public native void glVertexAttrib1fv (int indx, FloatBuffer values);
-
-    @Bridge(symbol = "glVertexAttrib2f")
-    public native void glVertexAttrib2f (int indx, float x, float y);
-
-    @Bridge(symbol = "glVertexAttrib2fv")
-    public native void glVertexAttrib2fv (int indx, FloatBuffer values);
-
-    @Bridge(symbol = "glVertexAttrib3f")
-    public native void glVertexAttrib3f (int indx, float x, float y, float z);
-
-    @Bridge(symbol = "glVertexAttrib3fv")
-    public native void glVertexAttrib3fv (int indx, FloatBuffer values);
-
-    @Bridge(symbol = "glVertexAttrib4f")
-    public native void glVertexAttrib4f (int indx, float x, float y, float z, float w);
-
-    @Bridge(symbol = "glVertexAttrib4fv")
-    public native void glVertexAttrib4fv (int indx, FloatBuffer values);
-
-    @Bridge(symbol = "glVertexAttribPointer")
-    public native void glVertexAttribPointer (int indx, int size, int type, boolean normalized, int stride,
-        Buffer ptr);
-
-    @Bridge(symbol = "glVertexAttribPointer")
-    public native void glVertexAttribPointer (int indx, int size, int type, boolean normalized, int stride,
-        int ptr);
-
-    public void glViewport (int x, int y, int width, int height) {
+    @Override
+    public void glViewport(int x, int y, int width, int height) {
         IOSGLES20.x = x;
         IOSGLES20.y = y;
         IOSGLES20.width = width;
         IOSGLES20.height = height;
-        glViewportJni(x, y, width, height);
+        _glViewport(x, y, width, height);
     }
 
-    @Bridge(symbol = "glViewport")
-    public native void glViewportJni (int x, int y, int width, int height);
+    // Kept for compatibility with IOSGraphics which calls glViewportJni directly
+    public void glViewportJni(int x, int y, int width, int height) {
+        _glViewport(x, y, width, height);
+    }
 }
