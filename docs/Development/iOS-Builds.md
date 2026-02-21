@@ -138,13 +138,13 @@ Support for `thumbv7` (32-bit ARM) was removed because Apple dropped 32-bit app 
 
 ## Known Limitation: Java Records and MobiVM AOT Compilation
 
-### Root Cause (Identified — three cascading bugs)
+### Root Cause (Identified — four cascading bugs)
 
 MobiVM's AOT compiler uses the [Soot](https://github.com/soot-oss/soot) framework with the
 `coffi` bytecode reader. Java records generate `equals()`/`hashCode()`/`toString()` via
 `invokedynamic` with `java.lang.runtime.ObjectMethods.bootstrap`. The bootstrap arguments
 include `CONSTANT_MethodHandle_info` entries with kind `REF_getField` (1) pointing to
-`CONSTANT_Fieldref_info` entries — one per record component. Processing these triggers three
+`CONSTANT_Fieldref_info` entries — one per record component. Processing these triggers four
 cascading bugs in `robovm-soot`:
 
 **Bug 1 — `CONSTANT_Fieldref_info.createJimpleConstantValue()`** (missing slash→dot conversion):
@@ -192,10 +192,29 @@ if(!(bootstrapMethodRef.returnType() instanceof RefType)) {
 }
 ```
 
+**Bug 4 — `AugEvalFunction.eval_()`** (exposed after Bugs 1–3 are fixed):
+
+```java
+// BUGGY: TrapManager.getExceptionTypesOf(stmt, body) returns an empty list when the
+// CaughtExceptionRef statement is not the target of any trap in the jimplified body
+// (can happen with Java 16+ record-related exception table patterns). When r stays null,
+// the original code throws instead of returning a safe fallback type:
+if (r == null) {
+    throw new RuntimeException(
+        "Exception reference used other than as the first statement of an exception handler.");
+}
+
+// FIXED: return Throwable as a safe fallback — the type resolver will accept the
+// widest possible type and AOT compilation proceeds:
+if (r == null) {
+    return RefType.v("java.lang.Throwable");
+}
+```
+
 ### Fix Applied
 
 A patched `robovm-soot` jar (`2.5.0-9-forge-patched`) is committed at
-`forge-gui-ios/local-repo/`. It contains three fixed `.class` files — one per bug above.
+`forge-gui-ios/local-repo/`. It contains four fixed `.class` files — one per bug above.
 Provenance sources are at `local-repo/patches/`.
 
 `forge-gui-ios/pom.xml` declares a local file repository and overrides the `robovm-soot`
