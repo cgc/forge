@@ -31,24 +31,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.robovm/cache
-          key: robovm-${{ runner.os }}-${{ hashFiles('forge-gui-ios/pom.xml', 'forge-gui-ios/robovm-simulator.xml', 'forge-gui-ios/robovm.properties', 'forge-gui-ios/native/**', 'forge-gui-ios/src/com/badlogic/gdx/backends/iosrobovm/IOSGLES20.java') }}
+          key: robovm-${{ runner.os }}-${{ hashFiles('forge-gui-ios/pom.xml', 'forge-gui-ios/robovm-simulator.xml', 'forge-gui-ios/robovm.properties', 'forge-gui-ios/src/com/badlogic/gdx/backends/iosrobovm/IOSGLES20.java') }}
           restore-keys: |
             robovm-${{ runner.os }}-
-
-      - name: Compile GL bridge for arm64-simulator
-        # Compile native/gl_bridge.m into native/gl_bridge.a with the
-        # iphonesimulator SDK targeting arm64-simulator.  This must run BEFORE
-        # Maven so that the .a is present when MobiVM links the app binary.
-        run: |
-          xcrun --sdk iphonesimulator clang \
-            -arch arm64 \
-            -target arm64-apple-ios-simulator \
-            -c forge-gui-ios/native/gl_bridge.m \
-            -o forge-gui-ios/native/gl_bridge.o
-          xcrun libtool -static forge-gui-ios/native/gl_bridge.o \
-            -o forge-gui-ios/native/gl_bridge.a
-          rm forge-gui-ios/native/gl_bridge.o
-          echo "gl_bridge.a: $(wc -c < forge-gui-ios/native/gl_bridge.a) bytes"
 
       - name: Build iOS app
         # Run Maven in the foreground so that compilation/AOT progress is visible
@@ -60,32 +45,6 @@ jobs:
           export _JAVA_OPTIONS="-Xmx4g"
           mvn -B -e clean install -pl forge-gui-ios -am -P ios-simulator \
             -Dmaven.test.skip=true 2>&1 | tee /tmp/mvn-build.log
-
-      - name: Verify GL bridge symbols in binary
-        # Confirm that forge_gl* symbols are in the *dynamic* symbol table — the table
-        # that dlsym() actually searches at runtime.  Plain nm shows the static table
-        # (which includes private-extern and dead-stripped symbols); nm -D shows only
-        # what dlsym can find.  If this step reports 0 dynamic symbols, the app will
-        # crash with UnsatisfiedLinkError for every @Bridge GL method.
-        run: |
-          BINARY=$(find forge-gui-ios/target/robovm -maxdepth 1 -type f -perm +111 2>/dev/null | head -1)
-          if [ -z "$BINARY" ]; then
-            echo "::warning::Could not find app binary to inspect"
-          else
-            echo "Inspecting binary: $BINARY"
-            # Check static symbol table (should have all 130+ forge_gl* functions)
-            STATIC_COUNT=$(nm "$BINARY" 2>/dev/null | grep -c "forge_gl" || echo 0)
-            echo "forge_gl* symbols in static table: $STATIC_COUNT"
-            # Check dynamic symbol table (must be > 0 for dlsym to work)
-            DYN_COUNT=$(nm -D "$BINARY" 2>/dev/null | grep -c "forge_gl" || echo 0)
-            echo "forge_gl* symbols in dynamic table: $DYN_COUNT"
-            if [ "$DYN_COUNT" -eq 0 ]; then
-              echo "::error::No forge_gl* in dynamic symbol table — dlsym() will fail; @Bridge methods will throw UnsatisfiedLinkError"
-              nm "$BINARY" 2>/dev/null | grep "forge_gl" | head -10
-              exit 1
-            fi
-            nm -D "$BINARY" 2>/dev/null | grep "forge_gl" | head -10
-          fi
 
       - name: Boot simulator and launch app
         run: |
@@ -129,26 +88,30 @@ jobs:
           xcrun simctl install "$DEVICE_UDID" "$APP_PATH"
 
           # Stream the device log before launching so we capture system-level
-          # startup messages.  Cap at 20 min (well within the 90-min timeout).
-          (log stream --predicate 'processImagePath ENDSWITH "forge.ios.Main" OR process == "forge.ios.Main"' \
+          # startup messages and any Java exceptions.  Cap at 20 min.
+          xcrun simctl spawn booted log stream \
+            --predicate 'processImagePath ENDSWITH "forge.ios.Main" OR process == "forge.ios.Main"' \
             >> /tmp/forge-app-log.txt 2>&1 &
-           LOG_BG=$!
-           sleep 1200 && kill $LOG_BG 2>/dev/null) &
           SIM_LOG_PID=$!
           sleep 1  # give the log stream time to start
 
-          # --console-pty pipes the app's stdout+stderr (including JVM exception
-          # stack traces) to forge-console.log.  Run in background so the
-          # screenshot loop can proceed.  The first line of output is the PID
-          # announcement "forge.ios: <pid>"; subsequent lines are the app's output.
-          xcrun simctl launch --console-pty "$DEVICE_UDID" forge.ios \
+          # --console pipes the app's stdout+stderr (including JVM exception
+          # stack traces) to forge-console.log.  Unlike --console-pty, a plain
+          # pipe is not subject to PTY output buffering, so output is visible
+          # even if the app crashes immediately after launch.
+          xcrun simctl launch --console "$DEVICE_UDID" forge.ios \
             > /tmp/forge-console.log 2>&1 &
           CONSOLE_PID=$!
-          sleep 2  # give simctl time to write the PID line
 
-          # Parse the app PID from the first line of the console log.
-          APP_PID=$(head -1 /tmp/forge-console.log 2>/dev/null \
-            | grep -oE 'forge\.ios: ([0-9]+)' | grep -oE '[0-9]+' || true)
+          # Wait for simctl to write the PID announcement line ("forge.ios: <pid>").
+          # Retry up to 10 seconds rather than using a fixed sleep.
+          APP_PID=""
+          for _i in $(seq 1 10); do
+            sleep 1
+            APP_PID=$(grep -m1 -oE 'forge\.ios: [0-9]+' /tmp/forge-console.log 2>/dev/null \
+              | grep -oE '[0-9]+$' || true)
+            [ -n "$APP_PID" ] && break
+          done
           echo "App PID: ${APP_PID:-not available}"
 
           echo "DEVICE_UDID=$DEVICE_UDID"   >> "$GITHUB_ENV"

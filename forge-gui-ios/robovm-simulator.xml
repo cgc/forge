@@ -23,51 +23,13 @@
     <pattern>com.badlogic.gdx.**</pattern>
   </forceLinkClasses>
   <!--
-    The <libs> block is intentionally absent here.
-    libgdx.a / libObjectAL.a / libgdx-freetype.a contain only armv7 and arm64 *device*
-    slices; they have no arm64-simulator slice.  Linking them into an arm64-simulator
-    binary causes the linker to fail with "building for iOS Simulator, but linking in
-    object file built for iOS".  Instead, OpenGL ES is accessed via RoboVM @Bridge
-    methods in the IOSGLES20 source override (forge-gui-ios/src/com/badlogic/gdx/
-    backends/iosrobovm/IOSGLES20.java), which calls the OpenGLES framework functions
-    directly without any JNI wrappers.  The device build (robovm.xml) still includes
-    the .a libs.
+    No <libs> block here.  libgdx.a / libObjectAL.a / libgdx-freetype.a contain
+    only armv7 and arm64 *device* slices and cannot be linked into an
+    arm64-simulator binary.  OpenGL ES is accessed instead via RoboVM @Bridge
+    methods in the IOSGLES20 source override, which uses @Library("OpenGLES")
+    to open OpenGLES.framework at runtime and calls the GL functions directly.
+    The device build (robovm.xml) still includes the .a libs.
   -->
-  <!--
-    native/gl_bridge.a is compiled by the CI step "Compile GL bridge" before Maven runs.
-    It contains thin C wrappers (forge_glXxx -> glXxx) around every OpenGL ES 2.0
-    function used by IOSGLES20.java.  Linking it here puts forge_glXxx symbols
-    into the main executable, where @Library(Library.INTERNAL) + dlsym() can
-    find them at runtime, working around the iOS 26 simulator limitation where
-    dlsym() cannot resolve bare gl* symbols from OpenGLES.framework.
-
-    force=null (the default) triggers -force_load so the archive members are
-    included even though nothing references them from compiled Java code.
-
-    Dead-stripping and dynamic visibility are both controlled by
-    <exportedSymbols>:
-
-    1. ld64 -dead_strip treats exported symbols as "reachable", so
-       <symbol>forge_gl*</symbol> prevents dead-stripping of all
-       forge_glXxx wrappers (MobiVM prepends '_', so the linker sees
-       _forge_gl* — a valid ld64 trailing-wildcard pattern).
-
-    2. Being in the exported symbols list makes them globally visible in
-       the dynamic symbol table, so dlsym(NULL,"forge_glViewport")
-       succeeds at runtime.
-
-    __attribute__((used)) in gl_bridge.m provides additional belt-and-
-    suspenders protection at the object-file level.
-
-    Note: <ldFlags> is NOT a valid MobiVM 2.3.24 Config schema element
-    and must NOT be used here — it causes "Failed to read RoboVM config".
-  -->
-  <libs>
-    <lib>native/gl_bridge.a</lib>
-  </libs>
-  <exportedSymbols>
-    <symbol>forge_gl*</symbol>
-  </exportedSymbols>
   <frameworks>
     <framework>UIKit</framework>
     <framework>OpenGLES</framework>
