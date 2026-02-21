@@ -358,8 +358,11 @@ public class IOSGLES20 implements GL20 {
     @Bridge(symbol = "glScissor")
     private static native void _glScissor(int x, int y, int width, int height);
 
+    // glShaderSource expects const char** for its third argument.  RoboVM has no
+    // built-in marshaler for String[], so we pass a ByteBuffer whose contents are
+    // the native pointer(s) to the null-terminated UTF-8 string(s).
     @Bridge(symbol = "glShaderSource")
-    private static native void _glShaderSource(int shader, int count, String[] string, IntBuffer length);
+    private static native void _glShaderSource(int shader, int count, ByteBuffer stringPtrs, IntBuffer length);
 
     @Bridge(symbol = "glStencilFunc")
     private static native void _glStencilFunc(int func, int ref, int mask);
@@ -795,7 +798,20 @@ public class IOSGLES20 implements GL20 {
 
     @Override
     public void glShaderSource(int shader, String string) {
-        _glShaderSource(shader, 1, new String[]{string}, null);
+        // Build a const char** pointing to the UTF-8 bytes of the shader source.
+        // VM.getStringUTFChars() returns a native long that is the address of the
+        // null-terminated UTF-8 representation of the string.  We store that
+        // pointer value into a direct ByteBuffer; when RoboVM marshals the buffer
+        // for the @Bridge call it passes a void* to the buffer's data, which the
+        // C function treats as const char** and dereferences to get the string.
+        long strPtr = VM.getStringUTFChars(string);
+        try {
+            ByteBuffer ptrs = ByteBuffer.allocateDirect(Long.BYTES).order(ByteOrder.nativeOrder());
+            ptrs.putLong(0, strPtr);
+            _glShaderSource(shader, 1, ptrs, null);
+        } finally {
+            VM.free(strPtr);
+        }
     }
 
     @Override public void glStencilFunc(int func, int ref, int mask) { _glStencilFunc(func, ref, mask); }
