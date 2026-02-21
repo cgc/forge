@@ -87,26 +87,33 @@ jobs:
           xcrun simctl bootstatus "$DEVICE_UDID" -b
           xcrun simctl install "$DEVICE_UDID" "$APP_PATH"
 
-          # Stream the device log before launching so we capture the app's
-          # startup messages and any crash output.  Cap at 5 MiB to prevent
-          # unbounded growth during a long-running session.
+          # Stream the device log before launching so we capture system-level
+          # startup messages.  Cap at 20 min (well within the 90-min timeout).
           (log stream --predicate 'processImagePath ENDSWITH "forge.ios.Main" OR process == "forge.ios.Main"' \
             >> /tmp/forge-app-log.txt 2>&1 &
            LOG_BG=$!
-           # Kill after 20 min max (well within the 90-min job timeout).
            sleep 1200 && kill $LOG_BG 2>/dev/null) &
           SIM_LOG_PID=$!
           sleep 1  # give the log stream time to start
 
-          # Launch and capture the PID from "forge.ios: <pid>" output.
-          LAUNCH_OUT=$(xcrun simctl launch "$DEVICE_UDID" forge.ios 2>&1)  # bundle ID from robovm.properties (app.id)
-          echo "simctl launch: $LAUNCH_OUT"
-          APP_PID=$(echo "$LAUNCH_OUT" | grep -oE 'forge\.ios: ([0-9]+)' | grep -oE '[0-9]+' || true)
+          # --console-pty pipes the app's stdout+stderr (including JVM exception
+          # stack traces) to forge-console.log.  Run in background so the
+          # screenshot loop can proceed.  The first line of output is the PID
+          # announcement "forge.ios: <pid>"; subsequent lines are the app's output.
+          xcrun simctl launch --console-pty "$DEVICE_UDID" forge.ios \
+            > /tmp/forge-console.log 2>&1 &
+          CONSOLE_PID=$!
+          sleep 2  # give simctl time to write the PID line
+
+          # Parse the app PID from the first line of the console log.
+          APP_PID=$(head -1 /tmp/forge-console.log 2>/dev/null \
+            | grep -oE 'forge\.ios: ([0-9]+)' | grep -oE '[0-9]+' || true)
           echo "App PID: ${APP_PID:-not available}"
 
-          echo "DEVICE_UDID=$DEVICE_UDID" >> "$GITHUB_ENV"
-          echo "APP_PID=$APP_PID"         >> "$GITHUB_ENV"
-          echo "SIM_LOG_PID=$SIM_LOG_PID" >> "$GITHUB_ENV"
+          echo "DEVICE_UDID=$DEVICE_UDID"   >> "$GITHUB_ENV"
+          echo "APP_PID=$APP_PID"           >> "$GITHUB_ENV"
+          echo "SIM_LOG_PID=$SIM_LOG_PID"   >> "$GITHUB_ENV"
+          echo "CONSOLE_PID=$CONSOLE_PID"   >> "$GITHUB_ENV"
 
       - name: Wait for app to load and capture screenshot
         run: |
@@ -155,10 +162,13 @@ jobs:
             echo "  Check $j/20: app not yet running..."
           done
 
-          # Print the first lines of the captured log regardless — useful for
-          # diagnosing launch crashes even when the app appeared not to start.
-          echo "=== Captured app log (first 100 lines) ==="
-          head -100 /tmp/forge-app-log.txt 2>/dev/null || echo "(no log captured)"
+          # Print the first lines of both captured logs — the console log
+          # shows JVM exception stack traces; the system log shows OS-level events.
+          echo "=== App console log (stdout/stderr, first 100 lines) ==="
+          head -100 /tmp/forge-console.log 2>/dev/null || echo "(no console log captured)"
+          echo "==="
+          echo "=== System log (first 100 lines) ==="
+          head -100 /tmp/forge-app-log.txt 2>/dev/null || echo "(no system log captured)"
           echo "==="
 
           echo "Polling for stable screen (status bar excluded from comparison)..."
@@ -208,8 +218,9 @@ jobs:
       - name: Stop simulator
         if: always()
         run: |
-          # Stop the background log stream before shutting down the simulator.
-          [ -n "$SIM_LOG_PID" ] && kill "$SIM_LOG_PID" 2>/dev/null || true
+          # Stop the background log stream and console capture.
+          [ -n "$SIM_LOG_PID" ]  && kill "$SIM_LOG_PID"  2>/dev/null || true
+          [ -n "$CONSOLE_PID" ]  && kill "$CONSOLE_PID"  2>/dev/null || true
           xcrun simctl shutdown all 2>/dev/null || true
           # Collect crash reports produced since the workflow started.
           # Use a reference file created at job start as the -newer anchor.
@@ -233,6 +244,7 @@ jobs:
         with:
           name: app-logs
           path: |
+            /tmp/forge-console.log
             /tmp/forge-app-log.txt
             /tmp/forge-crash-reports.txt
           if-no-files-found: warn
