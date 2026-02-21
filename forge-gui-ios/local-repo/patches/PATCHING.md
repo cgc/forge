@@ -6,6 +6,28 @@ from scratch, and how to adapt the patches if MobiVM ships a new `robovm-soot` v
 
 ---
 
+## Quick start (automated)
+
+A single script automates all steps below:
+
+```bash
+cd forge-gui-ios/local-repo/patches/
+./rebuild-patched-soot.sh          # uses default robovm-soot 2.5.0-9
+# or: ./rebuild-patched-soot.sh 2.5.0-9  to target a specific version
+```
+
+Requirements: `javac` (JDK 11+), `jar`, `git`, `curl`, `python3` on `$PATH`.
+
+The script downloads the original jar and ASM from Maven Central, clones
+`MobiVM/soot` at the given tag, applies all four patches (Bugs 1–3 via source
+edits + `javac`, Bug 4 via `PatchAugEvalFunction.java` + ASM), assembles the
+final jar, copies it to `local-repo/`, and regenerates the md5/sha1 checksums.
+
+The rest of this document explains each step individually for reference or
+for adapting the patches to a new MobiVM version.
+
+---
+
 ## Background
 
 MobiVM 2.3.24 bundles `robovm-soot 2.5.0-9`, a Soot build used for AOT compilation.
