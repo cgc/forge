@@ -48,14 +48,20 @@ jobs:
 
       - name: Boot simulator and launch app
         run: |
-          # Locate the .app bundle produced by the MobiVM install goal.
-          APP_PATH=$(find forge-gui-ios/target/robovm -name "*.app" -type d 2>/dev/null | head -1)
-          if [ -z "$APP_PATH" ]; then
-            echo "::error::Could not find .app bundle under forge-gui-ios/target/robovm"
-            find forge-gui-ios/target -maxdepth 4 -name "*.app" 2>/dev/null || true
+          # The MobiVM 'install' goal places the app bundle contents flat in
+          # forge-gui-ios/target/robovm/ (binary, Info.plist, res/, lib/, …).
+          # xcrun simctl install requires a directory with a .app suffix, so
+          # rename target/robovm to target/Forge.app (matching app.name in
+          # robovm.properties).
+          ROBOVM_OUT="forge-gui-ios/target/robovm"
+          APP_PATH="forge-gui-ios/target/Forge.app"
+          if [ ! -d "$ROBOVM_OUT" ]; then
+            echo "::error::MobiVM output directory not found: $ROBOVM_OUT"
+            find forge-gui-ios/target -maxdepth 2 -type d 2>/dev/null || true
             exit 1
           fi
-          echo "Found .app bundle: $APP_PATH"
+          mv "$ROBOVM_OUT" "$APP_PATH"
+          echo "App bundle: $APP_PATH"
 
           # Pick the newest available iPhone simulator.
           DEVICE_UDID=$(xcrun simctl list devices available --json 2>/dev/null | python3 -c "
