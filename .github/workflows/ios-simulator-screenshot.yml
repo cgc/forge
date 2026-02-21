@@ -35,6 +35,21 @@ jobs:
           restore-keys: |
             robovm-${{ runner.os }}-
 
+      - name: Compile GL bridge for arm64-simulator
+        # Compile native/gl_bridge.m into native/gl_bridge.a with the
+        # iphonesimulator SDK targeting arm64-simulator.  This must run BEFORE
+        # Maven so that the .a is present when MobiVM links the app binary.
+        run: |
+          xcrun --sdk iphonesimulator clang \
+            -arch arm64 \
+            -target arm64-apple-ios-simulator \
+            -c forge-gui-ios/native/gl_bridge.m \
+            -o forge-gui-ios/native/gl_bridge.o
+          xcrun libtool -static forge-gui-ios/native/gl_bridge.o \
+            -o forge-gui-ios/native/gl_bridge.a
+          rm forge-gui-ios/native/gl_bridge.o
+          echo "gl_bridge.a: $(wc -c < forge-gui-ios/native/gl_bridge.a) bytes"
+
       - name: Build iOS app
         # Run Maven in the foreground so that compilation/AOT progress is visible
         # in the GitHub Actions log.  The ios-simulator profile uses the MobiVM

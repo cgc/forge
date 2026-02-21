@@ -34,18 +34,16 @@
     the .a libs.
   -->
   <!--
-    The native/ directory contains gl_bridge.m, which provides thin C wrappers
-    (forge_glXxx) around every OpenGL ES 2.0 function used by IOSGLES20.java.
-    RoboVM's Clang compiles these wrappers into the main executable for the
-    arm64-simulator target, resolving the GL symbols at link time from the
-    iPhoneSimulator SDK stubs.  This lets @Bridge(symbol = "forge_glXxx") with
-    @Library(Library.INTERNAL) find the symbols via dlsym() at runtime, working
-    around the iOS 26 simulator limitation where dlsym() cannot resolve bare
-    gl* symbols from OpenGLES.framework.
+    native/gl_bridge.a is compiled by the CI step "Compile GL bridge" before Maven runs.
+    It contains thin C wrappers (forge_glXxx -> glXxx) around every OpenGL ES 2.0
+    function used by IOSGLES20.java.  Linking it here puts forge_glXxx symbols
+    into the main executable, where @Library(Library.INTERNAL) + dlsym() can
+    find them at runtime, working around the iOS 26 simulator limitation where
+    dlsym() cannot resolve bare gl* symbols from OpenGLES.framework.
   -->
-  <objcSourceDirs>
-    <dir>native</dir>
-  </objcSourceDirs>
+  <libs>
+    <lib>native/gl_bridge.a</lib>
+  </libs>
   <frameworks>
     <framework>UIKit</framework>
     <framework>OpenGLES</framework>
