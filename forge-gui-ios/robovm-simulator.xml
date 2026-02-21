@@ -40,10 +40,25 @@
     into the main executable, where @Library(Library.INTERNAL) + dlsym() can
     find them at runtime, working around the iOS 26 simulator limitation where
     dlsym() cannot resolve bare gl* symbols from OpenGLES.framework.
+
+    force=null (the default) triggers -force_load so the archive members are
+    included even though nothing references them from compiled Java code.
+
+    The <exportedSymbols> entry below prevents the Darwin linker's -dead_strip
+    pass from removing forge_gl* despite their inclusion via -force_load:
+    MobiVM uses -exported_symbols_list which keeps only listed symbols in the
+    dynamic symbol table.  Without this entry dlsym(NULL,"forge_glViewport")
+    returns NULL and every @Bridge method throws UnsatisfiedLinkError at
+    class-init time.  The leading * makes RoboVM treat the entry as a glob
+    (skipping the automatic _ prefix), so *forge_gl* matches _forge_glViewport,
+    _forge_glClear, etc.
   -->
   <libs>
     <lib>native/gl_bridge.a</lib>
   </libs>
+  <exportedSymbols>
+    <symbol>*forge_gl*</symbol>
+  </exportedSymbols>
   <frameworks>
     <framework>UIKit</framework>
     <framework>OpenGLES</framework>

@@ -61,6 +61,25 @@ jobs:
           mvn -B -e clean install -pl forge-gui-ios -am -P ios-simulator \
             -Dmaven.test.skip=true 2>&1 | tee /tmp/mvn-build.log
 
+      - name: Verify GL bridge symbols in binary
+        # Confirm that forge_gl* symbols survived the linker's -exported_symbols_list
+        # + -dead_strip pass.  If this step reports 0 symbols, the app will crash with
+        # UnsatisfiedLinkError for every @Bridge GL method.
+        run: |
+          BINARY=$(find forge-gui-ios/target/robovm -maxdepth 1 -type f -perm +111 2>/dev/null | head -1)
+          if [ -z "$BINARY" ]; then
+            echo "::warning::Could not find app binary to inspect"
+          else
+            echo "Inspecting binary: $BINARY"
+            COUNT=$(nm "$BINARY" 2>/dev/null | grep -c "forge_gl" || echo 0)
+            echo "forge_gl* symbols in binary: $COUNT"
+            if [ "$COUNT" -eq 0 ]; then
+              echo "::error::No forge_gl* symbols found in binary — @Bridge methods will fail at runtime"
+              exit 1
+            fi
+            nm "$BINARY" 2>/dev/null | grep "forge_gl" | head -10
+          fi
+
       - name: Boot simulator and launch app
         run: |
           # The MobiVM 'install' goal places the app bundle contents flat in
