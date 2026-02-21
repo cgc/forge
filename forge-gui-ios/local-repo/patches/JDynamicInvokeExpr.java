@@ -18,10 +18,21 @@
  * which accepts any reference return type (CallSite, Object, MethodHandle, etc.)
  * while still rejecting primitive return types which are truly illegal.
  *
- * This is the third in a series of three robovm-soot patches to support Java 16+
- * records. See also CONSTANT_Fieldref_info.java and CONSTANT_MethodHandle_info.java.
+ * COMPILATION
+ * -----------
+ * Compiled from the MobiVM/soot source tree (tag 2.5.0-9) with the diff below applied:
  *
- * diff: JDynamicInvokeExpr.java (line 62-64)
+ *   git clone --depth 1 --branch 2.5.0-9 https://github.com/MobiVM/soot.git soot-src
+ *   # apply diff below to soot-src/src/main/java/soot/jimple/internal/JDynamicInvokeExpr.java
+ *   javac -source 8 -target 8 \
+ *       -cp robovm-soot-2.5.0-9.jar \
+ *       -sourcepath soot-src/src/main/java \
+ *       soot-src/src/main/java/soot/jimple/internal/JDynamicInvokeExpr.java
+ *   jar uf robovm-soot-2.5.0-9-forge-patched.jar \
+ *       soot/jimple/internal/JDynamicInvokeExpr.class
+ *
+ * DIFF (JDynamicInvokeExpr.java, lines 62-64)
+ * --------------------------------------------
  * -     if(!bootstrapMethodRef.returnType().equals(RefType.v("java.lang.invoke.CallSite"))) {
  * -         throw new IllegalArgumentException("Return type of bootstrap method must be java.lang.invoke.CallSite!");
  * -     }

@@ -19,12 +19,21 @@
  * already present in CONSTANT_Methodref_info.java and
  * CONSTANT_InterfaceMethodref_info.java.
  *
- * This source is provided for auditability. The compiled .class was built with:
- *   javac -source 8 -target 8 -cp robovm-soot-2.5.0-9.jar CONSTANT_Fieldref_info.java
- * and injected into a copy of robovm-soot-2.5.0-9.jar using:
- *   jar uf robovm-soot-2.5.0-9-forge-patched.jar soot/coffi/CONSTANT_Fieldref_info.class
+ * COMPILATION
+ * -----------
+ * Compiled from the MobiVM/soot source tree (tag 2.5.0-9) with the diff below applied:
+ *
+ *   git clone --depth 1 --branch 2.5.0-9 https://github.com/MobiVM/soot.git soot-src
+ *   # apply diff below to soot-src/src/main/java/soot/coffi/CONSTANT_Fieldref_info.java
+ *   javac -source 8 -target 8 \
+ *       -cp robovm-soot-2.5.0-9.jar \
+ *       -sourcepath soot-src/src/main/java \
+ *       soot-src/src/main/java/soot/coffi/CONSTANT_Fieldref_info.java
+ *   jar uf robovm-soot-2.5.0-9-forge-patched.jar \
+ *       soot/coffi/CONSTANT_Fieldref_info.class
+ *
+ * DIFF
+ * ----
+ * -    String className = cc.toString(constant_pool);
+ * +    String className = cc.toString(constant_pool).replace('/', '.'); // RoboVM note: Replace / with .
  */
-
-// diff: CONSTANT_Fieldref_info.java (original vs. patched)
-// -    String className = cc.toString(constant_pool);
-// +    String className = cc.toString(constant_pool).replace('/', '.'); // RoboVM note: Replace / with .
