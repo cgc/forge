@@ -7,11 +7,12 @@
         <build.min.memory>-Xms128m</build.min.memory>
         <build.max.memory>-Xmx2048m</build.max.memory>
         <robovm.version>2.3.24</robovm.version>
-        <!-- x86_64 is the simulator arch accepted by MobiVM 2.3.24 (arm64 is device-only).
-             On Apple Silicon CI runners it executes via Rosetta 2, which is pre-installed.
+        <!-- arm64-simulator is the correct arch for Apple Silicon CI runners (native, no Rosetta).
+             MobiVM 2.3.24 parses this as CpuArch.arm64 + Environment.Simulator, which passes
+             the simulator-arch check in AbstractIOSSimulatorMojo.execute().
              The ios-simulator profile also sets configFile=robovm-simulator.xml, which omits
-             the device-only .a libs; see that file for details. -->
-        <ios.simulator.arch>x86_64</ios.simulator.arch>
+             the device-only .a libs and overrides IOSGLES20 via source; see those files for details. -->
+        <ios.simulator.arch>arm64-simulator</ios.simulator.arch>
     </properties>
 
     <parent>

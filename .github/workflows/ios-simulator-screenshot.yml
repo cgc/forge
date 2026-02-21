@@ -3,7 +3,7 @@ name: iOS Simulator Screenshot
 on:
   push:
     branches:
-      - 'copilot/spec-out-forge-ios-support'
+      - 'copilot/**'
     paths:
       - 'forge-gui-ios/**'
       - 'forge-gui-mobile/**'
