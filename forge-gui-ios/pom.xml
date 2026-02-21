@@ -176,7 +176,12 @@
                                 <id>ios-simulator-build</id>
                                 <phase>package</phase>
                                 <goals>
-                                    <goal>iphone-sim</goal>
+                                    <!-- 'install' builds the .app bundle (AOT-compiles) without
+                                         launching the simulator.  The CI workflow then boots the
+                                         simulator and launches the app via 'xcrun simctl', keeping
+                                         the Maven build in the foreground so its log is visible in
+                                         GitHub Actions UI. -->
+                                    <goal>install</goal>
                                 </goals>
                             </execution>
                         </executions>
