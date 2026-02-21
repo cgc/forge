@@ -209,11 +209,22 @@ repository server is required.
 > `InvokeDynamicCompilerPlugin` about `ObjectMethods.bootstrap` and inline proper
 > implementations — but that is out of scope for the initial iOS port.
 
+### Upstream Status (as of February 2026)
+
+`robovm-soot 2.5.0-9` is **the only published version since July 2022** and is used by every
+MobiVM release from 2.3.15 through 2.3.24 (the current latest). The [MobiVM/soot
+repository](https://github.com/MobiVM/soot) has not received any commits since the 2.5.0-9
+release. All three bugs above are confirmed present in the latest source. There are no open
+issues or PRs in either `MobiVM/soot` or `MobiVM/robovm` about Java record support.
+
+The local patch committed to `forge-gui-ios/local-repo/` is therefore the only viable fix.
+
 ### Possible Future Actions
 
-- **Upstream contribution** — Submit the fix to the [MobiVM soot fork](https://github.com/MobiVM/soot)
-  so that future `robovm-soot` releases include it. The fix is the same one-liner already in
-  `CONSTANT_Methodref_info.java`.
+- **Upstream contribution** — Submit the three fixes as a PR to the
+  [MobiVM/soot repository](https://github.com/MobiVM/soot). The maintainer (Tom Wojciechowski
+  / `Tom-Ski`) is active on `MobiVM/robovm`. A merged PR + new `robovm-soot` release would
+  allow MobiVM to natively support any Java project using records without patching.
 - **Remove the local repo** — Once a fixed `robovm-soot` is published to Maven Central, delete
   `forge-gui-ios/local-repo/` and remove the `<repositories>`, `<pluginRepositories>`, and
   plugin `<dependencies>` overrides from `forge-gui-ios/pom.xml`.
