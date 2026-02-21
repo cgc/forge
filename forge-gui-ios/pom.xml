@@ -42,7 +42,6 @@
     <packaging>${packaging.type}</packaging>
     <name>Forge iOS</name>
 
-
     <build>
         <sourceDirectory>src</sourceDirectory>
         <plugins>
@@ -54,6 +53,30 @@
                 </configuration>
             </plugin>
         </plugins>
+        <pluginManagement>
+            <plugins>
+                <!-- Common robovm-maven-plugin config shared by ios-device and ios-simulator profiles. -->
+                <plugin>
+                    <groupId>com.mobidevelop.robovm</groupId>
+                    <artifactId>robovm-maven-plugin</artifactId>
+                    <version>${robovm.version}</version>
+                    <dependencies>
+                        <!-- Patched robovm-soot: fixes four cascading bugs triggered by Java 16+
+                             record types (invokedynamic bootstrap calls for equals/hashCode/toString).
+                             See forge-gui-ios/local-repo/patches/ for per-class explanations. -->
+                        <dependency>
+                            <groupId>com.mobidevelop.robovm</groupId>
+                            <artifactId>robovm-soot</artifactId>
+                            <version>2.5.0-9-forge-patched</version>
+                        </dependency>
+                    </dependencies>
+                    <configuration>
+                        <propertiesFile>robovm.properties</propertiesFile>
+                        <configFile>robovm.xml</configFile>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <resources>
             <resource>
                 <directory>filters</directory>
@@ -121,18 +144,6 @@
                     <plugin>
                         <groupId>com.mobidevelop.robovm</groupId>
                         <artifactId>robovm-maven-plugin</artifactId>
-                        <version>${robovm.version}</version>
-                        <dependencies>
-                            <!-- Patched robovm-soot: fixes CONSTANT_Fieldref_info missing
-                                 slash-to-dot conversion in createJimpleConstantValue(), which
-                                 caused "Attempt to create RefType containing a /" for every Java
-                                 record (records use invokedynamic with REF_getField handles). -->
-                            <dependency>
-                                <groupId>com.mobidevelop.robovm</groupId>
-                                <artifactId>robovm-soot</artifactId>
-                                <version>2.5.0-9-forge-patched</version>
-                            </dependency>
-                        </dependencies>
                         <executions>
                             <execution>
                                 <id>ios-device-build</id>
@@ -143,8 +154,6 @@
                             </execution>
                         </executions>
                         <configuration>
-                            <propertiesFile>robovm.properties</propertiesFile>
-                            <configFile>robovm.xml</configFile>
                             <arch>arm64</arch>
                         </configuration>
                     </plugin>
@@ -158,14 +167,6 @@
                     <plugin>
                         <groupId>com.mobidevelop.robovm</groupId>
                         <artifactId>robovm-maven-plugin</artifactId>
-                        <version>${robovm.version}</version>
-                        <dependencies>
-                            <dependency>
-                                <groupId>com.mobidevelop.robovm</groupId>
-                                <artifactId>robovm-soot</artifactId>
-                                <version>2.5.0-9-forge-patched</version>
-                            </dependency>
-                        </dependencies>
                         <executions>
                             <execution>
                                 <id>ios-simulator-build</id>
@@ -176,8 +177,6 @@
                             </execution>
                         </executions>
                         <configuration>
-                            <propertiesFile>robovm.properties</propertiesFile>
-                            <configFile>robovm.xml</configFile>
                             <arch>${ios.simulator.arch}</arch>
                         </configuration>
                     </plugin>
