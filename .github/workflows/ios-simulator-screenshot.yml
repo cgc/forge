@@ -35,34 +35,6 @@ jobs:
           restore-keys: |
             robovm-${{ runner.os }}-
 
-      - name: Add arm64-simulator slices to native iOS libraries
-        run: |
-          # The committed .a files only contain armv7 and arm64 (device) slices.
-          # On Apple Silicon the simulator targets arm64-simulator, a distinct Mach-O
-          # platform environment.  Without a matching slice the linker silently drops
-          # the entire file, leaving IOSGLES20.init() and other JNI symbols unresolved,
-          # which causes UnsatisfiedLinkError at runtime.
-          #
-          # Fix: extract the arm64 device slice, use vtool to re-stamp its platform
-          # as iphonesimulator, then lipo it back together with the originals.
-          for lib in forge-gui-ios/libs/libgdx.a \
-                     forge-gui-ios/libs/libObjectAL.a \
-                     forge-gui-ios/libs/libgdx-freetype.a; do
-            tmpdir=$(mktemp -d)
-            lipo "$lib" -thin arm64 -output "$tmpdir/arm64.a"
-            (
-              cd "$tmpdir"
-              ar x arm64.a
-              for obj in *.o; do
-                vtool -set-build-version iphonesimulator 12.0 12.0 \
-                      -replace -output "$obj" "$obj"
-              done
-              libtool -static -o arm64-sim.a *.o
-            )
-            lipo "$lib" "$tmpdir/arm64-sim.a" -create -output "$lib"
-            rm -rf "$tmpdir"
-          done
-
       - name: Build all modules and start iOS Simulator app in background
         run: |
           export _JAVA_OPTIONS="-Xmx4g"
