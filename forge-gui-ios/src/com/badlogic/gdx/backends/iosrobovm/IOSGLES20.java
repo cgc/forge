@@ -43,7 +43,9 @@ import org.robovm.rt.bro.annotation.Bridge;
 import org.robovm.rt.bro.annotation.Library;
 import org.robovm.rt.bro.annotation.Pointer;
 
-@Library(Library.INTERNAL)
+// @Library("OpenGLES") tells the RoboVM AOT compiler to resolve @Bridge
+// symbols against OpenGLES.framework (not the main executable).
+@Library("OpenGLES")
 public class IOSGLES20 implements GL20 {
 
     final boolean shouldConvert16bit = IOSApplication.IS_METALANGLE
