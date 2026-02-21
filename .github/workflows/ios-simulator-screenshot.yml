@@ -55,11 +55,50 @@ jobs:
             fi
             BOOTED=$(xcrun simctl list devices booted 2>/dev/null | grep -c "Booted" || true)
             if [ "${BOOTED:-0}" -gt "0" ]; then
-              echo "Simulator booted. Waiting 90 s for the app to start rendering..."
-              sleep 90
-              xcrun simctl io booted screenshot forge-screenshot.png
-              echo "Screenshot saved."
-              SCREENSHOT_TAKEN=true
+              echo "Simulator booted. Waiting for Forge app process to start..."
+              # RoboVM iOS-simulator apps run as real macOS processes; poll the host
+              # process table until the Forge executable appears (up to ~5 min).
+              for j in $(seq 1 20); do
+                sleep 15
+                if pgrep -f "forge.ios.Main" > /dev/null 2>&1; then
+                  echo "Forge app process is running."
+                  break
+                fi
+                echo "  Check $j/20: process not yet visible..."
+              done
+              # Poll screenshots until two consecutive captures are binary-identical,
+              # which indicates the loading screen has cleared and the main menu is
+              # being displayed.  The first capture is taken immediately; subsequent
+              # ones are spaced 20 s apart.
+              echo "Polling for app loading screen to clear..."
+              PREV_SHOT=""
+              STABLE_COUNT=0
+              for k in $(seq 1 30); do
+                CUR_SHOT="/tmp/forge-poll-$k.png"
+                xcrun simctl io booted screenshot "$CUR_SHOT" 2>/dev/null || { sleep 20; continue; }
+                if [ -n "$PREV_SHOT" ] && cmp -s "$CUR_SHOT" "$PREV_SHOT"; then
+                  STABLE_COUNT=$((STABLE_COUNT + 1))
+                  echo "  Screen stable for ${STABLE_COUNT}/3 consecutive checks."
+                  if [ "${STABLE_COUNT}" -ge 3 ]; then
+                    echo "Loading complete — screen has stabilized."
+                    cp "$CUR_SHOT" forge-screenshot.png
+                    SCREENSHOT_TAKEN=true
+                    break
+                  fi
+                else
+                  STABLE_COUNT=0
+                fi
+                PREV_SHOT="$CUR_SHOT"
+                sleep 20
+              done
+              # Fallback: if the screen never stabilized within the polling window
+              # (e.g. the home screen has subtle animations), use the most recent
+              # captured frame — by this point we are well past the loading screen.
+              if [ "$SCREENSHOT_TAKEN" != "true" ] && [ -n "$PREV_SHOT" ] && [ -f "$PREV_SHOT" ]; then
+                echo "Screen did not stabilize within polling window; using last available frame."
+                cp "$PREV_SHOT" forge-screenshot.png
+                SCREENSHOT_TAKEN=true
+              fi
               break
             fi
           done
