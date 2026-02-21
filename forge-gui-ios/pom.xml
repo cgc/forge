@@ -7,7 +7,9 @@
         <build.min.memory>-Xms128m</build.min.memory>
         <build.max.memory>-Xmx2048m</build.max.memory>
         <robovm.version>2.3.24</robovm.version>
-        <!-- Use x86_64 on Intel Macs: -Dios.simulator.arch=x86_64 -->
+        <!-- arm64 is the correct arch for Apple Silicon CI runners.
+             The ios-simulator profile uses robovm-simulator.xml which omits the <libs>
+             (.a files) that only have device slices; see that file for details. -->
         <ios.simulator.arch>arm64</ios.simulator.arch>
     </properties>
 
@@ -178,6 +180,8 @@
                         </executions>
                         <configuration>
                             <arch>${ios.simulator.arch}</arch>
+                            <!-- Use the simulator-specific config that omits the device-only .a libs. -->
+                            <configFile>robovm-simulator.xml</configFile>
                         </configuration>
                     </plugin>
                 </plugins>
