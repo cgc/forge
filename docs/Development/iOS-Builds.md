@@ -138,16 +138,16 @@ Support for `thumbv7` (32-bit ARM) was removed because Apple dropped 32-bit app 
 
 ## Known Limitation: Java Records and MobiVM AOT Compilation
 
-### Root Cause (Identified — two bugs)
+### Root Cause (Identified — three cascading bugs)
 
 MobiVM's AOT compiler uses the [Soot](https://github.com/soot-oss/soot) framework with the
 `coffi` bytecode reader. Java records generate `equals()`/`hashCode()`/`toString()` via
 `invokedynamic` with `java.lang.runtime.ObjectMethods.bootstrap`. The bootstrap arguments
 include `CONSTANT_MethodHandle_info` entries with kind `REF_getField` (1) pointing to
-`CONSTANT_Fieldref_info` entries — one per record component. Processing these triggers two
+`CONSTANT_Fieldref_info` entries — one per record component. Processing these triggers three
 cascading bugs in `robovm-soot`:
 
-**Bug 1 — `CONSTANT_Fieldref_info.createJimpleConstantValue()`** (same class, missing fix):
+**Bug 1 — `CONSTANT_Fieldref_info.createJimpleConstantValue()`** (missing slash→dot conversion):
 
 ```java
 // BUGGY: passes JVM slash-format class name to Scene.getSootClass()
@@ -159,7 +159,7 @@ String className = cc.toString(constant_pool);          // "forge/util/HWInfo"
 String className = cc.toString(constant_pool).replace('/', '.'); // "forge.util.HWInfo"
 ```
 
-**Bug 2 — `CONSTANT_MethodHandle_info.createJimpleConstantValue()`** (now exposed after Bug 1 fix):
+**Bug 2 — `CONSTANT_MethodHandle_info.createJimpleConstantValue()`** (exposed after Bug 1 fix):
 
 ```java
 // BUGGY: unconditionally casts to InvokeExpr for ALL handle kinds, but field-ref
@@ -169,7 +169,6 @@ InvokeExpr expr = (InvokeExpr) target.createJimpleConstantValue(constant_pool); 
 // FIXED: branch on kind; for field-ref handles, build a synthetic SootMethodRef
 // (JMethodHandle only stores SootMethodRef, modeling the field as a zero-arg getter):
 if (kind >= 1 && kind <= 4) {
-    // extract className/fieldName/fieldType from CONSTANT_Fieldref_info directly
     SootMethodRef ref = Scene.v().makeMethodRef(declaringClass, fieldName,
             Collections.emptyList(), fieldType, isStatic);
     return Jimple.v().newMethodHandle(kind, ref);
@@ -177,10 +176,26 @@ if (kind >= 1 && kind <= 4) {
 // kinds 5-9: existing InvokeExpr cast path unchanged
 ```
 
+**Bug 3 — `JDynamicInvokeExpr.<init>()`** (exposed after Bugs 1+2 are fixed):
+
+```java
+// BUGGY: strict check that bootstrap return type == CallSite (valid pre-Java 9, but
+// Java 9+ allows Object; ObjectMethods.bootstrap is declared as returning Object):
+if(!bootstrapMethodRef.returnType().equals(RefType.v("java.lang.invoke.CallSite"))) {
+    throw new IllegalArgumentException("Return type of bootstrap method must be java.lang.invoke.CallSite!");
+}
+
+// FIXED: accept any reference return type (the InvokeDynamicCompilerPlugin handles
+// the rest — unrecognized bootstraps are delegated to UnrecognizedBootstrapDelegate):
+if(!(bootstrapMethodRef.returnType() instanceof RefType)) {
+    throw new IllegalArgumentException("Return type of bootstrap method must be a reference type!");
+}
+```
+
 ### Fix Applied
 
 A patched `robovm-soot` jar (`2.5.0-9-forge-patched`) is committed at
-`forge-gui-ios/local-repo/`. It contains two fixed `.class` files — one per bug above.
+`forge-gui-ios/local-repo/`. It contains three fixed `.class` files — one per bug above.
 Provenance sources are at `local-repo/patches/`.
 
 `forge-gui-ios/pom.xml` declares a local file repository and overrides the `robovm-soot`
