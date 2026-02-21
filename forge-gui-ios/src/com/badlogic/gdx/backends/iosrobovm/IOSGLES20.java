@@ -39,6 +39,7 @@ import java.nio.*;
 import com.badlogic.gdx.graphics.GL20;
 import org.robovm.apple.foundation.NSProcessInfo;
 import org.robovm.rt.VM;
+import org.robovm.rt.bro.Bro;
 import org.robovm.rt.bro.annotation.Bridge;
 import org.robovm.rt.bro.annotation.Library;
 import org.robovm.rt.bro.annotation.Pointer;
@@ -52,11 +53,20 @@ import org.robovm.rt.bro.annotation.Pointer;
 @Library(Library.INTERNAL)
 public class IOSGLES20 implements GL20 {
 
+    static {
+        // Bro.bind() walks every @Bridge method on this class and calls
+        // dlsym(dlopen(NULL), bridge.symbol()) to look up each forge_gl*
+        // function in the main executable's exports, then stores the address
+        // in the LLVM global that the @Bridge stub loads at call time.
+        // Without this call the bridge pointers stay null and every @Bridge
+        // invocation throws UnsatisfiedLinkError "@Bridge method … not bound".
+        Bro.bind(IOSGLES20.class);
+    }
+
     final boolean shouldConvert16bit = IOSApplication.IS_METALANGLE
         && NSProcessInfo.getSharedProcessInfo().getEnvironment().containsKey("SIMULATOR_DEVICE_NAME");
 
     public IOSGLES20 () {
-        // No-op: static @Bridge methods don't need JNI initialisation.
     }
 
     /** Last viewport set; GLKView resets the viewport on each draw call. */
