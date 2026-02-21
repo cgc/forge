@@ -7,8 +7,15 @@
         <build.min.memory>-Xms128m</build.min.memory>
         <build.max.memory>-Xmx2048m</build.max.memory>
         <robovm.version>2.3.24</robovm.version>
-        <!-- Use x86_64 on Intel Macs: -Dios.simulator.arch=x86_64 -->
-        <ios.simulator.arch>arm64</ios.simulator.arch>
+        <!-- The bundled .a files (libgdx, libObjectAL, libgdx-freetype) only contain
+             armv7 and arm64 *device* slices — no arm64-simulator slice.  Requesting
+             arm64 for the simulator causes the linker to reject those device slices
+             and fail.  x86_64 causes the linker to silently drop the files (they have
+             no x86_64 slice either), so the build succeeds; override with
+             -Dios.simulator.arch=x86_64 is now a no-op on Intel Macs.
+             Apple Silicon users who need JNI libs in the simulator must rebuild the
+             .a files with arm64-simulator slices and then switch to arm64 here. -->
+        <ios.simulator.arch>x86_64</ios.simulator.arch>
     </properties>
 
     <parent>
