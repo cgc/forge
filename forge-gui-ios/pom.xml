@@ -7,8 +7,8 @@
         <build.min.memory>-Xms128m</build.min.memory>
         <build.max.memory>-Xmx2048m</build.max.memory>
         <robovm.version>2.3.24</robovm.version>
-        <!-- Use arm64 on Apple Silicon Macs: -Dios.simulator.arch=arm64 -->
-        <ios.simulator.arch>x86_64</ios.simulator.arch>
+        <!-- Use x86_64 on Intel Macs: -Dios.simulator.arch=x86_64 -->
+        <ios.simulator.arch>arm64</ios.simulator.arch>
     </properties>
 
     <parent>
