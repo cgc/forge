@@ -7,10 +7,11 @@
         <build.min.memory>-Xms128m</build.min.memory>
         <build.max.memory>-Xmx2048m</build.max.memory>
         <robovm.version>2.3.24</robovm.version>
-        <!-- arm64 is the correct arch for Apple Silicon CI runners.
-             The ios-simulator profile uses robovm-simulator.xml which omits the <libs>
-             (.a files) that only have device slices; see that file for details. -->
-        <ios.simulator.arch>arm64</ios.simulator.arch>
+        <!-- x86_64 is the simulator arch accepted by MobiVM 2.3.24 (arm64 is device-only).
+             On Apple Silicon CI runners it executes via Rosetta 2, which is pre-installed.
+             The ios-simulator profile also sets configFile=robovm-simulator.xml, which omits
+             the device-only .a libs; see that file for details. -->
+        <ios.simulator.arch>x86_64</ios.simulator.arch>
     </properties>
 
     <parent>

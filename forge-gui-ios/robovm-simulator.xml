@@ -2,7 +2,7 @@
   <executableName>${app.executable}</executableName>
   <mainClass>${app.mainclass}</mainClass>
   <os>ios</os>
-  <arch>arm64</arch>
+  <arch>x86_64</arch>
   <resources>
     <resource>
       <directory>../forge-gui</directory>
@@ -25,12 +25,12 @@
   <!--
     The <libs> block is intentionally absent here.
     libgdx.a / libObjectAL.a / libgdx-freetype.a contain only armv7 and arm64 *device*
-    slices; they have no arm64-simulator slice.  Linking them into an arm64 simulator
-    binary causes the linker to fail with "building for iOS Simulator, but linking in
-    object file built for iOS".  The iOS Simulator does not need these JNI libraries
-    at runtime — OpenGL ES and audio are provided by the host Metal/GLES translation
-    layer and CoreAudio, which RoboVM/MobiVM links automatically via the <frameworks>
-    listed below.  The device build (robovm.xml) still includes them.
+    slices; they have no simulator slices.  Linking them into a simulator binary causes
+    the linker to fail with "building for iOS Simulator, but linking in object file
+    built for iOS".  The iOS Simulator does not need these JNI libraries at runtime —
+    OpenGL ES and audio are provided by the host Metal/GLES translation layer and
+    CoreAudio, which RoboVM/MobiVM links automatically via the <frameworks> listed
+    below.  The device build (robovm.xml) still includes them.
   -->
   <frameworks>
     <framework>UIKit</framework>
