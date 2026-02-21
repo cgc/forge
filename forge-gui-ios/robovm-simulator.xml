@@ -44,24 +44,30 @@
     force=null (the default) triggers -force_load so the archive members are
     included even though nothing references them from compiled Java code.
 
-    Dead-stripping is defeated by two complementary mechanisms:
+    Dead-stripping and dynamic visibility are both controlled by
+    <exportedSymbols>:
 
-    1. __attribute__((used)) on every function in gl_bridge.m marks them with
-       the .no_dead_strip flag in the object file, telling ld64 never to remove
-       them regardless of whether they are directly referenced.
+    1. ld64 -dead_strip treats exported symbols as "reachable", so
+       <symbol>forge_gl*</symbol> prevents dead-stripping of all
+       forge_glXxx wrappers (MobiVM prepends '_', so the linker sees
+       _forge_gl* — a valid ld64 trailing-wildcard pattern).
 
-    2. -export_dynamic (see <ldFlags> below) exports ALL global symbols to the
-       dynamic linker table, so dlsym(NULL,"forge_glViewport") succeeds at
-       runtime.  Without this, symbols not in MobiVM's exported_symbols_list
-       are marked N_PEXT (private extern) and invisible to dlsym even if they
-       survive dead-stripping.
+    2. Being in the exported symbols list makes them globally visible in
+       the dynamic symbol table, so dlsym(NULL,"forge_glViewport")
+       succeeds at runtime.
+
+    __attribute__((used)) in gl_bridge.m provides additional belt-and-
+    suspenders protection at the object-file level.
+
+    Note: <ldFlags> is NOT a valid MobiVM 2.3.24 Config schema element
+    and must NOT be used here — it causes "Failed to read RoboVM config".
   -->
   <libs>
     <lib>native/gl_bridge.a</lib>
   </libs>
-  <ldFlags>
-    <ldFlag>-export_dynamic</ldFlag>
-  </ldFlags>
+  <exportedSymbols>
+    <symbol>forge_gl*</symbol>
+  </exportedSymbols>
   <frameworks>
     <framework>UIKit</framework>
     <framework>OpenGLES</framework>
