@@ -30,6 +30,10 @@ public class Main extends IOSApplication.Delegate {
         final IOSApplicationConfiguration config = new IOSApplicationConfiguration();
         config.useAccelerometer = false;
         config.useCompass = false;
+        // libObjectAL.a (used by OALIOSAudio) only has device slices; disable audio in the
+        // simulator to avoid missing_OALSimpleAudio crash.  SIMULATOR_UDID is set by the
+        // iOS Simulator runtime in every simulated process.
+        config.useAudio = System.getenv("SIMULATOR_UDID") == null;
         final ApplicationListener app = Forge.getApp(null, new IOSClipboard(), new IOSAdapter(), assetsDir, false, false, 0, false, 0);
         final IOSApplication iosApp = new IOSApplication(app, config);
         return iosApp;

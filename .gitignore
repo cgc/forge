@@ -101,4 +101,5 @@ forge-screenshot-latest.png
 # Extracted jar source files (used only for reference)
 /META-INF/
 /com/badlogic/
+forge-gui-ios/com/
 ic_password_*.png
