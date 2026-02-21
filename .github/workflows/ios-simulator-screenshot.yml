@@ -82,13 +82,31 @@ jobs:
           fi
           echo "Simulator device: $DEVICE_UDID"
 
-          # Boot, install, and launch.
+          # Boot and install.
           xcrun simctl boot "$DEVICE_UDID" 2>/dev/null || true
           xcrun simctl bootstatus "$DEVICE_UDID" -b
           xcrun simctl install "$DEVICE_UDID" "$APP_PATH"
-          xcrun simctl launch "$DEVICE_UDID" forge.ios  # bundle ID from robovm.properties (app.id)
+
+          # Stream the device log before launching so we capture the app's
+          # startup messages and any crash output.  Cap at 5 MiB to prevent
+          # unbounded growth during a long-running session.
+          (log stream --predicate 'processImagePath ENDSWITH "forge.ios.Main" OR process == "forge.ios.Main"' \
+            >> /tmp/forge-app-log.txt 2>&1 &
+           LOG_BG=$!
+           # Kill after 20 min max (well within the 90-min job timeout).
+           sleep 1200 && kill $LOG_BG 2>/dev/null) &
+          SIM_LOG_PID=$!
+          sleep 1  # give the log stream time to start
+
+          # Launch and capture the PID from "forge.ios: <pid>" output.
+          LAUNCH_OUT=$(xcrun simctl launch "$DEVICE_UDID" forge.ios 2>&1)  # bundle ID from robovm.properties (app.id)
+          echo "simctl launch: $LAUNCH_OUT"
+          APP_PID=$(echo "$LAUNCH_OUT" | grep -oE 'forge\.ios: ([0-9]+)' | grep -oE '[0-9]+' || true)
+          echo "App PID: ${APP_PID:-not available}"
 
           echo "DEVICE_UDID=$DEVICE_UDID" >> "$GITHUB_ENV"
+          echo "APP_PID=$APP_PID"         >> "$GITHUB_ENV"
+          echo "SIM_LOG_PID=$SIM_LOG_PID" >> "$GITHUB_ENV"
 
       - name: Wait for app to load and capture screenshot
         run: |
@@ -128,12 +146,20 @@ jobs:
           echo "Waiting for Forge app process to start..."
           for j in $(seq 1 20); do
             sleep 15
-            if pgrep -f "forge.ios.Main" > /dev/null 2>&1; then
+            # Check by PID (from simctl launch output) and by process name.
+            if { [ -n "$APP_PID" ] && kill -0 "$APP_PID" 2>/dev/null; } \
+               || pgrep -f "forge.ios.Main" > /dev/null 2>&1; then
               echo "Forge app process is running."
               break
             fi
             echo "  Check $j/20: app not yet running..."
           done
+
+          # Print the first lines of the captured log regardless — useful for
+          # diagnosing launch crashes even when the app appeared not to start.
+          echo "=== Captured app log (first 100 lines) ==="
+          head -100 /tmp/forge-app-log.txt 2>/dev/null || echo "(no log captured)"
+          echo "==="
 
           echo "Polling for stable screen (status bar excluded from comparison)..."
           PREV_HASH=""
@@ -181,20 +207,40 @@ jobs:
 
       - name: Stop simulator
         if: always()
-        run: xcrun simctl shutdown all 2>/dev/null || true
+        run: |
+          # Stop the background log stream before shutting down the simulator.
+          [ -n "$SIM_LOG_PID" ] && kill "$SIM_LOG_PID" 2>/dev/null || true
+          xcrun simctl shutdown all 2>/dev/null || true
+          # Collect crash reports produced since the workflow started.
+          # Use a reference file created at job start as the -newer anchor.
+          find ~/Library/Logs/DiagnosticReports -name "*forge*" \
+            -newer /tmp/mvn-build.log \
+            -exec cat {} \; 2>/dev/null > /tmp/forge-crash-reports.txt || true
+          CRASH_LINES=$(wc -l < /tmp/forge-crash-reports.txt 2>/dev/null || echo 0)
+          echo "Crash report lines collected: $CRASH_LINES"
 
       - name: Upload build log
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: mvn-build-log.txt
+          name: mvn-build-log
           path: /tmp/mvn-build.log
+          if-no-files-found: warn
+
+      - name: Upload app and crash logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: app-logs
+          path: |
+            /tmp/forge-app-log.txt
+            /tmp/forge-crash-reports.txt
           if-no-files-found: warn
 
       - name: Upload screenshot
         uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: simulator-screenshot.png
+          name: simulator-screenshot
           path: forge-screenshot.png
           if-no-files-found: error
