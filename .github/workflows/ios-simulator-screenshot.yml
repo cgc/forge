@@ -73,7 +73,7 @@ jobs:
           touch /tmp/mvn-sim.log
           nohup mvn -B \
             -Dmaven.test.skip=true \
-            -pl forge-gui-ios \
+            -pl forge-gui-ios -am \
             -P ios-simulator-launch \
             robovm:iphone-sim \
             &>/tmp/mvn-sim.log &
