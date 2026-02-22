@@ -35,65 +35,61 @@ jobs:
           restore-keys: |
             robovm-${{ runner.os }}-
 
-      - name: Build iOS app
-        # Run Maven in the foreground so that compilation/AOT progress is visible
-        # in the GitHub Actions log.  The ios-simulator profile uses the MobiVM
-        # 'install' goal (build-only; no simulator launch), so Maven exits cleanly
-        # once the .app bundle is produced.
+      - name: Build and launch iOS app in simulator
+        # Run Maven in the background so that the step shell stays alive for the
+        # polling loop below.  Output is tailed live so build progress is visible
+        # in the GitHub Actions log.  A single Maven invocation handles compilation,
+        # resource assembly, simulator boot, app install, and app launch:
+        #   - ios-simulator-launch profile binds iphone-sim to pre-integration-test
+        #   - Maven iphone-sim opens Simulator.app via NSWorkspace, which registers
+        #     the SimulatorKit display consumer required by xcrun simctl io screenshot
+        #   - -am puts root POM in reactor so ${revision} resolves correctly
         run: |
-          set -o pipefail
-          export _JAVA_OPTIONS="-Xmx4g"
-          mvn -B -e clean install -pl forge-gui-ios -am -P ios-simulator \
-            -Dmaven.test.skip=true 2>&1 | tee /tmp/mvn-build.log
-
-      - name: Boot simulator and launch app
-        run: |
-          # Use Maven's iphone-sim goal (bound to pre-integration-test phase via the
-          # ios-simulator-launch profile) to boot the simulator and launch the app.
-          # See forge-gui-ios/pom.xml for a detailed rationale.
-          # Key points:
-          #   - Maven iphone-sim opens Simulator.app via NSWorkspace, which properly
-          #     registers the SimulatorKit display consumer needed by xcrun simctl io
-          #     screenshot.  Direct xcrun approaches leave it unregistered.
-          #   - -am is required to put the root POM in the reactor so Maven can
-          #     resolve ${revision} in forge-gui-ios's <parent><version>.
-          #   - nohup + disown keep the Maven process alive between GitHub Actions steps.
-
-          xcrun simctl shutdown all 2>/dev/null || true
+          # Kill any lingering simulator sessions.  'shutdown all' can hang on a stale
+          # simulator, so cap it at 30 s.
+          timeout 30 xcrun simctl shutdown all 2>/dev/null || true
           sleep 2
 
           touch /tmp/mvn-sim.log
-          nohup mvn -B \
+          export _JAVA_OPTIONS="-Xmx4g"
+          nohup mvn -B -e \
             -Dmaven.test.skip=true \
             -pl forge-gui-ios -am \
             -P ios-simulator-launch \
-            pre-integration-test \
+            clean pre-integration-test \
             &>/tmp/mvn-sim.log &
           MVN_SIM_PID=$!
           disown $MVN_SIM_PID
-          echo "Maven simulator PID: $MVN_SIM_PID"
+          echo "Maven PID: $MVN_SIM_PID"
           echo "MVN_SIM_PID=$MVN_SIM_PID" >> "$GITHUB_ENV"
 
-          # Wait up to 3 minutes for the simulator to boot.
+          # Tail the Maven log so build progress is visible in the step output.
+          tail -f /tmp/mvn-sim.log &
+          TAIL_PID=$!
+
+          # Wait up to 20 min for the simulator to boot.
+          # First run (no RoboVM cache): AOT compile (~10-15 min) + resource copy (~4 min).
+          # Cached runs: incremental compile (~1 min) + resource copy (~4 min) + boot (~30 s).
           echo "Waiting for simulator to boot..."
           BOOTED=false
-          for i in $(seq 1 36); do
+          for i in $(seq 1 240); do
             if xcrun simctl list devices 2>/dev/null | grep -q "(Booted)"; then
               BOOTED=true
-              echo "Simulator booted (attempt $i/36)."
+              echo "=== Simulator booted (attempt $i/240). ==="
               break
             fi
             # Bail early if Maven exited unexpectedly.
             if ! kill -0 "$MVN_SIM_PID" 2>/dev/null; then
-              echo "::error::Maven simulator process exited early. Last 50 lines:"
+              echo "::error::Maven process exited before simulator booted. Last 50 lines:"
               tail -50 /tmp/mvn-sim.log || true
+              kill $TAIL_PID 2>/dev/null || true
               exit 1
             fi
-            echo "  Attempt $i/36: not booted yet — sleeping 5 s..."
             sleep 5
           done
+          kill $TAIL_PID 2>/dev/null || true
           if [ "$BOOTED" = "false" ]; then
-            echo "::error::Simulator did not boot within 3 minutes."
+            echo "::error::Simulator did not boot within 20 minutes."
             tail -50 /tmp/mvn-sim.log || true
             exit 1
           fi
@@ -290,10 +286,10 @@ jobs:
           # Search both locations to be safe.
           {
             find ~/Library/Logs/DiagnosticReports \
-              -name "*forge*" -newer /tmp/mvn-build.log \
+              -name "*forge*" -newer /tmp/mvn-sim.log \
               -exec cat {} \; 2>/dev/null || true
             find ~/Library/Developer/CoreSimulator/Devices \
-              -path "*/Logs/CrashReporter/*forge*" -newer /tmp/mvn-build.log \
+              -path "*/Logs/CrashReporter/*forge*" -newer /tmp/mvn-sim.log \
               -exec cat {} \; 2>/dev/null || true
           } > /tmp/forge-crash-reports.txt
           CRASH_LINES=$(wc -l < /tmp/forge-crash-reports.txt 2>/dev/null || echo 0)
@@ -310,7 +306,7 @@ jobs:
           # in the simulator even though it is read-only on a real device).
           # Use DEVICE_UDID to scope to the current simulator's device directory.
           FORGE_LOG=$(find ~/Library/Developer/CoreSimulator/Devices/"$DEVICE_UDID" \
-            -name "forge.log" -newer /tmp/mvn-build.log 2>/dev/null | head -1 || true)
+            -name "forge.log" -newer /tmp/mvn-sim.log 2>/dev/null | head -1 || true)
           if [ -n "$FORGE_LOG" ]; then
             cp "$FORGE_LOG" /tmp/forge-app-data.log 2>/dev/null || true
             echo "=== forge.log ($(wc -l < /tmp/forge-app-data.log) lines) ==="
@@ -325,7 +321,7 @@ jobs:
         if: always()
         with:
           name: mvn-build-log
-          path: /tmp/mvn-build.log
+          path: /tmp/mvn-sim.log
           if-no-files-found: warn
 
       - name: Upload app and crash logs

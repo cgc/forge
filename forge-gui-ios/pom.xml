@@ -165,38 +165,9 @@
             </build>
         </profile>
         <profile>
-            <id>ios-simulator</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>com.mobidevelop.robovm</groupId>
-                        <artifactId>robovm-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>ios-simulator-build</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <!-- 'install' builds the .app bundle (AOT-compiles) without
-                                         launching the simulator.  The CI workflow then runs
-                                         robovm:iphone-sim via the ios-simulator-launch profile
-                                         in the background to boot and launch the app. -->
-                                    <goal>install</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                        <configuration>
-                            <arch>${ios.simulator.arch}</arch>
-                            <!-- Use the simulator-specific config that omits the device-only .a libs. -->
-                            <configFile>robovm-simulator.xml</configFile>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
-            <!-- ios-simulator-launch: used by the CI workflow to boot the simulator and
-                 launch the app via Maven's iphone-sim goal bound to the pre-integration-test
-                 lifecycle phase.
+            <!-- ios-simulator-launch: used by the CI workflow to compile, boot the simulator,
+                 and launch the app in one Maven invocation (background, with tail -f for live
+                 output).
 
                  Why a lifecycle phase instead of a direct CLI goal:
                  Maven cannot resolve ${revision} in forge-gui-ios's <parent><version> unless
