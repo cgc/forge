@@ -123,7 +123,7 @@ jobs:
           # Write a helper that hashes PNG image data while skipping the top 5 %
           # of rows (the iOS status bar that shows the system clock).  Comparing
           # cropped hashes rather than raw bytes prevents the minute-hand tick from
-          # resetting the stability counter between 20-second polling intervals.
+          # resetting the stability counter between polling intervals.
           cat > /tmp/png_hash.py << 'PYEOF'
           import sys, zlib, struct, hashlib
           path = sys.argv[1]
@@ -153,22 +153,26 @@ jobs:
           print(hashlib.md5(raw[skip_rows * row_bytes:]).hexdigest())
           PYEOF
 
-          echo "Waiting for Forge app process to start..."
-          for j in $(seq 1 20); do
-            sleep 15
-            # Check only by PID (from simctl launch output).
-            # Do NOT use 'pgrep -f "forge.ios.Main"' — the log stream process has
-            # "forge.ios.Main" in its --predicate argument and would always match,
-            # giving a false positive even after the app has crashed.
+          # Quick process-alive check (up to ~30 s).  The app launches
+          # synchronously via simctl so it is either already running or already
+          # dead.  Do NOT use 'pgrep -f forge.ios.Main' — the log stream process
+          # has "forge.ios.Main" in its --predicate and would always match.
+          echo "Checking Forge app process (PID ${APP_PID:-unknown})..."
+          APP_ALIVE=false
+          for j in $(seq 1 6); do
             if [ -n "$APP_PID" ] && kill -0 "$APP_PID" 2>/dev/null; then
-              echo "Forge app process is running (PID $APP_PID)."
+              echo "  Forge app is running (PID $APP_PID)."
+              APP_ALIVE=true
               break
             fi
-            echo "  Check $j/20: app not yet running (PID ${APP_PID:-unknown} not found)..."
+            echo "  Check $j/6: process not found yet — sleeping 5 s..."
+            sleep 5
           done
+          if [ "$APP_ALIVE" = "false" ]; then
+            echo "::warning::App process not found after 30 s (PID ${APP_PID:-unknown}). App may have crashed."
+          fi
 
-          # Print the first lines of the captured logs — stdout/stderr show
-          # JVM exception stack traces; the system log shows OS-level events.
+          # Print captured logs immediately so crash reasons are visible early.
           echo "=== App stdout (first 100 lines) ==="
           head -100 /tmp/forge-app-stdout.log 2>/dev/null || echo "(no stdout captured)"
           echo "==="
@@ -184,11 +188,17 @@ jobs:
           STABLE_COUNT=0
           LAST_SHOT=""
           SCREENSHOT_TAKEN=false
+          DEAD_COUNT=0
 
           for k in $(seq 1 40); do
+            # Take screenshot with a 30-second timeout to prevent 'xcrun simctl io'
+            # from hanging indefinitely if the simulator is in a bad state.
             CUR_SHOT="/tmp/forge-poll-$k.png"
-            xcrun simctl io "$DEVICE_UDID" screenshot "$CUR_SHOT" 2>/dev/null \
-              || { sleep 15; continue; }
+            if ! timeout 30 xcrun simctl io "$DEVICE_UDID" screenshot "$CUR_SHOT" 2>/dev/null; then
+              echo "  Poll $k: screenshot failed/timed out — sleeping 10 s..."
+              sleep 10
+              continue
+            fi
             LAST_SHOT="$CUR_SHOT"
 
             CUR_HASH=$(python3 /tmp/png_hash.py "$CUR_SHOT" 2>/dev/null \
@@ -196,7 +206,7 @@ jobs:
 
             if [ "$CUR_HASH" = "$PREV_HASH" ] && [ -n "$PREV_HASH" ]; then
               STABLE_COUNT=$((STABLE_COUNT + 1))
-              echo "  Screen stable ${STABLE_COUNT}/3 (hash prefix: ${CUR_HASH:0:8})"
+              echo "  Poll $k: screen stable ${STABLE_COUNT}/3 (hash prefix: ${CUR_HASH:0:8})"
               if [ "$STABLE_COUNT" -ge 3 ]; then
                 echo "Screen has stabilized — loading complete."
                 cp "$CUR_SHOT" forge-screenshot.png
@@ -205,9 +215,24 @@ jobs:
               fi
             else
               STABLE_COUNT=0
-              echo "  Screen changed (hash prefix: ${CUR_HASH:0:8})"
+              echo "  Poll $k: screen changed (hash prefix: ${CUR_HASH:0:8})"
             fi
             PREV_HASH="$CUR_HASH"
+
+            # Check process liveness.  If it has been dead for 3 consecutive
+            # polls the app has crashed — take a final screenshot and stop early
+            # rather than polling uselessly for the remaining iterations.
+            if [ -n "$APP_PID" ] && ! kill -0 "$APP_PID" 2>/dev/null; then
+              DEAD_COUNT=$((DEAD_COUNT + 1))
+              echo "  Poll $k: app process gone (dead count $DEAD_COUNT/3)"
+              if [ "$DEAD_COUNT" -ge 3 ]; then
+                echo "::warning::App has been dead for 3 consecutive polls — stopping early."
+                break
+              fi
+            else
+              DEAD_COUNT=0
+            fi
+
             sleep 15
           done
 
