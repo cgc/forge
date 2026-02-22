@@ -88,9 +88,19 @@ jobs:
           xcrun simctl shutdown all 2>/dev/null || true
           sleep 2
 
-          # Boot and install.
+          # Boot the device.
           xcrun simctl boot "$DEVICE_UDID" 2>/dev/null || true
           xcrun simctl bootstatus "$DEVICE_UDID" -b
+
+          # Open Simulator.app to initialize the display service.
+          # 'xcrun simctl io screenshot' requires SimulatorKit's display
+          # service (part of Simulator.app) to be running.  Without it the
+          # screenshot command hangs indefinitely.  Opening Simulator.app
+          # after the device boots attaches to the already-booted device
+          # and starts the display service.
+          open -a Simulator
+          sleep 5  # allow SimulatorKit display service to initialise
+
           xcrun simctl install "$DEVICE_UDID" "$APP_PATH"
 
           # Stream the device log before launching so we capture system-level
@@ -285,6 +295,14 @@ jobs:
           } > /tmp/forge-crash-reports.txt
           CRASH_LINES=$(wc -l < /tmp/forge-crash-reports.txt 2>/dev/null || echo 0)
           echo "Crash report lines collected: $CRASH_LINES"
+
+          # Print app stdout/stderr inline so the error is visible without
+          # downloading the artifact.
+          echo "=== App stdout ==="
+          cat /tmp/forge-app-stdout.log 2>/dev/null || echo "(none)"
+          echo "=== App stderr ==="
+          cat /tmp/forge-app-stderr.log 2>/dev/null || echo "(none)"
+          echo "==="
 
           # Collect the Forge application log written by ExceptionHandler.
           # It lives inside the app bundle's data/ subdirectory (which is writable
