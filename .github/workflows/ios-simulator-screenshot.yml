@@ -36,44 +36,85 @@ jobs:
             robovm-${{ runner.os }}-
 
       - name: Build and launch iOS app in simulator
-        # Run Maven in the FOREGROUND so all build output is visible live in the
-        # GitHub Actions log (via tee) and APP_PID is guaranteed to be in the log
-        # when the step finishes.  This eliminates the background-process race
-        # conditions that previously caused APP_PID=unknown.
+        # Run Maven in the BACKGROUND so the app keeps running while screenshots
+        # are being taken.  Maven's iphone-sim goal uses 'xcrun simctl launch
+        # --console-pty' internally.  Maven blocks (waitFor) on that subprocess
+        # until the app exits.  If Maven is foreground and exits, the PTY master
+        # closes, simctl gets SIGPIPE and exits, and the app receives SIGHUP.
+        # Keeping Maven alive in the background keeps the PTY (and thus the app)
+        # alive throughout the screenshot polling window.
         #
         # Maven's iphone-sim goal:
         #   1. AOT-compiles and copies resources into the .app bundle
-        #   2. Boots the simulator (opens Simulator.app via NSWorkspace)
+        #   2. Boots the simulator (opens Simulator.app via
+        #      'open -a Simulator --args -CurrentDeviceUDID $UDID', which
+        #      registers the SimulatorKit display consumer for screenshots)
         #   3. Installs the .app bundle
-        #   4. Launches the app (prints "forge.ios: <pid>" to stdout)
-        #   5. Returns — the app keeps running independently in the simulator daemon
-        #
-        # After Maven exits we explicitly re-open Simulator.app (idempotent if
-        # already open) and sleep 5 s to ensure its SimulatorKit display consumer
-        # is fully attached before the next step takes screenshots.
+        #   4. Launches the app with --console-pty; Maven then blocks (waitFor)
+        #      until the app exits — keeping PTY and app alive in background
         run: |
           # Kill any lingering simulator sessions.  'shutdown all' can hang on a
-          # stale simulator, so cap it at 30 s.
-          timeout 30 xcrun simctl shutdown all 2>/dev/null || true
+          # stale simulator, so use perl alarm as a portable timeout (macOS has
+          # no GNU 'timeout' command — it only has 'gtimeout' from coreutils,
+          # and 'timeout' is not available at all on the PATH).
+          perl -e 'alarm 30; exec @ARGV' -- xcrun simctl shutdown all 2>/dev/null || true
           sleep 2
 
           export _JAVA_OPTIONS="-Xmx4g"
-          # Run Maven foreground; tee so output appears live in the step log AND
-          # is saved to file for artifact upload and PID extraction.
-          set -o pipefail
-          mvn -B -e \
+          # Run Maven in the background.  Use nohup + disown so Maven survives
+          # step-shell exit.  Stream output live via 'tail -f' so the build log
+          # is visible in the GitHub Actions log while we wait.
+          nohup mvn -B -e \
             -Dmaven.test.skip=true \
             -pl forge-gui-ios -am \
             -P ios-simulator-launch \
             clean pre-integration-test \
-            2>&1 | tee /tmp/mvn-sim.log
-          echo "Maven build complete."
+            > /tmp/mvn-sim.log 2>&1 &
+          MVN_PID=$!
+          disown
+          echo "Maven PID: $MVN_PID (running in background)"
+
+          # Stream Maven output live while waiting for app launch.
+          tail -f /tmp/mvn-sim.log &
+          TAIL_PID=$!
+          disown
+
+          # Wait for iphone-sim to print the app PID line (up to 20 min).
+          # Budget covers first-run AOT compile (~10–15 min) + resource copy (~4 min).
+          echo "Waiting for app launch (up to 20 min)..."
+          LAUNCHED=false
+          for i in $(seq 1 240); do
+            if grep -qE 'forge\.ios: [0-9]+' /tmp/mvn-sim.log 2>/dev/null; then
+              echo "App launch line detected after $((i * 5)) s."
+              LAUNCHED=true
+              break
+            fi
+            # Fail fast if Maven exited before the app launched.
+            if ! kill -0 "$MVN_PID" 2>/dev/null; then
+              kill "$TAIL_PID" 2>/dev/null || true
+              echo "::error::Maven exited before the app launched."
+              tail -50 /tmp/mvn-sim.log
+              exit 1
+            fi
+            sleep 5
+          done
+          kill "$TAIL_PID" 2>/dev/null || true
+
+          if [ "$LAUNCHED" != "true" ]; then
+            echo "::error::App did not launch within 20 minutes."
+            tail -50 /tmp/mvn-sim.log
+            kill "$MVN_PID" 2>/dev/null || true
+            exit 1
+          fi
 
           # Extract the app PID that iphone-sim printed to its log.
           APP_PID=$(grep -oE 'forge\.ios: [0-9]+' /tmp/mvn-sim.log \
             | tail -1 | grep -oE '[0-9]+$' || true)
           echo "APP_PID=${APP_PID:-unknown}" >> "$GITHUB_ENV"
           echo "App PID: ${APP_PID:-not found}"
+
+          # Persist Maven PID so the Stop simulator step can kill it.
+          echo "MVN_PID=$MVN_PID" >> "$GITHUB_ENV"
 
           # Capture the UDID of the booted device for screenshot and crash-report search.
           DEVICE_UDID=$(xcrun simctl list devices --json 2>/dev/null | python3 -c "
@@ -90,15 +131,14 @@ jobs:
           echo "Booted device UDID: ${DEVICE_UDID:-unknown}"
           if [ -z "$DEVICE_UDID" ]; then
             echo "::error::Could not determine booted device UDID after Maven build."
+            kill "$MVN_PID" 2>/dev/null || true
             exit 1
           fi
           echo "DEVICE_UDID=${DEVICE_UDID}" >> "$GITHUB_ENV"
 
-          # Ensure Simulator.app is open and its display consumer attached.
-          # iphone-sim opens it via NSWorkspace during the build; re-opening is
-          # idempotent (focuses the existing window) and guarantees the display
-          # service is ready for 'xcrun simctl io screenshot' in the next step.
-          open -a Simulator
+          # iphone-sim already opened Simulator.app via NSWorkspace with the
+          # specific device UDID, registering the SimulatorKit display consumer.
+          # Sleep 5 s to let the display service fully attach before screenshots.
           sleep 5
 
       - name: Wait for app to load and capture screenshot
@@ -178,7 +218,9 @@ jobs:
             # Take screenshot with a 30-second timeout to prevent 'xcrun simctl io'
             # from hanging indefinitely if the simulator is in a bad state.
             CUR_SHOT="/tmp/forge-poll-$k.png"
-            SCREENSHOT_ERR=$( { timeout 30 xcrun simctl io "$DEVICE_UDID" screenshot "$CUR_SHOT"; } 2>&1 ) || {
+            # macOS has no GNU 'timeout'; use perl alarm as a portable wrapper.
+            SCREENSHOT_ERR=$( { perl -e 'alarm 30; exec @ARGV' -- \
+              xcrun simctl io "$DEVICE_UDID" screenshot "$CUR_SHOT"; } 2>&1 ) || {
               echo "  Poll $k: screenshot failed — $SCREENSHOT_ERR — sleeping 10 s..."
               sleep 10
               continue
@@ -235,6 +277,13 @@ jobs:
       - name: Stop simulator
         if: always()
         run: |
+          # Kill the background Maven process (which is blocking on the
+          # --console-pty simctl subprocess that keeps the app alive).
+          if [[ "$MVN_PID" =~ ^[0-9]+$ ]]; then
+            kill "$MVN_PID" 2>/dev/null || true
+            echo "Sent SIGTERM to Maven process $MVN_PID"
+          fi
+
           # Use 'log show' (historical, not streaming) to capture any log
           # messages from the app's lifetime that the real-time 'log stream'
           # may have missed due to startup timing.
