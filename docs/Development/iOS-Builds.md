@@ -87,13 +87,135 @@ After the app launches in Simulator, verify the same items listed under "What to
 
 ## Building for a Physical Device
 
-Connect an iOS device and ensure it is trusted on the Mac, then:
+### 1. Register your device and create a provisioning profile
 
+Before MobiVM can sign and install the app you need:
+
+1. **Enroll in the Apple Developer Program** — a paid membership
+   ($99/year as of 2025) at <https://developer.apple.com/programs/enroll/>.
+   A free Apple ID gives 7-day renewable development certificates but limits
+   you to 3 app IDs per week and cannot distribute outside Xcode.
+
+2. **Register your device** — plug the iPhone or iPad into your Mac,
+   open Xcode → **Window → Devices and Simulators**, and note the
+   **Identifier** (UDID).  Add the device in the Apple Developer portal under
+   **Certificates, Identifiers & Profiles → Devices**.
+
+3. **Create an App ID** — in the portal under **Identifiers**, add a new App
+   ID with the explicit bundle ID `forge.ios` (matching `app.id` in
+   `forge-gui-ios/robovm.properties`).
+
+4. **Create a Development provisioning profile** — in the portal under
+   **Profiles**, generate a new **iOS App Development** profile that references
+   the `forge.ios` App ID, your development certificate, and your registered
+   device.  Download the `.mobileprovision` file and double-click it to install
+   it into Xcode's library (or copy it to
+   `~/Library/MobileDevice/Provisioning Profiles/`).
+
+### 2. Configure signing
+
+MobiVM reads signing settings from `robovm.xml` or from Maven system
+properties passed on the command line.
+
+**Option A — command-line system properties (no file changes required)**
+
+Pass the signing details directly to Maven:
+
+```bash
+mvn -U -B clean -P ios-device install \
+    -Drobovm.iosSignIdentity="iPhone Developer: Your Name (TEAMID)" \
+    -Drobovm.iosProvisioningProfile="Forge Development"
 ```
+
+This is convenient for CI or when you share the repo and don't want to commit
+personal signing details.
+
+**Option B — persist in `robovm.xml`**
+
+Add `<iosSignIdentity>` and `<iosProvisioningProfile>` to
+`forge-gui-ios/robovm.xml` inside the `<config>` root:
+
+```xml
+<iosSignIdentity>iPhone Developer: Your Name (TEAMID)</iosSignIdentity>
+<iosProvisioningProfile>Forge Development</iosProvisioningProfile>
+```
+
+`iosSignIdentity` must match the **Common Name** shown in Keychain Access
+(look for a certificate whose name starts with "Apple Development" or "iPhone
+Developer").  List available identities with:
+
+```bash
+security find-identity -v -p codesigning
+```
+
+`iosProvisioningProfile` is the **Name** of the provisioning profile as shown
+in Xcode → **Settings → Accounts → Manage Certificates**, or the UUID of the
+`.mobileprovision` file.  List installed profiles with:
+
+```bash
+ls ~/Library/MobileDevice/Provisioning\ Profiles/
+```
+
+> **Note:** `robovm.xml` is committed to the repository.  Avoid committing
+> personal signing identities — prefer Option A (command-line properties) or
+> a local `~/.robovm/global.properties` file for persistent overrides.
+
+### 3. Build the IPA
+
+Connect your iOS device, unlock it, and trust the Mac if prompted.  From the
+repository root:
+
+```bash
+# Using signing details from robovm.xml
 mvn -U -B clean -P ios-device install
+
+# Or pass signing details inline (overrides robovm.xml):
+mvn -U -B clean -P ios-device install \
+    -Drobovm.iosSignIdentity="iPhone Developer: Your Name (TEAMID)" \
+    -Drobovm.iosProvisioningProfile="Forge Development"
 ```
 
-This produces a signed `.ipa` under `forge-gui-ios/target/`.
+A convenience script is provided that also deploys to the connected device
+after the build — see [`forge-gui-ios/scripts/ios-device-build.sh`](../../forge-gui-ios/scripts/ios-device-build.sh).
+
+### 4. Deploy the IPA to the device
+
+The `create-ipa` Maven goal produces a signed `.ipa` but does not transfer it
+to the device.  Choose one of the following methods:
+
+**Option A — `ios-deploy` (recommended, command-line)**
+
+Install via Homebrew if not already present:
+
+```bash
+brew install ios-deploy
+```
+
+Then install and launch the app on the first connected device:
+
+```bash
+ios-deploy --bundle forge-gui-ios/target/forge-ios-$(mvn help:evaluate \
+    -Dexpression=revision -q -DforceStdout 2>/dev/null).ipa \
+    --justlaunch
+```
+
+Or use the helper script, which captures the version automatically:
+
+```bash
+./forge-gui-ios/scripts/ios-device-build.sh --deploy
+```
+
+**Option B — Xcode Devices window**
+
+1. Open Xcode → **Window → Devices and Simulators**.
+2. Select your device in the left panel.
+3. Click the **+** button under *Installed Apps* and choose the `.ipa` file
+   from `forge-gui-ios/target/`.
+
+**Option C — Apple Configurator 2**
+
+Drag the `.ipa` onto the device in Apple Configurator 2 (available from the
+Mac App Store).
 
 ## Version Management
 
@@ -254,5 +376,20 @@ The local patch committed to `forge-gui-ios/local-repo/` is therefore the only v
   path is not set. Run `sudo xcode-select --switch /Applications/Xcode.app`.
 - **Compilation OOM errors** — Increase the Maven heap: `export _JAVA_OPTIONS="-Xmx4g"` before
   running the build.
-- **Missing provisioning profile** — Sign in to your Apple Developer account in Xcode and create a
-  matching provisioning profile for the bundle identifier `forge.ios`.
+- **Missing provisioning profile** — Sign in to your Apple Developer account in Xcode
+  (**Preferences → Accounts**) and create a matching provisioning profile for the bundle identifier
+  `forge.ios`, then add `<iosProvisioningProfile>` to `robovm.xml` or pass
+  `-Drobovm.iosProvisioningProfile=...` on the command line.
+- **`No signing identity found`** — Run `security find-identity -v -p codesigning` to list
+  installed certificates.  If none are shown, import your development certificate from the Apple
+  Developer portal into Keychain Access.
+- **`ambiguous identity` / multiple matching certificates** — Provide the full Common Name or the
+  10-character Team ID suffix, e.g. `"iPhone Developer: Your Name (ABCDE12345)"`.
+- **App crashes on launch without any console output** — Enable the device's developer mode
+  (**Settings → Privacy & Security → Developer Mode**) and consult the device log; see
+  [iOS Debugging](iOS-Debugging.md) for step-by-step instructions.
+- **`The app could not be installed … a valid provisioning profile for this executable was not found`**
+  — Your UDID is not listed in the provisioning profile.  Re-create the profile after adding the
+  device in the Apple Developer portal.
+
+For more detailed on-device debugging steps see [iOS Debugging](iOS-Debugging.md).
