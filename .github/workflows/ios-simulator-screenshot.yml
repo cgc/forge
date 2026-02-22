@@ -48,88 +48,105 @@ jobs:
 
       - name: Boot simulator and launch app
         run: |
-          # The MobiVM 'install' goal places the app bundle contents flat in
-          # forge-gui-ios/target/robovm/ (binary, Info.plist, res/, lib/, …).
-          # xcrun simctl install requires a directory with a .app suffix, so
-          # rename target/robovm to target/Forge.app (matching app.name in
-          # robovm.properties).
-          ROBOVM_OUT="forge-gui-ios/target/robovm"
-          APP_PATH="forge-gui-ios/target/Forge.app"
-          if [ ! -d "$ROBOVM_OUT" ]; then
-            echo "::error::MobiVM output directory not found: $ROBOVM_OUT"
-            find forge-gui-ios/target -maxdepth 2 -type d 2>/dev/null || true
+          # Use Maven's iphone-sim goal to boot the simulator and launch the app.
+          # This is the only reliable way to initialise the SimulatorKit display
+          # consumer that 'xcrun simctl io screenshot' needs.  Direct xcrun
+          # simctl boot + 'open -a Simulator' leaves the display consumer
+          # unregistered ("Evaluated capturing state as 0" in UIKitCore log),
+          # so every screenshot poll fails immediately.
+          #
+          # Maven's iphone-sim goal opens Simulator.app via NSWorkspace, which
+          # properly attaches the window as a display consumer for the booted
+          # device.  The ios-simulator-launch profile configures the plugin with
+          # the same arch/configFile as the build profile but has no <executions>
+          # binding, so calling 'robovm:iphone-sim' as a direct plugin goal skips
+          # all lifecycle phases (no Java recompilation).  MobiVM's incremental
+          # build detects that target/robovm/ is already current and skips AOT
+          # recompilation too.
+          #
+          # nohup + disown keep the Maven process alive between GitHub Actions
+          # steps (the step shell exits but the process keeps running).
+
+          xcrun simctl shutdown all 2>/dev/null || true
+          sleep 2
+
+          touch /tmp/mvn-sim.log
+          nohup mvn -B \
+            -Dmaven.test.skip=true \
+            -pl forge-gui-ios \
+            -P ios-simulator-launch \
+            robovm:iphone-sim \
+            &>/tmp/mvn-sim.log &
+          MVN_SIM_PID=$!
+          disown $MVN_SIM_PID
+          echo "Maven simulator PID: $MVN_SIM_PID"
+          echo "MVN_SIM_PID=$MVN_SIM_PID" >> "$GITHUB_ENV"
+
+          # Wait up to 3 minutes for the simulator to boot.
+          echo "Waiting for simulator to boot..."
+          BOOTED=false
+          for i in $(seq 1 36); do
+            if xcrun simctl list devices 2>/dev/null | grep -q "(Booted)"; then
+              BOOTED=true
+              echo "Simulator booted (attempt $i/36)."
+              break
+            fi
+            # Bail early if Maven exited unexpectedly.
+            if ! kill -0 "$MVN_SIM_PID" 2>/dev/null; then
+              echo "::error::Maven simulator process exited early. Last 50 lines:"
+              tail -50 /tmp/mvn-sim.log || true
+              exit 1
+            fi
+            echo "  Attempt $i/36: not booted yet — sleeping 5 s..."
+            sleep 5
+          done
+          if [ "$BOOTED" = "false" ]; then
+            echo "::error::Simulator did not boot within 3 minutes."
+            tail -50 /tmp/mvn-sim.log || true
             exit 1
           fi
-          mv "$ROBOVM_OUT" "$APP_PATH"
-          echo "App bundle: $APP_PATH"
 
-          # Pick the newest available iPhone simulator.
-          DEVICE_UDID=$(xcrun simctl list devices available --json 2>/dev/null | python3 -c "
+          # Capture the UDID of the booted device for crash-report search.
+          DEVICE_UDID=$(xcrun simctl list devices --json 2>/dev/null | python3 -c "
           import json, sys
           d = json.load(sys.stdin)['devices']
           for runtime in sorted(d.keys(), reverse=True):
               if 'iOS' in runtime:
                   for dev in d[runtime]:
-                      if dev['isAvailable'] and 'iPhone' in dev['name']:
+                      if dev.get('state') == 'Booted' and 'iPhone' in dev['name']:
                           print(dev['udid'])
                           sys.exit(0)
           sys.exit(1)
           " 2>/dev/null || true)
+          echo "Booted device UDID: ${DEVICE_UDID:-unknown}"
           if [ -z "$DEVICE_UDID" ]; then
-            echo "::error::No available iPhone simulator device found"
-            xcrun simctl list devices
+            echo "::error::Could not determine booted device UDID."
             exit 1
           fi
-          echo "Simulator device: $DEVICE_UDID"
+          echo "DEVICE_UDID=${DEVICE_UDID}" >> "$GITHUB_ENV"
 
-          # Shut down any running simulators first so we start with a clean
-          # display service.  Stale simulator state from a previous run can
-          # cause 'xcrun simctl io screenshot' to hang indefinitely.
-          xcrun simctl shutdown all 2>/dev/null || true
-          sleep 2
-
-          # Boot the device.
-          xcrun simctl boot "$DEVICE_UDID" 2>/dev/null || true
-          xcrun simctl bootstatus "$DEVICE_UDID" -b
-
-          # Open Simulator.app to initialize the display service.
-          # 'xcrun simctl io screenshot' requires SimulatorKit's display
-          # service (part of Simulator.app) to be running.  Without it the
-          # screenshot command hangs indefinitely.  Opening Simulator.app
-          # after the device boots attaches to the already-booted device
-          # and starts the display service.
-          open -a Simulator
-          sleep 5  # allow SimulatorKit display service to initialise
-
-          xcrun simctl install "$DEVICE_UDID" "$APP_PATH"
-
-          # Stream the device log before launching so we capture system-level
-          # startup messages and any Java exceptions.
-          xcrun simctl spawn booted log stream \
-            --predicate 'processImagePath ENDSWITH "forge.ios.Main" OR process == "forge.ios.Main"' \
-            >> /tmp/forge-app-log.txt 2>&1 &
-          SIM_LOG_PID=$!
-          # Detach from the step shell so the log stream is not killed when
-          # bash exits at the end of this step (prevents SIGHUP on step exit).
-          disown $SIM_LOG_PID
-          sleep 1  # give the log stream time to start
-
-          # Launch the app.  --stdout/--stderr redirect the app's file
-          # descriptors 1 and 2 to files on the host; simctl exits immediately
-          # after printing "forge.ios: <pid>" and the app keeps running.
-          touch /tmp/forge-app-stdout.log /tmp/forge-app-stderr.log
-          LAUNCH_OUT=$(xcrun simctl launch \
-            --stdout=/tmp/forge-app-stdout.log \
-            --stderr=/tmp/forge-app-stderr.log \
-            "$DEVICE_UDID" forge.ios 2>&1)
-          echo "simctl launch output: $LAUNCH_OUT"
-          APP_PID=$(echo "$LAUNCH_OUT" | grep -oE 'forge\.ios: [0-9]+' \
-            | grep -oE '[0-9]+$' | head -1 || true)
-          echo "App PID: ${APP_PID:-not available}"
-
-          echo "DEVICE_UDID=$DEVICE_UDID"   >> "$GITHUB_ENV"
-          echo "APP_PID=$APP_PID"           >> "$GITHUB_ENV"
-          echo "SIM_LOG_PID=$SIM_LOG_PID"   >> "$GITHUB_ENV"
+          # Wait up to 60 s for Maven to install and launch the app.
+          echo "Waiting for Forge app to launch..."
+          APP_PID=""
+          for i in $(seq 1 12); do
+            # Maven's iphone-sim prints "forge.ios: <pid>" to its log when the
+            # app launches — the same output format as xcrun simctl launch.
+            APP_PID=$(grep -oE 'forge\.ios: [0-9]+' /tmp/mvn-sim.log 2>/dev/null \
+              | tail -1 | grep -oE '[0-9]+$' || true)
+            if [ -n "$APP_PID" ]; then
+              echo "Forge app launched (PID $APP_PID, attempt $i/12)."
+              break
+            fi
+            if ! kill -0 "$MVN_SIM_PID" 2>/dev/null; then
+              echo "::error::Maven process exited before app launched. Last 50 lines:"
+              tail -50 /tmp/mvn-sim.log || true
+              exit 1
+            fi
+            echo "  Attempt $i/12: app not yet launched — sleeping 5 s..."
+            sleep 5
+          done
+          echo "APP_PID=${APP_PID:-unknown}" >> "$GITHUB_ENV"
+          echo "App PID: ${APP_PID:-not found}"
 
       - name: Wait for app to load and capture screenshot
         run: |
@@ -167,9 +184,9 @@ jobs:
           PYEOF
 
           # Quick process-alive check (up to ~30 s).  The app launches
-          # synchronously via simctl so it is either already running or already
-          # dead.  Do NOT use 'pgrep -f forge.ios.Main' — the log stream process
-          # has "forge.ios.Main" in its --predicate and would always match.
+          # synchronously via Maven so it is either already running or already
+          # dead.  Check via kill -0 on the host PID (simulator processes are
+          # real macOS processes).
           echo "Checking Forge app process (PID ${APP_PID:-unknown})..."
           APP_ALIVE=false
           for j in $(seq 1 6); do
@@ -186,14 +203,8 @@ jobs:
           fi
 
           # Print captured logs immediately so crash reasons are visible early.
-          echo "=== App stdout (first 100 lines) ==="
-          head -100 /tmp/forge-app-stdout.log 2>/dev/null || echo "(no stdout captured)"
-          echo "==="
-          echo "=== App stderr (first 100 lines) ==="
-          head -100 /tmp/forge-app-stderr.log 2>/dev/null || echo "(no stderr captured)"
-          echo "==="
-          echo "=== System log stream (first 100 lines) ==="
-          head -100 /tmp/forge-app-log.txt 2>/dev/null || echo "(no system log stream captured)"
+          echo "=== Maven simulator log (first 100 lines) ==="
+          head -100 /tmp/mvn-sim.log 2>/dev/null || echo "(no Maven sim log captured)"
           echo "==="
           echo "=== Historical system log (last 2 min, forge process) ==="
           xcrun simctl spawn booted log show \
@@ -269,8 +280,8 @@ jobs:
       - name: Stop simulator
         if: always()
         run: |
-          # Stop the background log stream.
-          [ -n "$SIM_LOG_PID" ]  && kill "$SIM_LOG_PID"  2>/dev/null || true
+          # Stop the background Maven simulator process.
+          [ -n "$MVN_SIM_PID" ] && kill "$MVN_SIM_PID" 2>/dev/null || true
 
           # Use 'log show' (historical, not streaming) to capture any log
           # messages from the app's lifetime that the real-time 'log stream'
@@ -296,12 +307,10 @@ jobs:
           CRASH_LINES=$(wc -l < /tmp/forge-crash-reports.txt 2>/dev/null || echo 0)
           echo "Crash report lines collected: $CRASH_LINES"
 
-          # Print app stdout/stderr inline so the error is visible without
+          # Print Maven simulator log inline so the error is visible without
           # downloading the artifact.
-          echo "=== App stdout ==="
-          cat /tmp/forge-app-stdout.log 2>/dev/null || echo "(none)"
-          echo "=== App stderr ==="
-          cat /tmp/forge-app-stderr.log 2>/dev/null || echo "(none)"
+          echo "=== Maven simulator log (tail 100 lines) ==="
+          tail -100 /tmp/mvn-sim.log 2>/dev/null || echo "(none)"
           echo "==="
 
           # Collect the Forge application log written by ExceptionHandler.
@@ -333,8 +342,7 @@ jobs:
         with:
           name: app-logs
           path: |
-            /tmp/forge-app-stdout.log
-            /tmp/forge-app-stderr.log
+            /tmp/mvn-sim.log
             /tmp/forge-app-log.txt
             /tmp/forge-crash-reports.txt
             /tmp/forge-app-data.log

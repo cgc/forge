@@ -177,10 +177,9 @@
                                 <phase>package</phase>
                                 <goals>
                                     <!-- 'install' builds the .app bundle (AOT-compiles) without
-                                         launching the simulator.  The CI workflow then boots the
-                                         simulator and launches the app via 'xcrun simctl', keeping
-                                         the Maven build in the foreground so its log is visible in
-                                         GitHub Actions UI. -->
+                                         launching the simulator.  The CI workflow then runs
+                                         robovm:iphone-sim via the ios-simulator-launch profile
+                                         in the background to boot and launch the app. -->
                                     <goal>install</goal>
                                 </goals>
                             </execution>
@@ -188,6 +187,32 @@
                         <configuration>
                             <arch>${ios.simulator.arch}</arch>
                             <!-- Use the simulator-specific config that omits the device-only .a libs. -->
+                            <configFile>robovm-simulator.xml</configFile>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <!-- ios-simulator-launch: used by the CI workflow to boot the simulator and
+                 launch the app via Maven's iphone-sim goal (invoked as a direct plugin
+                 goal, not bound to any lifecycle phase).  This avoids recompilation
+                 because MobiVM's incremental build detects that target/robovm/ is already
+                 up-to-date from the preceding ios-simulator build step.
+
+                 Crucially, Maven's iphone-sim goal opens Simulator.app via the macOS SDK
+                 (NSWorkspace), which properly registers the device as a SimulatorKit
+                 display consumer.  This is required for 'xcrun simctl io screenshot' to
+                 work.  Direct 'xcrun simctl boot' + 'open -a Simulator' does NOT register
+                 the display consumer, so screenshots fail with "capturing state 0". -->
+            <id>ios-simulator-launch</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.mobidevelop.robovm</groupId>
+                        <artifactId>robovm-maven-plugin</artifactId>
+                        <configuration>
+                            <arch>${ios.simulator.arch}</arch>
                             <configFile>robovm-simulator.xml</configFile>
                         </configuration>
                     </plugin>
