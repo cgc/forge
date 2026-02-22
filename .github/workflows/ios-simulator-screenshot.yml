@@ -75,7 +75,7 @@ jobs:
             -Dmaven.test.skip=true \
             -pl forge-gui-ios -am \
             -P ios-simulator-launch \
-            robovm:iphone-sim \
+            com.mobidevelop.robovm:robovm-maven-plugin:2.3.24:iphone-sim \
             &>/tmp/mvn-sim.log &
           MVN_SIM_PID=$!
           disown $MVN_SIM_PID
