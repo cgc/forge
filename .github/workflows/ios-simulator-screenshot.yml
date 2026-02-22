@@ -70,10 +70,24 @@ jobs:
           xcrun simctl shutdown all 2>/dev/null || true
           sleep 2
 
+          # Extract the project version so Maven can resolve ${revision} in the
+          # child POM's <parent> section without -am (which would add the root
+          # module to the reactor and cause iphone-sim to run on it too,
+          # failing with "No target and no main class specified").
+          # The build step already installed all artifacts including the root
+          # POM at the resolved version, so -Drevision=<value> lets Maven find
+          # forge:forge:pom:<version> in ~/.m2 without needing -am.
+          # pom.xml defines: <revision>${versionCode}${snapshotName}</revision>
+          VCODE=$(grep -m1 '<versionCode>' pom.xml | tr -d ' \t' | sed 's|.*>\(.*\)<.*|\1|')
+          SNAP=$(grep -m1 '<snapshotName>' pom.xml | tr -d ' \t' | sed 's|.*>\(.*\)<.*|\1|')
+          REVISION="${VCODE}${SNAP}"
+          echo "Resolved revision: $REVISION"
+
           touch /tmp/mvn-sim.log
           nohup mvn -B \
             -Dmaven.test.skip=true \
-            -pl forge-gui-ios -am \
+            -pl forge-gui-ios \
+            -Drevision="$REVISION" \
             -P ios-simulator-launch \
             com.mobidevelop.robovm:robovm-maven-plugin:2.3.24:iphone-sim \
             &>/tmp/mvn-sim.log &
