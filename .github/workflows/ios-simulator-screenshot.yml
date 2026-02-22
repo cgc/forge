@@ -93,31 +93,30 @@ jobs:
             --predicate 'processImagePath ENDSWITH "forge.ios.Main" OR process == "forge.ios.Main"' \
             >> /tmp/forge-app-log.txt 2>&1 &
           SIM_LOG_PID=$!
+          # Detach from the step shell so the log stream is not killed when
+          # bash exits at the end of this step (prevents SIGHUP on step exit).
+          disown $SIM_LOG_PID
           sleep 1  # give the log stream time to start
 
-          # --console pipes the app's stdout+stderr (including JVM exception
-          # stack traces) to forge-console.log.  Unlike --console-pty, a plain
-          # pipe is not subject to PTY output buffering, so output is visible
-          # even if the app crashes immediately after launch.
-          xcrun simctl launch --console "$DEVICE_UDID" forge.ios \
-            > /tmp/forge-console.log 2>&1 &
-          CONSOLE_PID=$!
-
-          # Wait for simctl to write the PID announcement line ("forge.ios: <pid>").
-          # Retry up to 10 seconds rather than using a fixed sleep.
-          APP_PID=""
-          for _i in $(seq 1 10); do
-            sleep 1
-            APP_PID=$(grep -m1 -oE 'forge\.ios: [0-9]+' /tmp/forge-console.log 2>/dev/null \
-              | grep -oE '[0-9]+$' || true)
-            [ -n "$APP_PID" ] && break
-          done
+          # Launch the app with --stdout/--stderr file redirects.  Unlike
+          # --console, this does NOT tie the app lifecycle to the xcrun process:
+          # simctl prints "forge.ios: <pid>" and exits immediately, while the
+          # app keeps running and its output goes directly to the named files.
+          # (With --console, when the xcrun background process dies due to the
+          # step shell exiting, iOS Simulator sends SIGTERM to the app.)
+          touch /tmp/forge-app-stdout.log /tmp/forge-app-stderr.log
+          LAUNCH_OUT=$(xcrun simctl launch \
+            --stdout=/tmp/forge-app-stdout.log \
+            --stderr=/tmp/forge-app-stderr.log \
+            "$DEVICE_UDID" forge.ios 2>&1)
+          echo "simctl launch output: $LAUNCH_OUT"
+          APP_PID=$(echo "$LAUNCH_OUT" | grep -oE 'forge\.ios: [0-9]+' \
+            | grep -oE '[0-9]+$' | head -1 || true)
           echo "App PID: ${APP_PID:-not available}"
 
           echo "DEVICE_UDID=$DEVICE_UDID"   >> "$GITHUB_ENV"
           echo "APP_PID=$APP_PID"           >> "$GITHUB_ENV"
           echo "SIM_LOG_PID=$SIM_LOG_PID"   >> "$GITHUB_ENV"
-          echo "CONSOLE_PID=$CONSOLE_PID"   >> "$GITHUB_ENV"
 
       - name: Wait for app to load and capture screenshot
         run: |
@@ -168,10 +167,13 @@ jobs:
             echo "  Check $j/20: app not yet running (PID ${APP_PID:-unknown} not found)..."
           done
 
-          # Print the first lines of both captured logs — the console log
-          # shows JVM exception stack traces; the system log shows OS-level events.
-          echo "=== App console log (stdout/stderr, first 100 lines) ==="
-          head -100 /tmp/forge-console.log 2>/dev/null || echo "(no console log captured)"
+          # Print the first lines of the captured logs — stdout/stderr show
+          # JVM exception stack traces; the system log shows OS-level events.
+          echo "=== App stdout (first 100 lines) ==="
+          head -100 /tmp/forge-app-stdout.log 2>/dev/null || echo "(no stdout captured)"
+          echo "==="
+          echo "=== App stderr (first 100 lines) ==="
+          head -100 /tmp/forge-app-stderr.log 2>/dev/null || echo "(no stderr captured)"
           echo "==="
           echo "=== System log (first 100 lines) ==="
           head -100 /tmp/forge-app-log.txt 2>/dev/null || echo "(no system log captured)"
@@ -224,9 +226,8 @@ jobs:
       - name: Stop simulator
         if: always()
         run: |
-          # Stop the background log stream and console capture.
+          # Stop the background log stream.
           [ -n "$SIM_LOG_PID" ]  && kill "$SIM_LOG_PID"  2>/dev/null || true
-          [ -n "$CONSOLE_PID" ]  && kill "$CONSOLE_PID"  2>/dev/null || true
           xcrun simctl shutdown all 2>/dev/null || true
 
           # Collect crash reports.  iOS Simulator writes them to the per-device
@@ -266,7 +267,8 @@ jobs:
         with:
           name: app-logs
           path: |
-            /tmp/forge-console.log
+            /tmp/forge-app-stdout.log
+            /tmp/forge-app-stderr.log
             /tmp/forge-app-log.txt
             /tmp/forge-crash-reports.txt
             /tmp/forge-app-data.log
