@@ -48,48 +48,26 @@ jobs:
 
       - name: Boot simulator and launch app
         run: |
-          # Use Maven's iphone-sim goal to boot the simulator and launch the app.
-          # This is the only reliable way to initialise the SimulatorKit display
-          # consumer that 'xcrun simctl io screenshot' needs.  Direct xcrun
-          # simctl boot + 'open -a Simulator' leaves the display consumer
-          # unregistered ("Evaluated capturing state as 0" in UIKitCore log),
-          # so every screenshot poll fails immediately.
-          #
-          # Maven's iphone-sim goal opens Simulator.app via NSWorkspace, which
-          # properly attaches the window as a display consumer for the booted
-          # device.  The ios-simulator-launch profile configures the plugin with
-          # the same arch/configFile as the build profile but has no <executions>
-          # binding, so calling 'robovm:iphone-sim' as a direct plugin goal skips
-          # all lifecycle phases (no Java recompilation).  MobiVM's incremental
-          # build detects that target/robovm/ is already current and skips AOT
-          # recompilation too.
-          #
-          # nohup + disown keep the Maven process alive between GitHub Actions
-          # steps (the step shell exits but the process keeps running).
+          # Use Maven's iphone-sim goal (bound to pre-integration-test phase via the
+          # ios-simulator-launch profile) to boot the simulator and launch the app.
+          # See forge-gui-ios/pom.xml for a detailed rationale.
+          # Key points:
+          #   - Maven iphone-sim opens Simulator.app via NSWorkspace, which properly
+          #     registers the SimulatorKit display consumer needed by xcrun simctl io
+          #     screenshot.  Direct xcrun approaches leave it unregistered.
+          #   - -am is required to put the root POM in the reactor so Maven can
+          #     resolve ${revision} in forge-gui-ios's <parent><version>.
+          #   - nohup + disown keep the Maven process alive between GitHub Actions steps.
 
           xcrun simctl shutdown all 2>/dev/null || true
           sleep 2
 
-          # Extract the project version so Maven can resolve ${revision} in the
-          # child POM's <parent> section without -am (which would add the root
-          # module to the reactor and cause iphone-sim to run on it too,
-          # failing with "No target and no main class specified").
-          # The build step already installed all artifacts including the root
-          # POM at the resolved version, so -Drevision=<value> lets Maven find
-          # forge:forge:pom:<version> in ~/.m2 without needing -am.
-          # pom.xml defines: <revision>${versionCode}${snapshotName}</revision>
-          VCODE=$(grep -m1 '<versionCode>' pom.xml | tr -d ' \t' | sed 's|.*>\(.*\)<.*|\1|')
-          SNAP=$(grep -m1 '<snapshotName>' pom.xml | tr -d ' \t' | sed 's|.*>\(.*\)<.*|\1|')
-          REVISION="${VCODE}${SNAP}"
-          echo "Resolved revision: $REVISION"
-
           touch /tmp/mvn-sim.log
           nohup mvn -B \
             -Dmaven.test.skip=true \
-            -pl forge-gui-ios \
-            -Drevision="$REVISION" \
+            -pl forge-gui-ios -am \
             -P ios-simulator-launch \
-            com.mobidevelop.robovm:robovm-maven-plugin:2.3.24:iphone-sim \
+            pre-integration-test \
             &>/tmp/mvn-sim.log &
           MVN_SIM_PID=$!
           disown $MVN_SIM_PID

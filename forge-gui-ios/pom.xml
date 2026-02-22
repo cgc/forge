@@ -195,22 +195,39 @@
         </profile>
         <profile>
             <!-- ios-simulator-launch: used by the CI workflow to boot the simulator and
-                 launch the app via Maven's iphone-sim goal (invoked as a direct plugin
-                 goal, not bound to any lifecycle phase).  This avoids recompilation
-                 because MobiVM's incremental build detects that target/robovm/ is already
-                 up-to-date from the preceding ios-simulator build step.
+                 launch the app via Maven's iphone-sim goal bound to the pre-integration-test
+                 lifecycle phase.
 
-                 Crucially, Maven's iphone-sim goal opens Simulator.app via the macOS SDK
-                 (NSWorkspace), which properly registers the device as a SimulatorKit
-                 display consumer.  This is required for 'xcrun simctl io screenshot' to
-                 work.  Direct 'xcrun simctl boot' + 'open -a Simulator' does NOT register
-                 the display consumer, so screenshots fail with "capturing state 0". -->
+                 Why a lifecycle phase instead of a direct CLI goal:
+                 Maven cannot resolve ${revision} in forge-gui-ios's <parent><version> unless
+                 the root POM is in the reactor.  Using -am puts the root in the reactor and
+                 fixes the resolution, but direct CLI goals run on EVERY reactor module
+                 (including root), which fails with "No target and no main class specified".
+                 Binding iphone-sim to pre-integration-test avoids this: profiles are per-POM,
+                 so this profile (and its execution binding) only activates for forge-gui-ios,
+                 never for the root or other dependency modules.
+
+                 Why Maven iphone-sim (not xcrun simctl):
+                 Maven's iphone-sim goal opens Simulator.app via the macOS SDK (NSWorkspace),
+                 which properly registers the device as a SimulatorKit display consumer.
+                 This is required for 'xcrun simctl io screenshot' to work.  Direct
+                 'xcrun simctl boot' + 'open -a Simulator' does NOT register the display
+                 consumer, so screenshots fail with "Evaluated capturing state as 0". -->
             <id>ios-simulator-launch</id>
             <build>
                 <plugins>
                     <plugin>
                         <groupId>com.mobidevelop.robovm</groupId>
                         <artifactId>robovm-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>launch-simulator</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>iphone-sim</goal>
+                                </goals>
+                            </execution>
+                        </executions>
                         <configuration>
                             <arch>${ios.simulator.arch}</arch>
                             <configFile>robovm-simulator.xml</configFile>
