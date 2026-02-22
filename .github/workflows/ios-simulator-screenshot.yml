@@ -157,13 +157,15 @@ jobs:
           echo "Waiting for Forge app process to start..."
           for j in $(seq 1 20); do
             sleep 15
-            # Check by PID (from simctl launch output) and by process name.
-            if { [ -n "$APP_PID" ] && kill -0 "$APP_PID" 2>/dev/null; } \
-               || pgrep -f "forge.ios.Main" > /dev/null 2>&1; then
-              echo "Forge app process is running."
+            # Check only by PID (from simctl launch output).
+            # Do NOT use 'pgrep -f "forge.ios.Main"' — the log stream process has
+            # "forge.ios.Main" in its --predicate argument and would always match,
+            # giving a false positive even after the app has crashed.
+            if [ -n "$APP_PID" ] && kill -0 "$APP_PID" 2>/dev/null; then
+              echo "Forge app process is running (PID $APP_PID)."
               break
             fi
-            echo "  Check $j/20: app not yet running..."
+            echo "  Check $j/20: app not yet running (PID ${APP_PID:-unknown} not found)..."
           done
 
           # Print the first lines of both captured logs — the console log
@@ -226,13 +228,29 @@ jobs:
           [ -n "$SIM_LOG_PID" ]  && kill "$SIM_LOG_PID"  2>/dev/null || true
           [ -n "$CONSOLE_PID" ]  && kill "$CONSOLE_PID"  2>/dev/null || true
           xcrun simctl shutdown all 2>/dev/null || true
-          # Collect crash reports produced since the workflow started.
-          # Use a reference file created at job start as the -newer anchor.
-          find ~/Library/Logs/DiagnosticReports -name "*forge*" \
-            -newer /tmp/mvn-build.log \
-            -exec cat {} \; 2>/dev/null > /tmp/forge-crash-reports.txt || true
+
+          # Collect crash reports.  iOS Simulator writes them to the per-device
+          # CrashReporter directory, NOT to ~/Library/Logs/DiagnosticReports.
+          # Search both locations to be safe.
+          {
+            find ~/Library/Logs/DiagnosticReports \
+              -name "*forge*" -newer /tmp/mvn-build.log \
+              -exec cat {} \; 2>/dev/null || true
+            find ~/Library/Developer/CoreSimulator/Devices \
+              -path "*/Logs/CrashReporter/*forge*" -newer /tmp/mvn-build.log \
+              -exec cat {} \; 2>/dev/null || true
+          } > /tmp/forge-crash-reports.txt
           CRASH_LINES=$(wc -l < /tmp/forge-crash-reports.txt 2>/dev/null || echo 0)
           echo "Crash report lines collected: $CRASH_LINES"
+
+          # Collect the Forge application log written by ExceptionHandler.
+          # It lives inside the app bundle's data/ subdirectory (which is writable
+          # in the simulator even though it is read-only on a real device).
+          # Use DEVICE_UDID to scope to the current simulator's device directory.
+          find ~/Library/Developer/CoreSimulator/Devices/"$DEVICE_UDID" \
+            -name "forge.log" -newer /tmp/mvn-build.log \
+            -exec cp {} /tmp/forge-app-data.log \; 2>/dev/null || true
+          echo "Forge app data log lines: $(wc -l < /tmp/forge-app-data.log 2>/dev/null || echo 0)"
 
       - name: Upload build log
         uses: actions/upload-artifact@v4
@@ -251,6 +269,7 @@ jobs:
             /tmp/forge-console.log
             /tmp/forge-app-log.txt
             /tmp/forge-crash-reports.txt
+            /tmp/forge-app-data.log
           if-no-files-found: warn
 
       - name: Upload screenshot

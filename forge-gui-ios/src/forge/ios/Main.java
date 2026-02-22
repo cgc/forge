@@ -9,6 +9,7 @@ import java.util.Date;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jupnp.UpnpServiceConfiguration;
 import org.robovm.apple.foundation.NSAutoreleasePool;
+import org.robovm.apple.foundation.NSBundle;
 import org.robovm.apple.uikit.UIApplication;
 import org.robovm.apple.uikit.UIPasteboard;
 
@@ -16,7 +17,6 @@ import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.iosrobovm.IOSApplication;
 import com.badlogic.gdx.backends.iosrobovm.IOSApplicationConfiguration;
-import com.badlogic.gdx.backends.iosrobovm.IOSFiles;
 
 import forge.Forge;
 import forge.interfaces.IDeviceAdapter;
@@ -25,7 +25,11 @@ public class Main extends IOSApplication.Delegate {
 
     @Override
     protected IOSApplication createApplication() {
-        final String assetsDir = new IOSFiles().getLocalStoragePath() + "/../../forge.ios.Main.app/";
+        // NSBundle.getMainBundle().getBundlePath() is the installed .app directory, which
+        // contains the bundled res/ directory (skins, card database, etc.).  The old path
+        // computed via getLocalStoragePath() + "/../../forge.ios.Main.app/" navigated to a
+        // non-existent directory inside the Data container (wrong container, wrong name).
+        final String assetsDir = NSBundle.getMainBundle().getBundlePath() + "/";
 
         final IOSApplicationConfiguration config = new IOSApplicationConfiguration();
         config.useAccelerometer = false;
