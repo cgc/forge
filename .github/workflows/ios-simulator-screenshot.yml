@@ -82,13 +82,19 @@ jobs:
           fi
           echo "Simulator device: $DEVICE_UDID"
 
+          # Shut down any running simulators first so we start with a clean
+          # display service.  Stale simulator state from a previous run can
+          # cause 'xcrun simctl io screenshot' to hang indefinitely.
+          xcrun simctl shutdown all 2>/dev/null || true
+          sleep 2
+
           # Boot and install.
           xcrun simctl boot "$DEVICE_UDID" 2>/dev/null || true
           xcrun simctl bootstatus "$DEVICE_UDID" -b
           xcrun simctl install "$DEVICE_UDID" "$APP_PATH"
 
           # Stream the device log before launching so we capture system-level
-          # startup messages and any Java exceptions.  Cap at 20 min.
+          # startup messages and any Java exceptions.
           xcrun simctl spawn booted log stream \
             --predicate 'processImagePath ENDSWITH "forge.ios.Main" OR process == "forge.ios.Main"' \
             >> /tmp/forge-app-log.txt 2>&1 &
@@ -98,12 +104,9 @@ jobs:
           disown $SIM_LOG_PID
           sleep 1  # give the log stream time to start
 
-          # Launch the app with --stdout/--stderr file redirects.  Unlike
-          # --console, this does NOT tie the app lifecycle to the xcrun process:
-          # simctl prints "forge.ios: <pid>" and exits immediately, while the
-          # app keeps running and its output goes directly to the named files.
-          # (With --console, when the xcrun background process dies due to the
-          # step shell exiting, iOS Simulator sends SIGTERM to the app.)
+          # Launch the app.  --stdout/--stderr redirect the app's file
+          # descriptors 1 and 2 to files on the host; simctl exits immediately
+          # after printing "forge.ios: <pid>" and the app keeps running.
           touch /tmp/forge-app-stdout.log /tmp/forge-app-stderr.log
           LAUNCH_OUT=$(xcrun simctl launch \
             --stdout=/tmp/forge-app-stdout.log \
@@ -179,8 +182,13 @@ jobs:
           echo "=== App stderr (first 100 lines) ==="
           head -100 /tmp/forge-app-stderr.log 2>/dev/null || echo "(no stderr captured)"
           echo "==="
-          echo "=== System log (first 100 lines) ==="
-          head -100 /tmp/forge-app-log.txt 2>/dev/null || echo "(no system log captured)"
+          echo "=== System log stream (first 100 lines) ==="
+          head -100 /tmp/forge-app-log.txt 2>/dev/null || echo "(no system log stream captured)"
+          echo "==="
+          echo "=== Historical system log (last 2 min, forge process) ==="
+          xcrun simctl spawn booted log show \
+            --predicate 'processImagePath ENDSWITH "forge.ios.Main" OR process == "forge.ios.Main"' \
+            --last 2m --style syslog 2>/dev/null | head -200 || echo "(log show not available)"
           echo "==="
 
           echo "Polling for stable screen (status bar excluded from comparison)..."
@@ -253,6 +261,15 @@ jobs:
         run: |
           # Stop the background log stream.
           [ -n "$SIM_LOG_PID" ]  && kill "$SIM_LOG_PID"  2>/dev/null || true
+
+          # Use 'log show' (historical, not streaming) to capture any log
+          # messages from the app's lifetime that the real-time 'log stream'
+          # may have missed due to startup timing.
+          xcrun simctl spawn booted log show \
+            --predicate 'processImagePath ENDSWITH "forge.ios.Main" OR process == "forge.ios.Main" OR process == "ReportCrash"' \
+            --last 5m --style syslog \
+            >> /tmp/forge-app-log.txt 2>/dev/null || true
+
           xcrun simctl shutdown all 2>/dev/null || true
 
           # Collect crash reports.  iOS Simulator writes them to the per-device
@@ -273,10 +290,16 @@ jobs:
           # It lives inside the app bundle's data/ subdirectory (which is writable
           # in the simulator even though it is read-only on a real device).
           # Use DEVICE_UDID to scope to the current simulator's device directory.
-          find ~/Library/Developer/CoreSimulator/Devices/"$DEVICE_UDID" \
-            -name "forge.log" -newer /tmp/mvn-build.log \
-            -exec cp {} /tmp/forge-app-data.log \; 2>/dev/null || true
-          echo "Forge app data log lines: $(wc -l < /tmp/forge-app-data.log 2>/dev/null || echo 0)"
+          FORGE_LOG=$(find ~/Library/Developer/CoreSimulator/Devices/"$DEVICE_UDID" \
+            -name "forge.log" -newer /tmp/mvn-build.log 2>/dev/null | head -1 || true)
+          if [ -n "$FORGE_LOG" ]; then
+            cp "$FORGE_LOG" /tmp/forge-app-data.log 2>/dev/null || true
+            echo "=== forge.log ($(wc -l < /tmp/forge-app-data.log) lines) ==="
+            cat /tmp/forge-app-data.log
+            echo "==="
+          else
+            echo "forge.log: not found (app may not have run or ExceptionHandler did not fire)"
+          fi
 
       - name: Upload build log
         uses: actions/upload-artifact@v4
