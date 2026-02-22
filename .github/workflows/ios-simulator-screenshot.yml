@@ -36,65 +36,46 @@ jobs:
             robovm-${{ runner.os }}-
 
       - name: Build and launch iOS app in simulator
-        # Run Maven in the background so that the step shell stays alive for the
-        # polling loop below.  Output is tailed live so build progress is visible
-        # in the GitHub Actions log.  A single Maven invocation handles compilation,
-        # resource assembly, simulator boot, app install, and app launch:
-        #   - ios-simulator-launch profile binds iphone-sim to pre-integration-test
-        #   - Maven iphone-sim opens Simulator.app via NSWorkspace, which registers
-        #     the SimulatorKit display consumer required by xcrun simctl io screenshot
-        #   - -am puts root POM in reactor so ${revision} resolves correctly
+        # Run Maven in the FOREGROUND so all build output is visible live in the
+        # GitHub Actions log (via tee) and APP_PID is guaranteed to be in the log
+        # when the step finishes.  This eliminates the background-process race
+        # conditions that previously caused APP_PID=unknown.
+        #
+        # Maven's iphone-sim goal:
+        #   1. AOT-compiles and copies resources into the .app bundle
+        #   2. Boots the simulator (opens Simulator.app via NSWorkspace)
+        #   3. Installs the .app bundle
+        #   4. Launches the app (prints "forge.ios: <pid>" to stdout)
+        #   5. Returns — the app keeps running independently in the simulator daemon
+        #
+        # After Maven exits we explicitly re-open Simulator.app (idempotent if
+        # already open) and sleep 5 s to ensure its SimulatorKit display consumer
+        # is fully attached before the next step takes screenshots.
         run: |
-          # Kill any lingering simulator sessions.  'shutdown all' can hang on a stale
-          # simulator, so cap it at 30 s.
+          # Kill any lingering simulator sessions.  'shutdown all' can hang on a
+          # stale simulator, so cap it at 30 s.
           timeout 30 xcrun simctl shutdown all 2>/dev/null || true
           sleep 2
 
-          touch /tmp/mvn-sim.log
           export _JAVA_OPTIONS="-Xmx4g"
-          nohup mvn -B -e \
+          # Run Maven foreground; tee so output appears live in the step log AND
+          # is saved to file for artifact upload and PID extraction.
+          set -o pipefail
+          mvn -B -e \
             -Dmaven.test.skip=true \
             -pl forge-gui-ios -am \
             -P ios-simulator-launch \
             clean pre-integration-test \
-            &>/tmp/mvn-sim.log &
-          MVN_SIM_PID=$!
-          disown $MVN_SIM_PID
-          echo "Maven PID: $MVN_SIM_PID"
-          echo "MVN_SIM_PID=$MVN_SIM_PID" >> "$GITHUB_ENV"
+            2>&1 | tee /tmp/mvn-sim.log
+          echo "Maven build complete."
 
-          # Tail the Maven log so build progress is visible in the step output.
-          tail -f /tmp/mvn-sim.log &
-          TAIL_PID=$!
+          # Extract the app PID that iphone-sim printed to its log.
+          APP_PID=$(grep -oE 'forge\.ios: [0-9]+' /tmp/mvn-sim.log \
+            | tail -1 | grep -oE '[0-9]+$' || true)
+          echo "APP_PID=${APP_PID:-unknown}" >> "$GITHUB_ENV"
+          echo "App PID: ${APP_PID:-not found}"
 
-          # Wait up to 20 min for the simulator to boot.
-          # First run (no RoboVM cache): AOT compile (~10-15 min) + resource copy (~4 min).
-          # Cached runs: incremental compile (~1 min) + resource copy (~4 min) + boot (~30 s).
-          echo "Waiting for simulator to boot..."
-          BOOTED=false
-          for i in $(seq 1 240); do
-            if xcrun simctl list devices 2>/dev/null | grep -q "(Booted)"; then
-              BOOTED=true
-              echo "=== Simulator booted (attempt $i/240). ==="
-              break
-            fi
-            # Bail early if Maven exited unexpectedly.
-            if ! kill -0 "$MVN_SIM_PID" 2>/dev/null; then
-              echo "::error::Maven process exited before simulator booted. Last 50 lines:"
-              tail -50 /tmp/mvn-sim.log || true
-              kill $TAIL_PID 2>/dev/null || true
-              exit 1
-            fi
-            sleep 5
-          done
-          kill $TAIL_PID 2>/dev/null || true
-          if [ "$BOOTED" = "false" ]; then
-            echo "::error::Simulator did not boot within 20 minutes."
-            tail -50 /tmp/mvn-sim.log || true
-            exit 1
-          fi
-
-          # Capture the UDID of the booted device for crash-report search.
+          # Capture the UDID of the booted device for screenshot and crash-report search.
           DEVICE_UDID=$(xcrun simctl list devices --json 2>/dev/null | python3 -c "
           import json, sys
           d = json.load(sys.stdin)['devices']
@@ -108,33 +89,17 @@ jobs:
           " 2>/dev/null || true)
           echo "Booted device UDID: ${DEVICE_UDID:-unknown}"
           if [ -z "$DEVICE_UDID" ]; then
-            echo "::error::Could not determine booted device UDID."
+            echo "::error::Could not determine booted device UDID after Maven build."
             exit 1
           fi
           echo "DEVICE_UDID=${DEVICE_UDID}" >> "$GITHUB_ENV"
 
-          # Wait up to 60 s for Maven to install and launch the app.
-          echo "Waiting for Forge app to launch..."
-          APP_PID=""
-          for i in $(seq 1 12); do
-            # Maven's iphone-sim prints "forge.ios: <pid>" to its log when the
-            # app launches — the same output format as xcrun simctl launch.
-            APP_PID=$(grep -oE 'forge\.ios: [0-9]+' /tmp/mvn-sim.log 2>/dev/null \
-              | tail -1 | grep -oE '[0-9]+$' || true)
-            if [ -n "$APP_PID" ]; then
-              echo "Forge app launched (PID $APP_PID, attempt $i/12)."
-              break
-            fi
-            if ! kill -0 "$MVN_SIM_PID" 2>/dev/null; then
-              echo "::error::Maven process exited before app launched. Last 50 lines:"
-              tail -50 /tmp/mvn-sim.log || true
-              exit 1
-            fi
-            echo "  Attempt $i/12: app not yet launched — sleeping 5 s..."
-            sleep 5
-          done
-          echo "APP_PID=${APP_PID:-unknown}" >> "$GITHUB_ENV"
-          echo "App PID: ${APP_PID:-not found}"
+          # Ensure Simulator.app is open and its display consumer attached.
+          # iphone-sim opens it via NSWorkspace during the build; re-opening is
+          # idempotent (focuses the existing window) and guarantees the display
+          # service is ready for 'xcrun simctl io screenshot' in the next step.
+          open -a Simulator
+          sleep 5
 
       - name: Wait for app to load and capture screenshot
         run: |
@@ -171,23 +136,25 @@ jobs:
           print(hashlib.md5(raw[skip_rows * row_bytes:]).hexdigest())
           PYEOF
 
-          # Quick process-alive check (up to ~30 s).  The app launches
-          # synchronously via Maven so it is either already running or already
-          # dead.  Check via kill -0 on the host PID (simulator processes are
-          # real macOS processes).
+          # Quick process-alive check (up to ~30 s).  The app was launched
+          # synchronously by Maven (iphone-sim) so it is either already running
+          # or already dead.  Check via kill -0 on the host PID.
+          # Guard: only run if APP_PID is a valid decimal number.
           echo "Checking Forge app process (PID ${APP_PID:-unknown})..."
           APP_ALIVE=false
-          for j in $(seq 1 6); do
-            if [ -n "$APP_PID" ] && kill -0 "$APP_PID" 2>/dev/null; then
-              echo "  Forge app is running (PID $APP_PID)."
-              APP_ALIVE=true
-              break
-            fi
-            echo "  Check $j/6: process not found yet — sleeping 5 s..."
-            sleep 5
-          done
+          if [[ "$APP_PID" =~ ^[0-9]+$ ]]; then
+            for j in $(seq 1 6); do
+              if kill -0 "$APP_PID" 2>/dev/null; then
+                echo "  Forge app is running (PID $APP_PID)."
+                APP_ALIVE=true
+                break
+              fi
+              echo "  Check $j/6: process not found yet — sleeping 5 s..."
+              sleep 5
+            done
+          fi
           if [ "$APP_ALIVE" = "false" ]; then
-            echo "::warning::App process not found after 30 s (PID ${APP_PID:-unknown}). App may have crashed."
+            echo "::warning::App process not found after check (PID ${APP_PID:-unknown}). App may have crashed."
           fi
 
           # Print captured logs immediately so crash reasons are visible early.
@@ -211,11 +178,11 @@ jobs:
             # Take screenshot with a 30-second timeout to prevent 'xcrun simctl io'
             # from hanging indefinitely if the simulator is in a bad state.
             CUR_SHOT="/tmp/forge-poll-$k.png"
-            if ! timeout 30 xcrun simctl io "$DEVICE_UDID" screenshot "$CUR_SHOT" 2>/dev/null; then
-              echo "  Poll $k: screenshot failed/timed out — sleeping 10 s..."
+            SCREENSHOT_ERR=$( { timeout 30 xcrun simctl io "$DEVICE_UDID" screenshot "$CUR_SHOT"; } 2>&1 ) || {
+              echo "  Poll $k: screenshot failed — $SCREENSHOT_ERR — sleeping 10 s..."
               sleep 10
               continue
-            fi
+            }
             LAST_SHOT="$CUR_SHOT"
 
             CUR_HASH=$(python3 /tmp/png_hash.py "$CUR_SHOT" 2>/dev/null \
@@ -236,10 +203,10 @@ jobs:
             fi
             PREV_HASH="$CUR_HASH"
 
-            # Check process liveness.  If it has been dead for 3 consecutive
-            # polls the app has crashed — take a final screenshot and stop early
-            # rather than polling uselessly for the remaining iterations.
-            if [ -n "$APP_PID" ] && ! kill -0 "$APP_PID" 2>/dev/null; then
+            # Check process liveness.  Only track dead count if APP_PID is a
+            # valid PID (numeric).  "unknown" must not trigger DEAD_COUNT since
+            # kill -0 "unknown" fails with "illegal PID" (not "no such process").
+            if [[ "$APP_PID" =~ ^[0-9]+$ ]] && ! kill -0 "$APP_PID" 2>/dev/null; then
               DEAD_COUNT=$((DEAD_COUNT + 1))
               echo "  Poll $k: app process gone (dead count $DEAD_COUNT/3)"
               if [ "$DEAD_COUNT" -ge 3 ]; then
@@ -268,9 +235,6 @@ jobs:
       - name: Stop simulator
         if: always()
         run: |
-          # Stop the background Maven simulator process.
-          [ -n "$MVN_SIM_PID" ] && kill "$MVN_SIM_PID" 2>/dev/null || true
-
           # Use 'log show' (historical, not streaming) to capture any log
           # messages from the app's lifetime that the real-time 'log stream'
           # may have missed due to startup timing.
