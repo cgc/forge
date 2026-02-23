@@ -21,6 +21,27 @@
     <packaging>${packaging.type}</packaging>
     <name>Forge iOS</name>
 
+    <!--
+      Local file-system repository containing a patched robovm-dist-compiler jar.
+      robovm-dist-compiler is the shaded fat-jar used by robovm-maven-plugin; it
+      embeds robovm-soot classes directly. The patch fixes four bugs in the bundled
+      soot that cause AOT compilation to crash on Java Record classes (invokedynamic
+      with REF_getField bootstrap handles). Run scripts/patch-robovm-soot.sh once
+      after cloning to populate this directory; it is gitignored so the binary jar
+      is never committed.
+    -->
+    <repositories>
+        <repository>
+            <id>forge-local</id>
+            <url>file://${project.basedir}/local-repo</url>
+        </repository>
+    </repositories>
+    <pluginRepositories>
+        <pluginRepository>
+            <id>forge-local</id>
+            <url>file://${project.basedir}/local-repo</url>
+        </pluginRepository>
+    </pluginRepositories>
 
     <build>
         <sourceDirectory>src</sourceDirectory>

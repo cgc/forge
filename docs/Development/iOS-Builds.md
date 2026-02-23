@@ -166,12 +166,19 @@ The script `scripts/patch-robovm-soot.sh` automates the fix as a CI pre-build st
 2. Downloads `robovm-soot-2.5.0-9-sources.jar` for the source files to patch.
 3. Applies the four patches in `patches/robovm-soot/` to the source files.
 4. Recompiles just the four patched `.java` files against the fat-jar as the classpath.
-5. Merges the recompiled classes back into the fat-jar and installs it to the local Maven
-   repository under the original coordinates
-   (`com.mobidevelop.robovm:robovm-dist-compiler:2.3.23`), shadowing the upstream artifact for
-   the remainder of the build.
+5. Writes the patched jar into `forge-gui-ios/local-repo/` using the standard Maven flat
+   file repository layout.
 
-The script is idempotent: a marker file prevents redundant work on repeated runs.
+`forge-gui-ios/pom.xml` declares `forge-gui-ios/local-repo/` as both a `<repository>` and a
+`<pluginRepository>` under the id `forge-local`.  When Maven resolves `robovm-dist-compiler`,
+it finds the patched version in the project-local repo before attempting Maven Central, so no
+global `~/.m2` cache mutation occurs and the fix is isolated to this project's build.
+
+`forge-gui-ios/local-repo/` is listed in `forge-gui-ios/.gitignore` so the binary jar is never
+committed to version control.
+
+The script is idempotent: a `.forge-patched` marker file inside the local-repo prevents
+redundant work on repeated runs in the same environment.
 
 Run the script manually before an iOS build:
 

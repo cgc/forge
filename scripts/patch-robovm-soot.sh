@@ -2,27 +2,28 @@
 # patch-robovm-soot.sh
 #
 # Patches the soot bytecode analyser bundled inside robovm-dist-compiler, fixing
-# four bugs that crash AOT compilation of Java Record classes.
+# four bugs that crash AOT compilation of Java Record classes, then installs the
+# patched jar into forge-gui-ios/local-repo/ so Maven can find it via the
+# file:// repository declared in forge-gui-ios/pom.xml.
 #
 # Background: robovm-maven-plugin 2.3.23 depends on robovm-dist-compiler-2.3.23,
-# a shaded fat-jar that embeds soot classes directly.  The standalone robovm-soot
-# artifact is never used at runtime; we must patch robovm-dist-compiler instead.
+# a shaded fat-jar that embeds soot classes directly.  The pom for
+# robovm-dist-compiler declares no Maven dependencies (everything is shaded in),
+# so patching the standalone robovm-soot artifact has no effect.  We must patch
+# robovm-dist-compiler itself.
+#
+# The local-repo directory is gitignored so the binary jar is never committed.
+# Run this script once after cloning (or from a CI workflow step) to populate it.
 #
 # Usage: bash scripts/patch-robovm-soot.sh
-#
-# The script is idempotent: if robovm-dist-compiler is already patched locally
-# (marker file present), it exits early.
 
 set -euo pipefail
 
-# robovm-dist-compiler: the shaded fat-jar that embeds soot and is used by the
-# robovm-maven-plugin at build time.
 DIST_GROUP_ID="com.mobidevelop.robovm"
 DIST_ARTIFACT_ID="robovm-dist-compiler"
 DIST_VERSION="2.3.23"
 DIST_GROUP_PATH="com/mobidevelop/robovm"
 
-# robovm-soot: only needed for its *sources* jar (to apply patches and recompile).
 SOOT_ARTIFACT_ID="robovm-soot"
 SOOT_VERSION="2.5.0-9"
 
@@ -32,12 +33,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 PATCHES_DIR="$REPO_ROOT/patches/robovm-soot"
 
-# ------------------------------------------------------------------
-# Check whether robovm-dist-compiler is already patched in the local
-# Maven cache.  We use a marker file so a second run in the same
-# agent/container is instant (no network, no compilation).
-# ------------------------------------------------------------------
-MARKER="$HOME/.m2/repository/${DIST_GROUP_PATH}/${DIST_ARTIFACT_ID}/${DIST_VERSION}/.forge-patched"
+# The local file-system Maven repository inside the iOS module.
+LOCAL_REPO="$REPO_ROOT/forge-gui-ios/local-repo"
+MARKER="$LOCAL_REPO/${DIST_GROUP_PATH}/${DIST_ARTIFACT_ID}/${DIST_VERSION}/.forge-patched"
 
 if [ -f "$MARKER" ]; then
     echo "[patch-robovm-soot] Already patched (marker found). Skipping."
@@ -62,7 +60,7 @@ mkdir -p "$WORK_DIR/classes" "$WORK_DIR/src"
 (cd "$WORK_DIR/src"     && jar xf "../robovm-soot-sources.jar")
 
 echo "[patch-robovm-soot] Normalizing line endings in extracted sources..."
-# Use portable sed: -i '' works on macOS, -i works on GNU/Linux.
+# Use portable sed: GNU sed uses -i, BSD/macOS sed requires -i ''.
 if sed --version >/dev/null 2>&1; then
     find "$WORK_DIR/src" -name "*.java" -exec sed -i 's/\r$//' {} +
 else
@@ -77,7 +75,7 @@ done
 
 echo "[patch-robovm-soot] Compiling patched sources against ${DIST_ARTIFACT_ID}..."
 mkdir -p "$WORK_DIR/classes-patched"
-# Compile against the fat-jar: it contains all transitive soot dependencies inline.
+# The fat-jar contains all transitive soot dependencies inline — use it as the classpath.
 javac \
     -source 8 -target 8 \
     -cp "$WORK_DIR/robovm-dist-compiler.jar" \
@@ -88,22 +86,29 @@ javac \
     "$WORK_DIR/src/soot/jimple/toolkits/typing/fast/AugEvalFunction.java"
 
 echo "[patch-robovm-soot] Merging patched classes into jar..."
-# Copy only the four newly compiled class files on top of the extracted originals.
 cp -r "$WORK_DIR/classes-patched/." "$WORK_DIR/classes/"
 
 echo "[patch-robovm-soot] Repacking jar..."
 (cd "$WORK_DIR/classes" && jar cf "../robovm-dist-compiler-patched.jar" .)
 
-echo "[patch-robovm-soot] Installing patched ${DIST_ARTIFACT_ID} to local Maven repository..."
-mvn --batch-mode install:install-file \
-    -Dfile="$WORK_DIR/robovm-dist-compiler-patched.jar" \
-    -DgroupId="$DIST_GROUP_ID" \
-    -DartifactId="$DIST_ARTIFACT_ID" \
-    -Dversion="$DIST_VERSION" \
-    -Dpackaging=jar \
-    -DgeneratePom=true
+# Install into the project-local Maven repository so no global cache mutation occurs.
+DEST_DIR="$LOCAL_REPO/${DIST_GROUP_PATH}/${DIST_ARTIFACT_ID}/${DIST_VERSION}"
+mkdir -p "$DEST_DIR"
 
-# Leave a marker so subsequent runs skip straight through.
+echo "[patch-robovm-soot] Installing patched jar into $DEST_DIR ..."
+cp "$WORK_DIR/robovm-dist-compiler-patched.jar" "$DEST_DIR/${DIST_ARTIFACT_ID}-${DIST_VERSION}.jar"
+
+# Write a minimal POM so Maven treats this as a valid repository entry.
+cat > "$DEST_DIR/${DIST_ARTIFACT_ID}-${DIST_VERSION}.pom" << POM_EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<project>
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>${DIST_GROUP_ID}</groupId>
+  <artifactId>${DIST_ARTIFACT_ID}</artifactId>
+  <version>${DIST_VERSION}</version>
+</project>
+POM_EOF
+
 touch "$MARKER"
 
-echo "[patch-robovm-soot] Done. ${DIST_ARTIFACT_ID}-${DIST_VERSION} patched and installed locally."
+echo "[patch-robovm-soot] Done. Patched ${DIST_ARTIFACT_ID}-${DIST_VERSION} installed to local-repo."
