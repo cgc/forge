@@ -7,7 +7,7 @@
         <build.min.memory>-Xms128m</build.min.memory>
         <build.max.memory>-Xmx2048m</build.max.memory>
         <robovm.version>2.3.23</robovm.version>
-        <!-- Use arm64 on Apple Silicon Macs: -Dios.simulator.arch=arm64 -->
+        <!-- Auto-detected via the apple-silicon profile below; override with -Dios.simulator.arch=... -->
         <ios.simulator.arch>x86_64</ios.simulator.arch>
     </properties>
 
@@ -177,6 +177,18 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+        <profile>
+            <!-- Automatically use arm64 simulator slice on Apple Silicon Macs. -->
+            <id>apple-silicon</id>
+            <activation>
+                <os>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <ios.simulator.arch>arm64</ios.simulator.arch>
+            </properties>
         </profile>
     </profiles>
 </project>
