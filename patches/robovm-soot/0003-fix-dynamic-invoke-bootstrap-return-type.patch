@@ -1,0 +1,13 @@
+--- a/soot/jimple/internal/JDynamicInvokeExpr.java
++++ b/soot/jimple/internal/JDynamicInvokeExpr.java
+@@ -59,8 +59,8 @@
+     {
+ 		if(!methodRef.getSignature().startsWith("<"+SootClass.INVOKEDYNAMIC_DUMMY_CLASS_NAME+": "))
+     		throw new IllegalArgumentException("Receiver type of JDynamicInvokeExpr must be "+SootClass.INVOKEDYNAMIC_DUMMY_CLASS_NAME+"!");
+-		if(!bootstrapMethodRef.returnType().equals(RefType.v("java.lang.invoke.CallSite"))) {
+-    		throw new IllegalArgumentException("Return type of bootstrap method must be java.lang.invoke.CallSite!");
++		if(!(bootstrapMethodRef.returnType() instanceof RefType)) {
++    		throw new IllegalArgumentException("Return type of bootstrap method must be a reference type!");
+ 		}
+ 		
+ 		

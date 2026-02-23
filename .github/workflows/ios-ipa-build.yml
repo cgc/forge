@@ -26,6 +26,9 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
+      - name: Patch robovm-soot for Java Record support
+        run: bash scripts/patch-robovm-soot.sh
+
       - name: Build all modules and package iOS IPA (unsigned)
         run: |
           export _JAVA_OPTIONS="-Xmx4g"
