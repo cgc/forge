@@ -139,11 +139,10 @@ Support for `thumbv7` (32-bit ARM) was removed because Apple dropped 32-bit app 
 ## robovm-soot Java Record support
 
 MobiVM's AOT compiler uses a bundled fork of [Soot](https://github.com/soot-oss/soot) called
-`robovm-soot` to analyse and jimplify bytecode. The version shipped with MobiVM 2.3.23
-(`robovm-soot 2.5.0-9`) predates Java Record support and contains four bugs that are triggered
-whenever it processes class files that use `invokedynamic` with
-`java.lang.runtime.ObjectMethods.bootstrap` — the mechanism the compiler uses to implement the
-auto-generated `equals`/`hashCode`/`toString` on Record classes:
+`robovm-soot` to analyse and jimplify bytecode. The version shipped with MobiVM 2.3.23 predates
+Java Record support and contains four bugs triggered whenever it processes class files that use
+`invokedynamic` with `java.lang.runtime.ObjectMethods.bootstrap` — the mechanism the compiler uses
+to implement the auto-generated `equals`/`hashCode`/`toString` on Record classes:
 
 | # | File | Bug |
 |---|------|-----|
@@ -152,16 +151,25 @@ auto-generated `equals`/`hashCode`/`toString` on Record classes:
 | 3 | `JDynamicInvokeExpr` | Bootstrap return-type check requires exactly `java.lang.invoke.CallSite`; `ObjectMethods.bootstrap` returns `Object` → `IllegalArgumentException` |
 | 4 | `AugEvalFunction` | `CaughtExceptionRef` with no enclosing trap entry throws instead of returning a safe fallback type → `RuntimeException` |
 
+### Important: what gets patched
+
+The soot classes are embedded inside **`robovm-dist-compiler-2.3.23.jar`** — a shaded fat-jar that
+is the actual runtime dependency of `robovm-maven-plugin`. The standalone `robovm-soot` artifact
+on Maven Central is not used at runtime. The patch script downloads and patches
+`robovm-dist-compiler`, not the standalone soot jar.
+
 ### Automated fix (CI pre-build step)
 
 The script `scripts/patch-robovm-soot.sh` automates the fix as a CI pre-build step:
 
-1. Downloads `robovm-soot-2.5.0-9` sources and binary jar from Maven Central.
-2. Applies the four patches in `patches/robovm-soot/` to the source files.
-3. Recompiles just the four patched `.java` files against the original binary as the classpath.
-4. Repacks the jar and installs it to the local Maven repository under the original coordinates
-   (`com.mobidevelop.robovm:robovm-soot:2.5.0-9`), shadowing the upstream artifact for the
-   remainder of the build.
+1. Downloads `robovm-dist-compiler-2.3.23.jar` (the fat-jar) from Maven Central.
+2. Downloads `robovm-soot-2.5.0-9-sources.jar` for the source files to patch.
+3. Applies the four patches in `patches/robovm-soot/` to the source files.
+4. Recompiles just the four patched `.java` files against the fat-jar as the classpath.
+5. Merges the recompiled classes back into the fat-jar and installs it to the local Maven
+   repository under the original coordinates
+   (`com.mobidevelop.robovm:robovm-dist-compiler:2.3.23`), shadowing the upstream artifact for
+   the remainder of the build.
 
 The script is idempotent: a marker file prevents redundant work on repeated runs.
 
