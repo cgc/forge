@@ -158,6 +158,22 @@ is the actual runtime dependency of `robovm-maven-plugin`. The standalone `robov
 on Maven Central is not used at runtime. The patch script downloads and patches
 `robovm-dist-compiler`, not the standalone soot jar.
 
+### Why a new version number is used
+
+The patched jar is stored as `robovm-dist-compiler:2.3.23-patched` (not `2.3.23`) in the
+project-local repository. This is essential: Maven permanently caches **release** artifacts in
+`~/.m2`. If `robovm-dist-compiler:2.3.23` was previously downloaded from Maven Central, Maven will
+continue to use the cached original and never consult `forge-local` for the same coordinates.
+
+The `-patched` version does not exist on Maven Central, so Maven must always resolve it from
+`forge-local` regardless of the state of `~/.m2`.
+
+`forge-gui-ios/pom.xml` declares `robovm-dist-compiler:2.3.23-patched` as an explicit
+`<dependencies>` entry inside the `robovm-maven-plugin` configuration in both `ios-device` and
+`ios-simulator` profiles. Maven adds these explicitly declared plugin dependencies to the **front**
+of the plugin classloader's classpath, so the patched soot classes shadow the originals bundled
+inside the plugin's own `robovm-dist-compiler:2.3.23` transitive dependency.
+
 ### Automated fix (CI pre-build step)
 
 The script `scripts/patch-robovm-soot.sh` automates the fix as a CI pre-build step:
@@ -166,13 +182,8 @@ The script `scripts/patch-robovm-soot.sh` automates the fix as a CI pre-build st
 2. Downloads `robovm-soot-2.5.0-9-sources.jar` for the source files to patch.
 3. Applies the four patches in `patches/robovm-soot/` to the source files.
 4. Recompiles just the four patched `.java` files against the fat-jar as the classpath.
-5. Writes the patched jar into `forge-gui-ios/local-repo/` using the standard Maven flat
-   file repository layout.
-
-`forge-gui-ios/pom.xml` declares `forge-gui-ios/local-repo/` as both a `<repository>` and a
-`<pluginRepository>` under the id `forge-local`.  When Maven resolves `robovm-dist-compiler`,
-it finds the patched version in the project-local repo before attempting Maven Central, so no
-global `~/.m2` cache mutation occurs and the fix is isolated to this project's build.
+5. Writes the patched jar into `forge-gui-ios/local-repo/` as version `2.3.23-patched`, together
+   with a synthetic POM and SHA-1/MD5 checksum files.
 
 `forge-gui-ios/local-repo/` is listed in `forge-gui-ios/.gitignore` so the binary jar is never
 committed to version control.
@@ -197,3 +208,11 @@ as a dedicated step before compiling the project.
   running the build.
 - **Missing provisioning profile** — Sign in to your Apple Developer account in Xcode and create a
   matching provisioning profile for the bundle identifier `forge.ios`.
+- **Still seeing `Attempt to create RefType containing a /` after running the patch script** —
+  Your `~/.m2` cache has a previously downloaded `robovm-dist-compiler:2.3.23` from Central.
+  The `-patched` version in `forge-local` bypasses this automatically; if you were on an older
+  version of this PR that used `2.3.23` coordinates, clear the stale cache entry once:
+  ```
+  rm -rf ~/.m2/repository/com/mobidevelop/robovm/robovm-dist-compiler/2.3.23/
+  ```
+  Then re-run `bash scripts/patch-robovm-soot.sh` and the build.
