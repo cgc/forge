@@ -52,7 +52,7 @@ mkdir -p "$WORK_DIR/classes" "$WORK_DIR/src"
 (cd "$WORK_DIR/src"     && jar xf "../robovm-soot-sources.jar")
 
 echo "[patch-robovm-soot] Normalizing line endings in extracted sources..."
-find "$WORK_DIR/src" -name "*.java" -exec sed -i 's/\r$//' {} +
+find "$WORK_DIR/src" -name "*.java" -exec sed -i '' 's/\r$//' {} +
 
 echo "[patch-robovm-soot] Applying patches..."
 for patch_file in "$PATCHES_DIR"/0*.patch; do
