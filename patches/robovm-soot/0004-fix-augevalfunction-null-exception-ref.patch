@@ -1,0 +1,13 @@
+--- a/soot/jimple/toolkits/typing/fast/AugEvalFunction.java
++++ b/soot/jimple/toolkits/typing/fast/AugEvalFunction.java
+@@ -159,9 +159,7 @@
+ 			}
+ 			
+ 			if ( r == null )
+-				throw new RuntimeException(
+-					"Exception reference used other than as the first "
+-					+ "statement of an exception handler.");
++				return RefType.v("java.lang.Throwable");
+ 				
+ 			return r;
+ 		}

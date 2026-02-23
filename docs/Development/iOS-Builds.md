@@ -136,6 +136,44 @@ with group ID `com.mobidevelop.robovm` on Maven Central. The correct coordinates
 The build targets `arm64` (64-bit ARM) for physical devices and `x86_64` for the simulator.
 Support for `thumbv7` (32-bit ARM) was removed because Apple dropped 32-bit app support in iOS 11.
 
+## robovm-soot Java Record support
+
+MobiVM's AOT compiler uses a bundled fork of [Soot](https://github.com/soot-oss/soot) called
+`robovm-soot` to analyse and jimplify bytecode. The version shipped with MobiVM 2.3.23
+(`robovm-soot 2.5.0-9`) predates Java Record support and contains four bugs that are triggered
+whenever it processes class files that use `invokedynamic` with
+`java.lang.runtime.ObjectMethods.bootstrap` — the mechanism the compiler uses to implement the
+auto-generated `equals`/`hashCode`/`toString` on Record classes:
+
+| # | File | Bug |
+|---|------|-----|
+| 1 | `CONSTANT_Fieldref_info` | Class name not converted from JVM slash-format (`forge/util/HWInfo`) to dot-format (`forge.util.HWInfo`) before calling `Scene.getSootClass()` → `RuntimeException` |
+| 2 | `CONSTANT_MethodHandle_info` | Field-ref method-handle kinds (1–4) unconditionally cast to `InvokeExpr`; they produce a `StaticFieldRef` → `ClassCastException` |
+| 3 | `JDynamicInvokeExpr` | Bootstrap return-type check requires exactly `java.lang.invoke.CallSite`; `ObjectMethods.bootstrap` returns `Object` → `IllegalArgumentException` |
+| 4 | `AugEvalFunction` | `CaughtExceptionRef` with no enclosing trap entry throws instead of returning a safe fallback type → `RuntimeException` |
+
+### Automated fix (CI pre-build step)
+
+The script `scripts/patch-robovm-soot.sh` automates the fix as a CI pre-build step:
+
+1. Downloads `robovm-soot-2.5.0-9` sources and binary jar from Maven Central.
+2. Applies the four patches in `patches/robovm-soot/` to the source files.
+3. Recompiles just the four patched `.java` files against the original binary as the classpath.
+4. Repacks the jar and installs it to the local Maven repository under the original coordinates
+   (`com.mobidevelop.robovm:robovm-soot:2.5.0-9`), shadowing the upstream artifact for the
+   remainder of the build.
+
+The script is idempotent: a marker file prevents redundant work on repeated runs.
+
+Run the script manually before an iOS build:
+
+```
+bash scripts/patch-robovm-soot.sh
+```
+
+The iOS CI workflows (`test-ios-build.yml`, `ios-ipa-build.yml`) invoke this script automatically
+as a dedicated step before compiling the project.
+
 ## Troubleshooting
 
 - **`error: SDK "iphoneos" cannot be located`** — Xcode is not installed or the command-line tools
@@ -144,25 +182,3 @@ Support for `thumbv7` (32-bit ARM) was removed because Apple dropped 32-bit app 
   running the build.
 - **Missing provisioning profile** — Sign in to your Apple Developer account in Xcode and create a
   matching provisioning profile for the bundle identifier `forge.ios`.
-- **Java Record classes cause a robovm-soot crash** — MobiVM's bytecode analyser (robovm-soot) does
-  not recognise `java.lang.Record` as a valid superclass and aborts compilation when it encounters
-  any class compiled with `record` syntax (Java 16+).  Three approaches can resolve this:
-
-  1. **Convert records to regular final classes (chosen approach)** — Replace each `record` with a
-     `final class` that carries the same fields and exposes the same accessor methods (using the
-     record-style `fieldName()` naming convention so call-sites need no changes).  This is the
-     simplest fix: no tool upgrades are required, the bytecode is identical from a functional
-     standpoint, and the change is fully transparent to non-iOS builds.
-
-  2. **Upgrade MobiVM** — A future MobiVM release may add first-class Record support in its soot
-     integration.  Once such a release is available, bumping `<robovm.version>` in
-     `forge-gui-ios/pom.xml` would re-enable the use of `record` syntax.  Monitor the
-     [MobiVM releases](https://github.com/MobiVM/robovm/releases) page for a relevant changelog
-     entry.
-
-  3. **Bytecode post-processing (e.g. RecordBuilder / Jabel)** — A Maven plugin can desugar
-     `record` bytecode back to a plain class before MobiVM processes it.  Tools such as
-     [Jabel](https://github.com/bsideup/jabel) or a custom ASM/ByteBuddy transformer can strip the
-     `Record` superclass attribute and the `RecordComponent` class-file attribute so that soot
-     never sees them.  This preserves the `record` syntax in source code at the cost of adding a
-     build-time transformation step.
