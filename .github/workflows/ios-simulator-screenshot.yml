@@ -36,22 +36,24 @@ jobs:
             robovm-${{ runner.os }}-
 
       - name: Build and launch iOS app in simulator
-        # Run Maven in the BACKGROUND so the app keeps running while screenshots
-        # are being taken.  Maven's iphone-sim goal uses 'xcrun simctl launch
-        # --console-pty' internally.  Maven blocks (waitFor) on that subprocess
-        # until the app exits.  If Maven is foreground and exits, the PTY master
-        # closes, simctl gets SIGPIPE and exits, and the app receives SIGHUP.
-        # Keeping Maven alive in the background keeps the PTY (and thus the app)
-        # alive throughout the screenshot polling window.
-        #
         # Maven's iphone-sim goal:
         #   1. AOT-compiles and copies resources into the .app bundle
         #   2. Boots the simulator (opens Simulator.app via
         #      'open -a Simulator --args -CurrentDeviceUDID $UDID', which
         #      registers the SimulatorKit display consumer for screenshots)
         #   3. Installs the .app bundle
-        #   4. Launches the app with --console-pty; Maven then blocks (waitFor)
-        #      until the app exits — keeping PTY and app alive in background
+        #   4. Launches the app with --console-pty (fire-and-forget in Xcode 16.4+)
+        #
+        # In Xcode 16.4+, 'xcrun simctl launch --console-pty' is non-blocking:
+        # it prints 'forge.ios: <pid>' and exits immediately (older versions
+        # blocked until app exit).  Maven's process.waitFor() returns, Maven
+        # prints BUILD SUCCESS, Maven's JVM exits, and all file descriptors
+        # (including the PTY master) are closed.  The app receives SIGHUP and dies.
+        #
+        # Fix: after Maven finishes (having set up Simulator.app display consumer),
+        # terminate the PTY-connected app instance and relaunch with
+        # --stdout/--stderr.  The new instance runs in the simulator daemon without
+        # any PTY connection, so it survives Maven's exit and xcrun's exit.
         run: |
           # Kill any lingering simulator sessions.  'shutdown all' can hang on a
           # stale simulator, so use perl alarm as a portable timeout (macOS has
@@ -81,6 +83,7 @@ jobs:
 
           # Wait for iphone-sim to print the app PID line (up to 20 min).
           # Budget covers first-run AOT compile (~10–15 min) + resource copy (~4 min).
+          # In Xcode 16.4+ Maven exits quickly after the launch line — that is normal.
           echo "Waiting for app launch (up to 20 min)..."
           LAUNCHED=false
           for i in $(seq 1 240); do
@@ -89,12 +92,20 @@ jobs:
               LAUNCHED=true
               break
             fi
-            # Fail fast if Maven exited before the app launched.
+            # If Maven has already exited, check the log one final time before
+            # deciding whether to fail.  In Xcode 16.4+ Maven exits after launch
+            # in ~1 s; the grep loop may just have not run yet.
             if ! kill -0 "$MVN_PID" 2>/dev/null; then
-              kill "$TAIL_PID" 2>/dev/null || true
-              echo "::error::Maven exited before the app launched."
-              tail -50 /tmp/mvn-sim.log
-              exit 1
+              if grep -qE 'forge\.ios: [0-9]+' /tmp/mvn-sim.log 2>/dev/null; then
+                echo "Maven already exited (normal for Xcode 16.4+) but app was launched."
+                LAUNCHED=true
+              else
+                kill "$TAIL_PID" 2>/dev/null || true
+                echo "::error::Maven exited before the app launched."
+                tail -50 /tmp/mvn-sim.log
+                exit 1
+              fi
+              break
             fi
             sleep 5
           done
@@ -106,33 +117,6 @@ jobs:
             kill "$MVN_PID" 2>/dev/null || true
             exit 1
           fi
-
-          # Get the actual iOS app process PID using pgrep.
-          # The Maven log line 'forge.ios: N' contains the PID of 'xcrun simctl launch'
-          # which exits immediately after the app is started.  We need the PID of the
-          # iOS app process itself (named 'forge.ios.Main' in macOS process table).
-          # pgrep -x matches the EXACT process name, so it won't accidentally match
-          # 'log stream --predicate ...forge.ios.Main...' (that process is named 'log').
-          APP_PID=""
-          for j in $(seq 1 6); do
-            APP_PID=$(pgrep -x 'forge.ios.Main' 2>/dev/null | head -1 || true)
-            if [[ "$APP_PID" =~ ^[0-9]+$ ]]; then
-              echo "App process confirmed (PID $APP_PID) via pgrep after $((j * 5)) s."
-              break
-            fi
-            echo "  Waiting for forge.ios.Main process (attempt $j/6)..."
-            sleep 5
-          done
-          if [[ ! "$APP_PID" =~ ^[0-9]+$ ]]; then
-            echo "::warning::Could not confirm app process via pgrep; falling back to Maven log PID."
-            APP_PID=$(grep -oE 'forge\.ios: [0-9]+' /tmp/mvn-sim.log \
-              | tail -1 | grep -oE '[0-9]+$' || true)
-          fi
-          echo "APP_PID=${APP_PID:-unknown}" >> "$GITHUB_ENV"
-          echo "App PID: ${APP_PID:-not found}"
-
-          # Persist Maven PID so the Stop simulator step can kill it.
-          echo "MVN_PID=$MVN_PID" >> "$GITHUB_ENV"
 
           # Capture the UDID of the booted device for screenshot and crash-report search.
           DEVICE_UDID=$(xcrun simctl list devices --json 2>/dev/null | python3 -c "
@@ -158,6 +142,26 @@ jobs:
           # specific device UDID, registering the SimulatorKit display consumer.
           # Sleep 5 s to let the display service fully attach before screenshots.
           sleep 5
+
+          # Terminate the Maven-launched instance (which used --console-pty and
+          # may already be dead due to Maven's JVM exiting and closing the PTY
+          # master).  Relaunch with --stdout/--stderr so the app runs in the
+          # simulator daemon without any PTY connection — it survives Maven's exit
+          # and xcrun's exit, and keeps running until the simulator is shut down.
+          echo "Relaunching app with --stdout/--stderr (independent of Maven)..."
+          xcrun simctl terminate "$DEVICE_UDID" forge.ios 2>/dev/null || true
+          sleep 2
+          LAUNCH_OUT=$(xcrun simctl launch \
+            --stdout=/tmp/forge-app-stdout.log \
+            --stderr=/tmp/forge-app-stderr.log \
+            "$DEVICE_UDID" forge.ios 2>&1) || true
+          echo "Launch output: $LAUNCH_OUT"
+
+          APP_PID=$(echo "$LAUNCH_OUT" | grep -oE 'forge\.ios: [0-9]+' \
+            | grep -oE '[0-9]+$' | head -1 || true)
+          echo "APP_PID=${APP_PID:-unknown}" >> "$GITHUB_ENV"
+          echo "MVN_PID=$MVN_PID" >> "$GITHUB_ENV"
+          echo "App relaunched (PID: ${APP_PID:-unknown}), running independently of Maven"
 
       - name: Wait for app to load and capture screenshot
         run: |
@@ -296,12 +300,21 @@ jobs:
       - name: Stop simulator
         if: always()
         run: |
-          # Kill the background Maven process (which is blocking on the
-          # --console-pty simctl subprocess that keeps the app alive).
+          # Kill background Maven if still running (normally it has already exited
+          # in Xcode 16.4+ because --console-pty is non-blocking, but try anyway).
           if [[ "$MVN_PID" =~ ^[0-9]+$ ]]; then
-            kill "$MVN_PID" 2>/dev/null || true
-            echo "Sent SIGTERM to Maven process $MVN_PID"
+            if kill "$MVN_PID" 2>/dev/null; then
+              echo "Sent SIGTERM to Maven process $MVN_PID"
+            fi
           fi
+
+          # Print app stdout/stderr from the --stdout/--stderr relaunch.
+          echo "=== forge-app-stdout.log ==="
+          cat /tmp/forge-app-stdout.log 2>/dev/null || echo "(empty)"
+          echo "==="
+          echo "=== forge-app-stderr.log ==="
+          cat /tmp/forge-app-stderr.log 2>/dev/null || echo "(empty)"
+          echo "==="
 
           # Use 'log show' (historical, not streaming) to capture any log
           # messages from the app's lifetime that the real-time 'log stream'
@@ -366,6 +379,8 @@ jobs:
             /tmp/forge-app-log.txt
             /tmp/forge-crash-reports.txt
             /tmp/forge-app-data.log
+            /tmp/forge-app-stdout.log
+            /tmp/forge-app-stderr.log
           if-no-files-found: warn
 
       - name: Upload screenshot
