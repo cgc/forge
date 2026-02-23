@@ -43,8 +43,42 @@ public class URLValidator {
     }
 
 
-    //This is fine, Records were introduced in Java 16, its essentially a DTO class with implicit getters and constructors
-    public record HostPort(String host, Integer port) {
+    //Replaces Java 16+ record to maintain compatibility with robovm-soot (used by MobiVM for iOS builds),
+    //which does not support the java.lang.Record superclass in bytecode analysis.
+    public static final class HostPort {
+        private final String host;
+        private final Integer port;
+
+        public HostPort(String host, Integer port) {
+            this.host = host;
+            this.port = port;
+        }
+
+        public String host() {
+            return host;
+        }
+
+        public Integer port() {
+            return port;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof HostPort)) return false;
+            HostPort that = (HostPort) o;
+            return java.util.Objects.equals(host, that.host) && java.util.Objects.equals(port, that.port);
+        }
+
+        @Override
+        public int hashCode() {
+            return java.util.Objects.hash(host, port);
+        }
+
+        @Override
+        public String toString() {
+            return "HostPort[host=" + host + ", port=" + port + "]";
+        }
     }
 
 }

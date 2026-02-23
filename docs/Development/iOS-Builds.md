@@ -144,3 +144,25 @@ Support for `thumbv7` (32-bit ARM) was removed because Apple dropped 32-bit app 
   running the build.
 - **Missing provisioning profile** — Sign in to your Apple Developer account in Xcode and create a
   matching provisioning profile for the bundle identifier `forge.ios`.
+- **Java Record classes cause a robovm-soot crash** — MobiVM's bytecode analyser (robovm-soot) does
+  not recognise `java.lang.Record` as a valid superclass and aborts compilation when it encounters
+  any class compiled with `record` syntax (Java 16+).  Three approaches can resolve this:
+
+  1. **Convert records to regular final classes (chosen approach)** — Replace each `record` with a
+     `final class` that carries the same fields and exposes the same accessor methods (using the
+     record-style `fieldName()` naming convention so call-sites need no changes).  This is the
+     simplest fix: no tool upgrades are required, the bytecode is identical from a functional
+     standpoint, and the change is fully transparent to non-iOS builds.
+
+  2. **Upgrade MobiVM** — A future MobiVM release may add first-class Record support in its soot
+     integration.  Once such a release is available, bumping `<robovm.version>` in
+     `forge-gui-ios/pom.xml` would re-enable the use of `record` syntax.  Monitor the
+     [MobiVM releases](https://github.com/MobiVM/robovm/releases) page for a relevant changelog
+     entry.
+
+  3. **Bytecode post-processing (e.g. RecordBuilder / Jabel)** — A Maven plugin can desugar
+     `record` bytecode back to a plain class before MobiVM processes it.  Tools such as
+     [Jabel](https://github.com/bsideup/jabel) or a custom ASM/ByteBuddy transformer can strip the
+     `Record` superclass attribute and the `RecordComponent` class-file attribute so that soot
+     never sees them.  This preserves the `record` syntax in source code at the cost of adding a
+     build-time transformation step.
