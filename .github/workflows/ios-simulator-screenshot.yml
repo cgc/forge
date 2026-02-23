@@ -107,9 +107,27 @@ jobs:
             exit 1
           fi
 
-          # Extract the app PID that iphone-sim printed to its log.
-          APP_PID=$(grep -oE 'forge\.ios: [0-9]+' /tmp/mvn-sim.log \
-            | tail -1 | grep -oE '[0-9]+$' || true)
+          # Get the actual iOS app process PID using pgrep.
+          # The Maven log line 'forge.ios: N' contains the PID of 'xcrun simctl launch'
+          # which exits immediately after the app is started.  We need the PID of the
+          # iOS app process itself (named 'forge.ios.Main' in macOS process table).
+          # pgrep -x matches the EXACT process name, so it won't accidentally match
+          # 'log stream --predicate ...forge.ios.Main...' (that process is named 'log').
+          APP_PID=""
+          for j in $(seq 1 6); do
+            APP_PID=$(pgrep -x 'forge.ios.Main' 2>/dev/null | head -1 || true)
+            if [[ "$APP_PID" =~ ^[0-9]+$ ]]; then
+              echo "App process confirmed (PID $APP_PID) via pgrep after $((j * 5)) s."
+              break
+            fi
+            echo "  Waiting for forge.ios.Main process (attempt $j/6)..."
+            sleep 5
+          done
+          if [[ ! "$APP_PID" =~ ^[0-9]+$ ]]; then
+            echo "::warning::Could not confirm app process via pgrep; falling back to Maven log PID."
+            APP_PID=$(grep -oE 'forge\.ios: [0-9]+' /tmp/mvn-sim.log \
+              | tail -1 | grep -oE '[0-9]+$' || true)
+          fi
           echo "APP_PID=${APP_PID:-unknown}" >> "$GITHUB_ENV"
           echo "App PID: ${APP_PID:-not found}"
 
@@ -177,22 +195,22 @@ jobs:
           PYEOF
 
           # Quick process-alive check (up to ~30 s).  The app was launched
-          # synchronously by Maven (iphone-sim) so it is either already running
-          # or already dead.  Check via kill -0 on the host PID.
-          # Guard: only run if APP_PID is a valid decimal number.
-          echo "Checking Forge app process (PID ${APP_PID:-unknown})..."
+          # by Maven (iphone-sim) and should already be running.  Use pgrep -x
+          # (exact process name match) rather than kill -0 on the stored PID,
+          # because the stored PID is the 'xcrun simctl launch' process which
+          # exits immediately after the app is spawned.
+          echo "Checking Forge app process..."
           APP_ALIVE=false
-          if [[ "$APP_PID" =~ ^[0-9]+$ ]]; then
-            for j in $(seq 1 6); do
-              if kill -0 "$APP_PID" 2>/dev/null; then
-                echo "  Forge app is running (PID $APP_PID)."
-                APP_ALIVE=true
-                break
-              fi
-              echo "  Check $j/6: process not found yet — sleeping 5 s..."
-              sleep 5
-            done
-          fi
+          for j in $(seq 1 6); do
+            if pgrep -x 'forge.ios.Main' >/dev/null 2>&1; then
+              LIVE_PID=$(pgrep -x 'forge.ios.Main' | head -1)
+              echo "  Forge app is running (PID $LIVE_PID)."
+              APP_ALIVE=true
+              break
+            fi
+            echo "  Check $j/6: forge.ios.Main not found — sleeping 5 s..."
+            sleep 5
+          done
           if [ "$APP_ALIVE" = "false" ]; then
             echo "::warning::App process not found after check (PID ${APP_PID:-unknown}). App may have crashed."
           fi
@@ -245,10 +263,11 @@ jobs:
             fi
             PREV_HASH="$CUR_HASH"
 
-            # Check process liveness.  Only track dead count if APP_PID is a
-            # valid PID (numeric).  "unknown" must not trigger DEAD_COUNT since
-            # kill -0 "unknown" fails with "illegal PID" (not "no such process").
-            if [[ "$APP_PID" =~ ^[0-9]+$ ]] && ! kill -0 "$APP_PID" 2>/dev/null; then
+            # Check process liveness by name (not PID) — 'xcrun simctl launch'
+            # exits immediately after spawning the app, so the stored APP_PID is
+            # the xcrun process PID (dead by polling time).  pgrep -x matches the
+            # EXACT process name and won't match 'log stream' (process name: 'log').
+            if ! pgrep -x 'forge.ios.Main' >/dev/null 2>&1; then
               DEAD_COUNT=$((DEAD_COUNT + 1))
               echo "  Poll $k: app process gone (dead count $DEAD_COUNT/3)"
               if [ "$DEAD_COUNT" -ge 3 ]; then
