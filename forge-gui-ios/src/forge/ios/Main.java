@@ -14,9 +14,11 @@ import org.robovm.apple.uikit.UIPasteboard;
 
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.backends.iosrobovm.DefaultIOSInput;
 import com.badlogic.gdx.backends.iosrobovm.IOSApplication;
 import com.badlogic.gdx.backends.iosrobovm.IOSApplicationConfiguration;
 import com.badlogic.gdx.backends.iosrobovm.IOSFiles;
+import com.badlogic.gdx.backends.iosrobovm.IOSInput;
 
 import forge.Forge;
 import forge.interfaces.IDeviceAdapter;
@@ -31,7 +33,21 @@ public class Main extends IOSApplication.Delegate {
         config.useAccelerometer = false;
         config.useCompass = false;
         final ApplicationListener app = Forge.getApp(null, new IOSClipboard(), new IOSAdapter(), assetsDir, false, false, 0, false, 0);
-        final IOSApplication iosApp = new IOSApplication(app, config);
+        // Override createInput() so that setupAccelerometer() and setupCompass()
+        // are unconditional no-ops.  DefaultIOSInput guards them behind the config
+        // flags, but those guards are evaluated at runtime; overriding here
+        // eliminates any path to UIAccelerometer.getSharedAccelerometer(), which
+        // on iOS 14+ internally initializes CMMotionManager (CoreMotion) and
+        // causes a noisy permission warning on physical devices.
+        final IOSApplication iosApp = new IOSApplication(app, config) {
+            @Override
+            protected IOSInput createInput() {
+                return new DefaultIOSInput(this) {
+                    @Override protected void setupAccelerometer() {}
+                    @Override protected void setupCompass() {}
+                };
+            }
+        };
         return iosApp;
     }
 
