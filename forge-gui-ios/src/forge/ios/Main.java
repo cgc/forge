@@ -8,9 +8,12 @@ import java.util.Date;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.jupnp.UpnpServiceConfiguration;
+import org.robovm.apple.foundation.Foundation;
 import org.robovm.apple.foundation.NSAutoreleasePool;
 import org.robovm.apple.foundation.NSBundle;
+import org.robovm.apple.foundation.NSString;
 import org.robovm.apple.uikit.UIApplication;
+import org.robovm.apple.uikit.UIApplicationLaunchOptions;
 import org.robovm.apple.uikit.UIPasteboard;
 
 import com.badlogic.gdx.ApplicationListener;
@@ -26,6 +29,30 @@ import forge.interfaces.IDeviceAdapter;
 
 public class Main extends IOSApplication.Delegate {
 
+    // Thin NSLog wrapper usable at any point — does not require Gdx.app to be set.
+    static void nslog(String msg) {
+        Foundation.log("%@", new NSString("[Forge] " + msg));
+    }
+
+    @Override
+    public boolean didFinishLaunching(UIApplication application, UIApplicationLaunchOptions launchOptions) {
+        // Wrap the entire launch sequence so that any Java exception is printed to
+        // the device console via NSLog before the process aborts.  Without this
+        // wrapper, an uncaught Java exception crossing the JNI/ObjC boundary
+        // produces a silent abort — nothing appears in the device console and
+        // SpringBoard reports only "Scene create failed (null)".
+        try {
+            nslog("didFinishLaunching: start");
+            boolean result = super.didFinishLaunching(application, launchOptions);
+            nslog("didFinishLaunching: complete, result=" + result);
+            return result;
+        } catch (Throwable t) {
+            nslog("didFinishLaunching: EXCEPTION " + t.getClass().getName() + ": " + t.getMessage());
+            t.printStackTrace(System.err);
+            throw t;
+        }
+    }
+
     @Override
     protected IOSApplication createApplication() {
         // On iOS 8+, the app bundle (containing all resources) lives in a separate
@@ -34,10 +61,19 @@ public class Main extends IOSApplication.Delegate {
         // container and forge could never find its res/ assets.  NSBundle gives the
         // canonical bundle path that works on every iOS version and deployment type.
         final String assetsDir = NSBundle.getMainBundle().getBundlePath() + "/";
+        nslog("createApplication: assetsDir=" + assetsDir);
+        nslog("createApplication: HOME=" + System.getenv("HOME"));
 
         final IOSApplicationConfiguration config = new IOSApplicationConfiguration();
         config.useAccelerometer = false;
         config.useCompass = false;
+        // Disable audio until OAL/OpenAL is confirmed working on the target device.
+        // OALSimpleAudio.sharedInstance() can return null on some configurations;
+        // with audio enabled that logs an error but otherwise continues.  If the
+        // underlying OpenAL context creation fails it can throw, silently killing
+        // the app before any diagnostic output appears.  Re-enable once the app
+        // launches successfully.
+        config.useAudio = false;
         final ApplicationListener app = Forge.getApp(null, new IOSClipboard(), new IOSAdapter(), assetsDir, false, false, 0, false, 0);
         // Override createInput() so that setupAccelerometer() and setupCompass()
         // are unconditional no-ops.  DefaultIOSInput guards them behind the config

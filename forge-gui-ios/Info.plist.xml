@@ -57,5 +57,17 @@
             </array>
         </dict>
     </dict>
+    <!--
+      UIApplicationSceneManifest is required on iOS 13+ to suppress the
+      "UIScene lifecycle will soon be required" UIKit fault. On iOS 17+,
+      failure to include this key results in a fatal assert that kills the
+      process before any app code runs.  This entry opts out of multi-scene
+      support while still satisfying the requirement.
+    -->
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+    </dict>
 </dict>
 </plist>
