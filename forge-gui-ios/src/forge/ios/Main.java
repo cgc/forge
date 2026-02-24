@@ -58,8 +58,18 @@ public class Main extends IOSApplication.Delegate {
     }
 
     public static void main(String[] args) {
+        // NOTE: Gdx.app is NULL here — it is only set inside didFinishLaunching().
+        // Do NOT call Gdx.app.log() or any Gdx API before UIApplication.main() returns.
+        // Use System.out.println() / System.err.println() for pre-launch diagnostics.
         final NSAutoreleasePool pool = new NSAutoreleasePool();
-        UIApplication.main(args, null, Main.class);
+        try {
+            UIApplication.main(args, null, Main.class);
+        } catch (Throwable t) {
+            // Surface any uncaught exception so it appears in the device console
+            // rather than causing a silent process exit with no diagnostics.
+            t.printStackTrace(System.err);
+            throw t;
+        }
         pool.close();
     }
 
