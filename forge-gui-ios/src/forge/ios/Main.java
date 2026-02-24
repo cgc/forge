@@ -11,6 +11,7 @@ import org.jupnp.UpnpServiceConfiguration;
 import org.robovm.apple.foundation.Foundation;
 import org.robovm.apple.foundation.NSAutoreleasePool;
 import org.robovm.apple.foundation.NSBundle;
+import org.robovm.apple.foundation.NSException;
 import org.robovm.apple.foundation.NSString;
 import org.robovm.apple.uikit.UIApplication;
 import org.robovm.apple.uikit.UIApplicationLaunchOptions;
@@ -55,6 +56,15 @@ public class Main extends IOSApplication.Delegate {
 
     @Override
     protected IOSApplication createApplication() {
+        // Register a Java uncaught-exception handler that converts any unhandled
+        // Java exception into an NSException.  Without this, Java exceptions that
+        // cross the JNI/ObjC boundary cause a silent process abort — nothing shows
+        // up in the device console, making crashes completely invisible.  With it,
+        // the full Java stack trace appears in the device log (and in crash reports).
+        // This is the standard approach used by production RoboVM+libGDX apps such
+        // as Shattered Pixel Dungeon.
+        NSException.registerDefaultJavaUncaughtExceptionHandler();
+
         // On iOS 8+, the app bundle (containing all resources) lives in a separate
         // read-only "Bundle container", while $HOME points to the writable "Data
         // container".  The old localStoragePath-based calculation landed in the Data
