@@ -9,6 +9,7 @@ import java.util.Date;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jupnp.UpnpServiceConfiguration;
 import org.robovm.apple.foundation.NSAutoreleasePool;
+import org.robovm.apple.foundation.NSBundle;
 import org.robovm.apple.uikit.UIApplication;
 import org.robovm.apple.uikit.UIPasteboard;
 
@@ -27,7 +28,12 @@ public class Main extends IOSApplication.Delegate {
 
     @Override
     protected IOSApplication createApplication() {
-        final String assetsDir = new IOSFiles().getLocalStoragePath() + "/../../forge.ios.Main.app/";
+        // On iOS 8+, the app bundle (containing all resources) lives in a separate
+        // read-only "Bundle container", while $HOME points to the writable "Data
+        // container".  The old localStoragePath-based calculation landed in the Data
+        // container and forge could never find its res/ assets.  NSBundle gives the
+        // canonical bundle path that works on every iOS version and deployment type.
+        final String assetsDir = NSBundle.getMainBundle().getBundlePath() + "/";
 
         final IOSApplicationConfiguration config = new IOSApplicationConfiguration();
         config.useAccelerometer = false;
