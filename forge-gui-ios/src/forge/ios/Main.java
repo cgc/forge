@@ -56,14 +56,7 @@ public class Main extends IOSApplication.Delegate {
 
     @Override
     protected IOSApplication createApplication() {
-        // Register a Java uncaught-exception handler that converts any unhandled
-        // Java exception into an NSException.  Without this, Java exceptions that
-        // cross the JNI/ObjC boundary cause a silent process abort — nothing shows
-        // up in the device console, making crashes completely invisible.  With it,
-        // the full Java stack trace appears in the device log (and in crash reports).
-        // This is the standard approach used by production RoboVM+libGDX apps such
-        // as Shattered Pixel Dungeon.
-        NSException.registerDefaultJavaUncaughtExceptionHandler();
+        nslog("createApplication(): building IOSApplication");
 
         // On iOS 8+, the app bundle (containing all resources) lives in a separate
         // read-only "Bundle container", while $HOME points to the writable "Data
@@ -104,19 +97,32 @@ public class Main extends IOSApplication.Delegate {
     }
 
     public static void main(String[] args) {
-        // NOTE: Gdx.app is NULL here — it is only set inside didFinishLaunching().
-        // Do NOT call Gdx.app.log() or any Gdx API before UIApplication.main() returns.
-        // Use System.out.println() / System.err.println() for pre-launch diagnostics.
+        // Create the autorelease pool first so any NSObject allocation (including
+        // the NSString inside nslog()) is properly covered.
         final NSAutoreleasePool pool = new NSAutoreleasePool();
+
+        // Use NSLog (via nslog()) for pre-launch diagnostics.  NSLog output is
+        // delivered to the system log (Console.app / device console) even during
+        // a crash.  System.err.println() only appears in Xcode's debug console,
+        // NOT in Console.app — so it appears "missing" when inspecting device logs.
+        // NOTE: Gdx.app is NULL here; only set after didFinishLaunching() returns.
+        nslog("main() entered: Forge iOS starting");
+
+        // Register the uncaught-exception handler as early as possible — here in
+        // main() rather than inside createApplication() — so that any Java exception
+        // thrown during UIKit's own startup (before createApplication() runs) is
+        // also converted to an NSException and printed to the system log.
+        NSException.registerDefaultJavaUncaughtExceptionHandler();
+
         try {
             UIApplication.main(args, null, Main.class);
         } catch (Throwable t) {
-            // Surface any uncaught exception so it appears in the device console
-            // rather than causing a silent process exit with no diagnostics.
-            t.printStackTrace(System.err);
+            // Surface any uncaught exception so it appears in the system log.
+            nslog("main() EXCEPTION " + t.getClass().getName() + ": " + t.getMessage());
             throw t;
+        } finally {
+            pool.close();
         }
-        pool.close();
     }
 
     //special clipboard that works on iOS
