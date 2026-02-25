@@ -177,6 +177,7 @@ public class Forge implements ApplicationListener {
             getDeviceAdapter().closeSplashScreen();
 
         GuiBase.setIsAndroid(Gdx.app.getType() == Application.ApplicationType.Android);
+        GuiBase.setIsIOS(Gdx.app.getType() == Application.ApplicationType.iOS);
 
         if (!GuiBase.isAndroid() || (androidVersion > 25 && totalDeviceRAM > 3400)) {
             allowCardBG = true;

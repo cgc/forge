@@ -28,6 +28,9 @@ public class GuiBase {
 
     public static void setIsAndroid(boolean value) { isAndroidport = value; }
     public static boolean isAndroid() { return isAndroidport; }
+    private static boolean isIOSport = false;
+    public static void setIsIOS(boolean value) { isIOSport = value; }
+    public static boolean isIOS() { return isIOSport; }
 
     public static void setAdventureDirectory(String directory) { adventureDirectory = directory; }
     public static String getAdventureDirectory() { return adventureDirectory; }

@@ -11,6 +11,12 @@
       </includes>
     </resource>
     <resource>
+      <directory>../forge-gui-android/assets</directory>
+      <includes>
+        <include>fallback_skin/**</include>
+      </includes>
+    </resource>
+    <resource>
       <directory>res</directory>
     </resource>
   </resources>
