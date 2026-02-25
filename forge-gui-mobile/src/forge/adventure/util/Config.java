@@ -26,8 +26,6 @@ import forge.util.FileUtil;
 
 import java.io.*;
 import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 
@@ -124,7 +122,7 @@ public class Config {
 
     private String resPath() {
 
-        return GuiBase.isAndroid() ? ForgeConstants.ASSETS_DIR : Files.exists(Paths.get("./res")) ? "./" : Files.exists(Paths.get("./forge-gui/")) ? "./forge-gui/" : "../forge-gui";
+        return (GuiBase.isAndroid() || GuiBase.isIOS()) ? ForgeConstants.ASSETS_DIR : new File("./res").exists() ? "./" : new File("./forge-gui/").exists() ? "./forge-gui/" : "../forge-gui";
     }
 
     public String getPlanePath(String plane) {
@@ -189,11 +187,11 @@ public class Config {
 
         for (int iter = 1; iter <= 2; iter++) {
 
-            if (Files.exists(Paths.get(langFile))) {
+            if (new File(langFile).exists()) {
                 System.out.println("Found!");
                 Cache.put(path, new FileHandle(langFile));
                 break;
-            } else if (Files.exists(Paths.get(fullPath))) {
+            } else if (new File(fullPath).exists()) {
                 System.out.println("Found!");
                 Cache.put(path, new FileHandle(fullPath));
                 break;
