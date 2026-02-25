@@ -97,21 +97,37 @@ public class Main extends IOSApplication.Delegate {
     }
 
     public static void main(String[] args) {
-        // Create the autorelease pool first so any NSObject allocation (including
-        // the NSString inside nslog()) is properly covered.
+        // ── Breadcrumb 1: file write ────────────────────────────────────────────
+        // Written before any ObjC call.  If the JVM reaches main() this file will
+        // exist in the app's Documents directory; retrieve it via Xcode → Devices &
+        // Simulators → Download Container, or via the iOS Files app.  Its presence
+        // confirms the JVM started and main() was called even after a later crash.
+        try {
+            String home = System.getenv("HOME");
+            if (home != null) {
+                new java.io.FileOutputStream(home + "/Documents/forge_boot.txt").close();
+            }
+        } catch (Throwable ignored) {}
+
+        // ── Breadcrumb 2: stdout ────────────────────────────────────────────────
+        // System.out is remapped to os_log by RoboVM; visible in Console.app and
+        // in Xcode's debug console.  Use this as a cross-check against nslog().
+        System.out.println("[Forge] main() entered");
+
+        // Create the autorelease pool before the first NSObject allocation.
+        // NOTE: Gdx.app is NULL here; it is only set inside didFinishLaunching().
         final NSAutoreleasePool pool = new NSAutoreleasePool();
 
-        // Use NSLog (via nslog()) for pre-launch diagnostics.  NSLog output is
-        // delivered to the system log (Console.app / device console) even during
-        // a crash.  System.err.println() only appears in Xcode's debug console,
-        // NOT in Console.app — so it appears "missing" when inspecting device logs.
-        // NOTE: Gdx.app is NULL here; only set after didFinishLaunching() returns.
+        // ── Breadcrumb 3: NSLog ─────────────────────────────────────────────────
+        // Foundation.log() calls NSLog() which writes to the unified logging system
+        // (os_log).  Visible in Console.app on macOS when the device is connected,
+        // even during a crash (os_log is synchronous).
         nslog("main() entered: Forge iOS starting");
 
-        // Register the uncaught-exception handler as early as possible — here in
-        // main() rather than inside createApplication() — so that any Java exception
-        // thrown during UIKit's own startup (before createApplication() runs) is
-        // also converted to an NSException and printed to the system log.
+        // Register the uncaught-exception handler before UIApplication.main() so
+        // that any Java exception thrown during UIKit's own startup (before
+        // createApplication() runs) also produces a full stack trace in the log.
+        // This is the standard pattern used by production RoboVM+libGDX apps.
         NSException.registerDefaultJavaUncaughtExceptionHandler();
 
         try {
