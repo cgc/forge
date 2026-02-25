@@ -49,8 +49,6 @@ import forge.util.*;
 import io.sentry.ScopeType;
 import io.sentry.Sentry;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.Consumer;
 
@@ -201,7 +199,7 @@ public class Forge implements ApplicationListener {
          */
         Gdx.input.setCatchKey(Keys.BACK, true);
         destroyThis = true; //Prevent back()
-        if (Files.exists(Paths.get(ForgeConstants.DEFAULT_SKINS_DIR+ForgeConstants.ADV_TEXTURE_BG_FILE)))
+        if (FileUtil.doesFileExist(ForgeConstants.DEFAULT_SKINS_DIR+ForgeConstants.ADV_TEXTURE_BG_FILE))
             selector = getForgePreferences().getPref(FPref.UI_SELECTOR_MODE);
         boolean landscapeMode = !isPortraitMode;
         //update landscape mode preference if it doesn't match what the app loaded as
