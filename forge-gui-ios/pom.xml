@@ -116,6 +116,15 @@
             <version>1.13.5</version>
             <classifier>natives-ios</classifier>
         </dependency>
+        <!-- java.nio.file stubs: MobiVM runtime lacks java.nio.file.*; these pre-compiled
+             stubs (backed by java.io.File) shadow the missing package for RoboVM's AOT pass. -->
+        <dependency>
+            <groupId>forge</groupId>
+            <artifactId>nio-file-stubs</artifactId>
+            <version>1.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/libs/nio-file-stubs.jar</systemPath>
+        </dependency>
     </dependencies>
 
     <profiles>
