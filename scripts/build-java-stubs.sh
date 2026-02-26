@@ -125,6 +125,78 @@ done
 echo "[build-java-stubs]   downloaded Optional/Spliterator classes"
 
 # ---------------------------------------------------------------------------
+# Step 1.5 – Strip lambda bodies from downloaded function interface sources.
+#
+# OpenJDK's java.util.function interfaces have default methods (andThen,
+# compose, negate, and, or) whose bodies use lambda expressions.  RoboVM's
+# AOT linker generates $$Lambda$N synthetic classes for each lambda and emits
+# references to [lookup] symbols from the enclosing interface.  When the
+# interface is in an app-classpath jar (not in the native robovm-rt), those
+# [lookup] symbols are never exported → "Undefined symbols" linker errors.
+#
+# We replace every default-method body that contains a lambda (->) with a
+# stub that throws UnsupportedOperationException.  The abstract method (the
+# actual functional contract) is left untouched.  Forge's iOS code path only
+# calls the abstract methods; the default combinators are never invoked.
+# ---------------------------------------------------------------------------
+echo "[build-java-stubs] Stripping lambda bodies from default methods (RoboVM AOT compat) ..."
+python3 - "$WORK_DIR/src" << 'PYEOF'
+import re, sys, pathlib
+
+# Compile once; reused for every file.
+_DEFAULT_RE = re.compile(r'\bdefault\b')
+
+def strip_lambda_defaults(src):
+    """Replace bodies of default methods containing -> with UnsupportedOperationException.
+
+    Scope: only the downloaded OpenJDK java.util.function.* interface sources.
+    Those files contain no string literals or block comments with braces or ->,
+    so simple brace-counting and substring search are sufficient and safe here.
+    """
+    out = []
+    i = 0
+    n = len(src)
+    while i < n:
+        m = _DEFAULT_RE.search(src, i)
+        if m is None:
+            out.append(src[i:])
+            break
+        start = m.start()
+        out.append(src[i:start + len('default')])
+        i = start + len('default')
+        brace = src.find('{', i)
+        if brace == -1:
+            out.append(src[i:])
+            break
+        out.append(src[i:brace])
+        i = brace
+        depth, j = 0, i
+        while j < n:
+            c = src[j]
+            if c == '{': depth += 1
+            elif c == '}':
+                depth -= 1
+                if depth == 0: break
+            j += 1
+        body = src[i:j + 1]
+        if '->' in body:
+            out.append(' { throw new UnsupportedOperationException(); }')
+        else:
+            out.append(body)
+        i = j + 1
+    return ''.join(out)
+
+src_dir = pathlib.Path(sys.argv[1])
+for java_file in sorted(src_dir.rglob('*.java')):
+    text = java_file.read_text(encoding='utf-8')
+    new_text = strip_lambda_defaults(text)
+    if new_text != text:
+        java_file.write_text(new_text, encoding='utf-8')
+        print(f'  patched: {java_file.relative_to(src_dir)}')
+PYEOF
+echo "[build-java-stubs]   default-method lambda stripping complete"
+
+# ---------------------------------------------------------------------------
 # Step 2 – Compile all sources together: downloaded OpenJDK sources and the
 #          custom stubs for java.util.stream.* and java.nio.file.* from
 #          forge-gui-ios/src-java-stubs/.
