@@ -216,10 +216,22 @@ missing several standard packages used throughout `forge-gui-mobile` and its dep
 Without these classes RoboVM's AOT compiler cannot include them in the native binary and they
 resolve to `NoClassDefFoundError` at startup.
 
-Stub implementations are kept in `forge-gui-ios/src-java-stubs/`. They are fully functional (not
-no-op): stream operations (`filter`, `map`, `collect`, etc.) are backed by `ArrayList`, functional
-interface default methods (e.g. `Function.andThen`, `Predicate.and`) are implemented, and
-`Optional` / `OptionalInt` / `OptionalDouble` behave identically to their JDK counterparts.
+The supplement jar is built in two parts:
+
+* **JVM-extracted classes** — `java.util.function.*`, `java.util.Optional*`, and
+  `java.util.Spliterator*` are pure functional interfaces / value types with no
+  `jdk.internal.*` dependencies.  Rather than maintaining hand-written copies, the
+  build script extracts the real `.class` files directly from the running JVM's class
+  library (`java.base` module on JDK 9+, `rt.jar` on JDK 8).  This guarantees
+  correctness and eliminates the maintenance burden of keeping stub sources in sync.
+
+* **Source stubs** — `java.util.stream.*` and `java.nio.file.*` cannot be taken
+  wholesale from the JVM.  `Collectors` and `ReferencePipeline` reference
+  `jdk.internal.access.SharedSecrets` which is absent from robovm-rt, and
+  `java.nio.file` requires a `FileSystemProvider` infrastructure that does not exist
+  on iOS.  Minimal, working implementations for the subset used by forge are compiled
+  from source in `forge-gui-ios/src-java-stubs/`.  Stream operations (`filter`, `map`,
+  `collect`, etc.) are backed by `ArrayList`.
 
 ### Why a build script rather than source in `src/`
 
@@ -228,17 +240,21 @@ Java 17's module system rejects `java.*` package declarations in the unnamed mod
 `--patch-module java.base=src-java-stubs`, but applying `--patch-module` to the whole
 `forge-gui-ios` source tree makes all other sources lose visibility of non-`java.base` packages
 (`org.robovm.*`, `com.badlogic.*`, etc.). The solution: compile only the stubs with
-`--patch-module`, package them into a jar, and install that jar into `forge-gui-ios/local-repo/`
-as a regular Maven artifact (`forge:java-stubs:1.0`). Everything else compiles normally with the
-stubs jar on the classpath; RoboVM's AOT pass also sees the stubs and resolves all references.
+`--patch-module`, merge them with the JVM-extracted class files, package everything into a jar,
+and install that jar into `forge-gui-ios/local-repo/` as a regular Maven artifact
+(`forge:java-stubs:1.0`). Everything else compiles normally with the stubs jar on the classpath;
+RoboVM's AOT pass also sees the stubs and resolves all references.
 
 ### Automated setup (CI pre-build step)
 
 The script `scripts/build-java-stubs.sh` automates the setup:
 
-1. Compiles all `*.java` files under `src-java-stubs/` with `--patch-module java.base=src-java-stubs`.
-2. Packages the resulting `.class` files into a jar.
-3. Writes `forge:java-stubs:1.0` into `forge-gui-ios/local-repo/` together with a synthetic POM
+1. Locates the JVM's class library (`java.base.jmod` on JDK 9+, `rt.jar` on JDK 8).
+2. Extracts `java/util/function/`, `java/util/Optional*.class`, and
+   `java/util/Spliterator*.class` directly from the JVM.
+3. Compiles the stream/nio source stubs from `src-java-stubs/` with `--patch-module`.
+4. Packages all `.class` files into a jar.
+5. Writes `forge:java-stubs:1.0` into `forge-gui-ios/local-repo/` together with a synthetic POM
    and SHA-1/MD5 checksum files.
 
 `forge-gui-ios/local-repo/` is listed in `forge-gui-ios/.gitignore` so the built jar is never
