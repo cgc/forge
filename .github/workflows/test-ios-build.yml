@@ -29,6 +29,9 @@ jobs:
       - name: Patch robovm-soot for Java Record support
         run: bash scripts/patch-robovm-soot.sh
 
+      - name: Build java.nio.file stubs for MobiVM
+        run: bash scripts/build-nio-file-stubs.sh
+
       - name: Build forge-gui-ios and all dependencies
         run: |
           export _JAVA_OPTIONS="-Xmx4g"

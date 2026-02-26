@@ -1,3 +1,7 @@
 # Local Maven repository populated by scripts/patch-robovm-soot.sh.
 # Contains the patched robovm-dist-compiler jar and is never committed.
 local-repo/
+
+# java.nio.file stub jar built by scripts/build-nio-file-stubs.sh.
+# Never committed; regenerate with: bash scripts/build-nio-file-stubs.sh
+libs/nio-file-stubs.jar
