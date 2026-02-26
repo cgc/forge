@@ -200,37 +200,46 @@ bash scripts/patch-robovm-soot.sh
 The iOS CI workflows (`test-ios-build.yml`, `ios-ipa-build.yml`) invoke this script automatically
 as a dedicated step before compiling the project.
 
-## java.nio.file stubs
+## Java 8 API stubs
 
-MobiVM's runtime (`robovm-rt`) ships `java.nio.charset.*` and `java.nio.channels.*` but **not**
-`java.nio.file.*`. Forge's shared mobile code (`forge-gui-mobile`) uses a small subset of the NIO
-file API: `Files.exists`, `Files.newInputStream`, `Files.newOutputStream`, and `Paths.get`. Without
-stubs these resolve to `NoClassDefFoundError` at startup.
+MobiVM's runtime (`robovm-rt`) is based on Android's class library, which predates Java 8 SE and is
+missing several standard packages used throughout `forge-gui-mobile` and its dependencies:
 
-Stub implementations of the four classes (`OpenOption`, `Path`, `Paths`, `Files`) are kept in
-`forge-gui-ios/src-nio-stubs/java/nio/file/`. Each stub delegates to `java.io.File` /
-`FileInputStream` / `FileOutputStream`, which are fully available in the MobiVM runtime.
+| Missing package | Classes used |
+|---|---|
+| `java.nio.file.*` | `Paths`, `Files`, `Path`, `OpenOption` |
+| `java.util.function.*` | `Function`, `Consumer`, `Supplier`, `Predicate`, `BiFunction`, `BiConsumer`, `BinaryOperator`, and primitive specialisations |
+| `java.util.stream.*` | `Stream`, `IntStream`, `Collectors`, `Collector`, `StreamSupport` |
+| `java.util.Optional` | `Optional`, `OptionalInt`, `OptionalDouble` |
+| `java.util.Spliterator` | `Spliterator`, `Spliterator.OfInt` |
+
+Without these classes RoboVM's AOT compiler cannot include them in the native binary and they
+resolve to `NoClassDefFoundError` at startup.
+
+Stub implementations are kept in `forge-gui-ios/src-java-stubs/`. They are fully functional (not
+no-op): stream operations (`filter`, `map`, `collect`, etc.) are backed by `ArrayList`, functional
+interface default methods (e.g. `Function.andThen`, `Predicate.and`) are implemented, and
+`Optional` / `OptionalInt` / `OptionalDouble` behave identically to their JDK counterparts.
 
 ### Why a build script rather than source in `src/`
 
 Java 17's module system rejects `java.*` package declarations in the unnamed module at compile time
 (`"package exists in another module: java.base"`). Compiling the stubs requires
-`--patch-module java.base=src-nio-stubs`, but applying `--patch-module` to the whole
+`--patch-module java.base=src-java-stubs`, but applying `--patch-module` to the whole
 `forge-gui-ios` source tree makes all other sources lose visibility of non-`java.base` packages
 (`org.robovm.*`, `com.badlogic.*`, etc.). The solution: compile only the stubs with
 `--patch-module`, package them into a jar, and install that jar into `forge-gui-ios/local-repo/`
-as a regular Maven artifact (`forge:nio-file-stubs:1.0`). Everything else compiles normally with
-the stubs jar on the classpath; RoboVM's AOT pass also sees the stubs and resolves all
-`java.nio.file.*` references from them.
+as a regular Maven artifact (`forge:java-stubs:1.0`). Everything else compiles normally with the
+stubs jar on the classpath; RoboVM's AOT pass also sees the stubs and resolves all references.
 
 ### Automated setup (CI pre-build step)
 
-The script `scripts/build-nio-file-stubs.sh` automates the setup:
+The script `scripts/build-java-stubs.sh` automates the setup:
 
-1. Compiles `src-nio-stubs/java/nio/file/*.java` with `--patch-module java.base=src-nio-stubs`.
+1. Compiles all `*.java` files under `src-java-stubs/` with `--patch-module java.base=src-java-stubs`.
 2. Packages the resulting `.class` files into a jar.
-3. Writes `forge:nio-file-stubs:1.0` into `forge-gui-ios/local-repo/` together with a synthetic
-   POM and SHA-1/MD5 checksum files.
+3. Writes `forge:java-stubs:1.0` into `forge-gui-ios/local-repo/` together with a synthetic POM
+   and SHA-1/MD5 checksum files.
 
 `forge-gui-ios/local-repo/` is listed in `forge-gui-ios/.gitignore` so the built jar is never
 committed to version control.
@@ -240,7 +249,7 @@ The script is idempotent: a `.forge-built` marker file prevents redundant work o
 Run the script manually before an iOS build:
 
 ```
-bash scripts/build-nio-file-stubs.sh
+bash scripts/build-java-stubs.sh
 ```
 
 The iOS CI workflows invoke both this script and `patch-robovm-soot.sh` automatically before

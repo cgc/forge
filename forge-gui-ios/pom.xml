@@ -116,13 +116,15 @@
             <version>1.13.5</version>
             <classifier>natives-ios</classifier>
         </dependency>
-        <!-- java.nio.file stubs: MobiVM runtime lacks java.nio.file.*; these stubs
-             (backed by java.io.File) shadow the missing package so both javac and
-             RoboVM's AOT pass can resolve all java.nio.file references.
-             Built by: bash scripts/build-nio-file-stubs.sh -->
+        <!-- Java 8 API stubs: MobiVM's robovm-rt lacks java.util.function.*,
+             java.util.stream.*, java.util.Optional, java.util.Spliterator,
+             and java.nio.file.*. These stubs provide working implementations
+             (stream operations backed by ArrayList) so that RoboVM's AOT
+             compiler includes the types and runtime calls succeed on iOS.
+             Built by: bash scripts/build-java-stubs.sh -->
         <dependency>
             <groupId>forge</groupId>
-            <artifactId>nio-file-stubs</artifactId>
+            <artifactId>java-stubs</artifactId>
             <version>1.0</version>
         </dependency>
     </dependencies>
