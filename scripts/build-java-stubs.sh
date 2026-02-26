@@ -17,19 +17,18 @@
 #
 # HOW THE JAR IS BUILT
 # --------------------
-# java.util.function.*, java.util.Optional*, and java.util.Spliterator* are pure
-# interfaces / value types with no JDK-internal dependencies.  Rather than
-# maintaining hand-written copies, this script extracts the real .class files
-# directly from the running JVM's class library (java.base module on JDK 9+, or
-# rt.jar on JDK 8).  This guarantees correctness and eliminates the maintenance
-# burden of keeping stub sources in sync.
+# java.util.function.*, java.util.Optional*, and java.util.Spliterator* are
+# downloaded directly from a pinned OpenJDK 17 source release on GitHub and
+# compiled from source.  This avoids any dependency on the locally-installed JDK
+# version, keeps the process transparent and reproducible, and requires only
+# curl + javac (any JDK 9+).
 #
 # java.util.stream.* and java.nio.file.* cannot be taken wholesale from the JVM
 # because their implementations reference jdk.internal.* classes absent from
 # robovm-rt (e.g. jdk.internal.access.SharedSecrets used by Collectors and
 # ReferencePipeline), and because java.nio.file requires a FileSystemProvider
-# infrastructure that does not exist on iOS.  These packages are instead compiled
-# from the minimal source stubs in forge-gui-ios/src-java-stubs/:
+# infrastructure that does not exist on iOS.  These packages are compiled from
+# the minimal source stubs in forge-gui-ios/src-java-stubs/:
 #
 #   java/util/stream/Stream.java          – interface (subset of methods used by forge)
 #   java/util/stream/IntStream.java       – interface
@@ -76,98 +75,74 @@ fi
 
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
-mkdir -p "$WORK_DIR/classes/java/util/function" \
-         "$WORK_DIR/classes/java/util" \
-         "$WORK_DIR/jmod-extract"
+mkdir -p "$WORK_DIR/src/java/util/function" \
+         "$WORK_DIR/src/java/util" \
+         "$WORK_DIR/classes"
 
 # ---------------------------------------------------------------------------
-# Step 1 – Extract java.util.function.*, java.util.Optional*, and
-#          java.util.Spliterator* .class files directly from the running JVM.
+# Step 1 – Download java.util.function.*, java.util.Optional*, and
+#          java.util.Spliterator* directly from a pinned OpenJDK 17 source
+#          release on GitHub.
 #
-# These are pure interfaces / value types with no jdk.internal dependencies,
-# so they are safe to lift verbatim and will work correctly on MobiVM.
+# These 48 source files (43 java.util.function interfaces + Optional/OptionalDouble/
+# OptionalInt/OptionalLong/Spliterator) are pure interfaces / value types with no
+# jdk.internal.* dependencies.  Downloading from source avoids any dependency
+# on the locally-installed JDK version and keeps the build transparent and
+# reproducible from any machine that has curl + JDK 9+.
+#
+# Pinned tag: jdk-17+35  (JDK 17 GA, https://github.com/openjdk/jdk/releases/tag/jdk-17%2B35)
 # ---------------------------------------------------------------------------
-echo "[build-java-stubs] Extracting JVM classes (function/Optional/Spliterator) ..."
+OPENJDK_TAG="jdk-17+35"
+OPENJDK_TAG_URL="jdk-17%2B35"   # URL-encoded form of OPENJDK_TAG for use in curl
+OPENJDK_BASE="https://raw.githubusercontent.com/openjdk/jdk/${OPENJDK_TAG_URL}/src/java.base/share/classes"
 
-JAVA_EXECUTABLE="$(which java)"
-# readlink -f is GNU-only (not available on macOS/BSD); resolve symlinks portably
-_realpath() { local p="$1"; while [ -L "$p" ]; do p="$(readlink "$p")"; done; echo "$p"; }
-JAVA_EXECUTABLE="$(_realpath "$JAVA_EXECUTABLE")"
-JAVA_HOME_DETECTED="$(dirname "$(dirname "$JAVA_EXECUTABLE")")"
+echo "[build-java-stubs] Downloading OpenJDK ${OPENJDK_TAG} source (function/Optional/Spliterator) ..."
 
-if [ -f "$JAVA_HOME_DETECTED/jmods/java.base.jmod" ]; then
-    # JDK 9+ – extract from the java.base module
-    "$JAVA_HOME_DETECTED/bin/jmod" extract \
-        --dir "$WORK_DIR/jmod-extract" \
-        "$JAVA_HOME_DETECTED/jmods/java.base.jmod"
-    JVM_CLASSES="$WORK_DIR/jmod-extract/classes"
-elif [ -f "$JAVA_HOME_DETECTED/jre/lib/rt.jar" ]; then
-    # JDK 8 (Linux / older macOS) – extract from rt.jar
-    cd "$WORK_DIR/jmod-extract"
-    jar xf "$JAVA_HOME_DETECTED/jre/lib/rt.jar" \
-        java/util/function \
-        java/util/Optional.class java/util/OptionalDouble.class \
-        java/util/OptionalInt.class java/util/OptionalLong.class \
-        java/util/Spliterator.class
-    cd - > /dev/null
-    JVM_CLASSES="$WORK_DIR/jmod-extract"
-elif [ -f "$JAVA_HOME_DETECTED/lib/rt.jar" ]; then
-    # JDK 8 (some macOS layouts)
-    cd "$WORK_DIR/jmod-extract"
-    jar xf "$JAVA_HOME_DETECTED/lib/rt.jar" \
-        java/util/function \
-        java/util/Optional.class java/util/OptionalDouble.class \
-        java/util/OptionalInt.class java/util/OptionalLong.class \
-        java/util/Spliterator.class
-    cd - > /dev/null
-    JVM_CLASSES="$WORK_DIR/jmod-extract"
-else
-    echo "[build-java-stubs] ERROR: cannot locate java.base.jmod or rt.jar under $JAVA_HOME_DETECTED" >&2
-    exit 1
-fi
+FUNCTION_CLASSES=(
+  BiConsumer BiFunction BiPredicate BinaryOperator BooleanSupplier Consumer
+  DoubleBinaryOperator DoubleConsumer DoubleFunction DoublePredicate DoubleSupplier
+  DoubleToIntFunction DoubleToLongFunction DoubleUnaryOperator Function
+  IntBinaryOperator IntConsumer IntFunction IntPredicate IntSupplier
+  IntToDoubleFunction IntToLongFunction IntUnaryOperator
+  LongBinaryOperator LongConsumer LongFunction LongPredicate LongSupplier
+  LongToDoubleFunction LongToIntFunction LongUnaryOperator
+  ObjDoubleConsumer ObjIntConsumer ObjLongConsumer
+  Predicate Supplier
+  ToDoubleBiFunction ToDoubleFunction ToIntBiFunction ToIntFunction
+  ToLongBiFunction ToLongFunction UnaryOperator
+)
 
-# Copy the selected packages into our staging classes dir
-cp -r "$JVM_CLASSES/java/util/function/." "$WORK_DIR/classes/java/util/function/"
-for f in Optional.class OptionalDouble.class OptionalInt.class OptionalLong.class; do
-    src="$JVM_CLASSES/java/util/$f"
-    if [ -f "$src" ]; then
-        cp "$src" "$WORK_DIR/classes/java/util/"
-    else
-        echo "[build-java-stubs]   WARNING: $f not found in JVM classes (skipping)" >&2
-    fi
+for cls in "${FUNCTION_CLASSES[@]}"; do
+    curl -fsSL "$OPENJDK_BASE/java/util/function/${cls}.java" \
+        -o "$WORK_DIR/src/java/util/function/${cls}.java"
 done
-# Spliterator interface and its primitive specialisation inner classes
-found_spliterator=0
-for f in "$JVM_CLASSES/java/util/Spliterator.class" \
-         "$JVM_CLASSES/java/util/Spliterator\$OfDouble.class" \
-         "$JVM_CLASSES/java/util/Spliterator\$OfInt.class" \
-         "$JVM_CLASSES/java/util/Spliterator\$OfLong.class" \
-         "$JVM_CLASSES/java/util/Spliterator\$OfPrimitive.class"; do
-    if [ -f "$f" ]; then
-        cp "$f" "$WORK_DIR/classes/java/util/"
-        found_spliterator=$((found_spliterator + 1))
-    fi
+echo "[build-java-stubs]   downloaded ${#FUNCTION_CLASSES[@]} function interfaces"
+
+for cls in Optional OptionalDouble OptionalInt OptionalLong Spliterator; do
+    curl -fsSL "$OPENJDK_BASE/java/util/${cls}.java" \
+        -o "$WORK_DIR/src/java/util/${cls}.java"
 done
-[ "$found_spliterator" -eq 0 ] && echo "[build-java-stubs]   WARNING: no Spliterator classes found in JVM" >&2
-echo "[build-java-stubs]   extracted $(find "$WORK_DIR/classes" -name '*.class' | wc -l | tr -d ' ') JVM classes"
+echo "[build-java-stubs]   downloaded Optional/Spliterator classes"
 
 # ---------------------------------------------------------------------------
-# Step 2 – Compile the remaining stubs from source.
+# Step 2 – Compile all sources together: downloaded OpenJDK sources and the
+#          custom stubs for java.util.stream.* and java.nio.file.* from
+#          forge-gui-ios/src-java-stubs/.
 #
 # java.util.stream.* and java.nio.file.* cannot be taken from the JVM because
 # their implementations reference jdk.internal.* absent from robovm-rt, so we
 # compile minimal working implementations from forge-gui-ios/src-java-stubs/.
 #
-# --patch-module java.base=<src> is required for javac to accept source files
-# in java.* packages without the "package exists in another module" error.
+# --patch-module java.base=<src1>:<src2> is required for javac to accept
+# source files in java.* packages without "package exists in another module".
 # ---------------------------------------------------------------------------
-echo "[build-java-stubs] Compiling stream/nio stubs from $STUBS_SRC ..."
+echo "[build-java-stubs] Compiling all sources (downloaded + stream/nio stubs) ..."
 # shellcheck disable=SC2046
 javac \
-    --patch-module java.base="$STUBS_SRC" \
+    --patch-module java.base="$WORK_DIR/src:$STUBS_SRC" \
     -source 17 -target 17 \
     -d "$WORK_DIR/classes" \
-    $(find "$STUBS_SRC" -name "*.java")
+    $(find "$WORK_DIR/src" "$STUBS_SRC" -name "*.java")
 echo "[build-java-stubs]   total classes: $(find "$WORK_DIR/classes" -name '*.class' | wc -l | tr -d ' ')"
 
 # ---------------------------------------------------------------------------
