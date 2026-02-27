@@ -3,15 +3,14 @@ package forge.gamemodes.quest.io;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.TreeMap;
+import java.util.stream.Stream;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -43,30 +42,26 @@ public class MainWorldDuelReader extends StorageReaderFolder<QuestEventDuel> {
         final Map<String, QuestEventDuel> result = new TreeMap<>();
         
         // First I add wild decks in quest directory
-        try {
-            Files.walkFileTree(directory.toPath(), new SimpleFileVisitor<Path>() {
-                @Override
-                public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) throws IOException {
-                    File actualFile = new File(path.toString());
-                    try {
-                        final QuestEventDuel newDeck = read(actualFile);
-                        if (null == newDeck) {
-                            final String msg = "An object stored in " + actualFile.getPath() + " failed to load.\nPlease submit this as a bug with the mentioned file/directory attached.";
-                            throw new RuntimeException(msg);
-                        }
-
-                        String newKey = keySelector.apply(newDeck);
-                        if (result.containsKey(newKey)) {
-                            System.err.println("StorageReaderFolder: an object with key " + newKey + " is already present - skipping new entry");
-                        } else {
-                            result.put(newKey, newDeck);                       
-                        }
-                    } catch (final NoSuchElementException ex) {
-                        final String message = TextUtil.concatWithSpace( actualFile.getName(),"failed to load because ----", ex.getMessage());
-                        objectsThatFailedToLoad.add(message);
+        try (Stream<Path> stream = Files.walk(Paths.get(directory.getAbsolutePath()))) {
+            stream.forEach(path -> {
+                File actualFile = new File(path.toString());
+                if (!actualFile.isFile()) return;
+                try {
+                    final QuestEventDuel newDeck = read(actualFile);
+                    if (null == newDeck) {
+                        final String msg = "An object stored in " + actualFile.getPath() + " failed to load.\nPlease submit this as a bug with the mentioned file/directory attached.";
+                        throw new RuntimeException(msg);
                     }
-                    
-                    return FileVisitResult.CONTINUE;
+
+                    String newKey = keySelector.apply(newDeck);
+                    if (result.containsKey(newKey)) {
+                        System.err.println("StorageReaderFolder: an object with key " + newKey + " is already present - skipping new entry");
+                    } else {
+                        result.put(newKey, newDeck);
+                    }
+                } catch (final NoSuchElementException ex) {
+                    final String message = TextUtil.concatWithSpace(actualFile.getName(), "failed to load because ----", ex.getMessage());
+                    objectsThatFailedToLoad.add(message);
                 }
             });
         } catch (IOException e) {
