@@ -23,24 +23,54 @@
 # version, keeps the process transparent and reproducible, and requires only
 # curl + javac (any JDK 9+).
 #
-# java.util.stream.* and java.nio.file.* cannot be taken wholesale from the JVM
-# because their implementations reference jdk.internal.* classes absent from
-# robovm-rt (e.g. jdk.internal.access.SharedSecrets used by Collectors and
-# ReferencePipeline), and because java.nio.file requires a FileSystemProvider
-# infrastructure that does not exist on iOS.  These packages are compiled from
-# the minimal source stubs in forge-gui-ios/src-java-stubs/:
+# The remaining 11 files (java.util.stream.* and java.nio.file.*) cannot be
+# downloaded from OpenJDK and must remain as custom stubs in
+# forge-gui-ios/src-java-stubs/.  The per-file reasons are:
 #
-#   java/util/stream/Stream.java          – interface (subset of methods used by forge)
-#   java/util/stream/IntStream.java       – interface
-#   java/util/stream/Collector.java       – interface
-#   java/util/stream/Collectors.java      – toList/toSet/toMap/joining/groupingBy
-#   java/util/stream/StreamSupport.java   – factory (unused at runtime, satisfies javac)
-#   java/util/stream/ListStream.java      – Stream impl backed by ArrayList
-#   java/util/stream/ArrayIntStream.java  – IntStream impl backed by int[]
-#   java/nio/file/Path.java               – thin wrapper over java.io.File
-#   java/nio/file/Paths.java              – Paths.get() factory
-#   java/nio/file/Files.java              – exists/newInputStream/newOutputStream
-#   java/nio/file/OpenOption.java         – marker interface
+# java.nio.file
+#   Path.java       – The real Path is an interface importing
+#                     java.nio.file.spi.FileSystemProvider, java.net.URI,
+#                     WatchService, WatchKey, WatchEvent — all absent from
+#                     robovm-rt.  Our stub is a concrete class wrapping
+#                     java.io.File instead.
+#   Paths.java      – The real Paths.get() delegates to
+#                     FileSystems.getDefault().getPath(), which requires
+#                     FileSystemProvider infrastructure absent on iOS.
+#                     Our stub constructs the custom Path class directly.
+#   Files.java      – The real Files.java is ~3 000 lines routed through
+#                     FileSystemProvider.  Our stub exposes only the three
+#                     methods forge uses (exists/newInputStream/newOutputStream)
+#                     backed by java.io.File/FileInputStream/FileOutputStream.
+#   OpenOption.java – The real version is also an empty marker interface and
+#                     could in principle be downloaded, but it references
+#                     StandardOpenOption in its Javadoc which would pull in
+#                     more dependencies.  As a 4-line file the maintenance
+#                     burden of keeping it as a stub is negligible.
+#
+# java.util.stream
+#   Stream.java     – The real Stream<T> extends BaseStream<T,Stream<T>> and
+#                     has many default methods with lambda bodies.  Those lambda
+#                     bodies would produce $$Lambda$N synthetic classes with
+#                     [lookup] symbols that are undefined when the interface
+#                     lives in an app-classpath jar (not robovm-rt) — exactly
+#                     the linker error fixed in Step 1.5.  Our stub deliberately
+#                     does NOT extend BaseStream and omits lambda default methods.
+#   IntStream.java  – Same issue: extends BaseStream<Integer,IntStream>.
+#   Collector.java  – The real static Collector.of() methods reference
+#                     package-private CollectorImpl, which is not in scope when
+#                     only Collector.java is downloaded.  Our stub uses an
+#                     anonymous class for the static factory instead.
+#   Collectors.java – The real Collectors references CollectorImpl,
+#                     ReferencePipeline, StreamShape, AbstractTask — all
+#                     internal jdk classes absent from robovm-rt.
+#   StreamSupport.java – The real StreamSupport wraps ReferencePipeline,
+#                     LongPipeline, DoublePipeline, IntPipeline — all absent
+#                     from robovm-rt.
+#   ListStream.java    – Concrete Stream implementation backed by ArrayList.
+#                     No OpenJDK equivalent (robovm-rt's ReferencePipeline is
+#                     the closest, but it depends on jdk.internal.*).
+#   ArrayIntStream.java – Concrete IntStream implementation backed by int[].
+#                     Same reasoning as ListStream.
 #
 # INSTALL LOCATION
 # ----------------
