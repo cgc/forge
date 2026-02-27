@@ -7,7 +7,7 @@ import java.util.function.*;
  * Stub Stream implementation for MobiVM: java.util.stream is absent from robovm-rt.
  * Backed by an ArrayList for simple sequential operations.
  */
-public interface Stream<T> {
+public interface Stream<T> extends AutoCloseable {
 
     // ── Terminal operations ────────────────────────────────────────────────
 
@@ -108,6 +108,9 @@ public interface Stream<T> {
     }
 
     // ── Builder ────────────────────────────────────────────────────────────
+
+    @Override
+    default void close() {}
 
     static <T> Builder<T> builder() {
         return new Builder<T>() {

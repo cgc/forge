@@ -17,13 +17,14 @@ import forge.localinstance.properties.ForgePreferences;
 import forge.model.FModel;
 import forge.sound.SoundSystem;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Stream;
+
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 /**
  * Scene to handle settings of the base forge and adventure mode
@@ -40,11 +41,18 @@ public class SettingsScene extends UIScene {
 
     private void copyNewPlane() {
         String plane = selectSourcePlane.getSelected();
-        File source = new File(Config.instance().getPlanePath(plane));
-        File destination = new File(Config.instance().getPlanePath("<user>" + newPlaneName.getText()));
+        Path source = Paths.get(Config.instance().getPlanePath(plane));
+        Path destination = Paths.get(Config.instance().getPlanePath("<user>" + newPlaneName.getText()));
         AtomicBoolean somethingWentWrong = new AtomicBoolean(false);
-        try {
-            copyDirectory(source, destination);
+        try (Stream<Path> stream = Files.walk(source)) {
+            Files.createDirectories(destination);
+            stream.forEach(s -> {
+                try {
+                    Files.copy(s, destination.resolve(source.relativize(s)), REPLACE_EXISTING);
+                } catch (IOException e) {
+                    somethingWentWrong.set(true);
+                }
+            });
         } catch (IOException e) {
             somethingWentWrong.set(true);
         }
@@ -64,27 +72,6 @@ public class SettingsScene extends UIScene {
             Config.instance().getSettingData().plane = "<user>" + newPlaneName.getText();
             Config.instance().saveSettings();
             showDialog(copyPlane);
-        }
-    }
-
-    private static void copyDirectory(File source, File dest) throws IOException {
-        if (source.isDirectory()) {
-            dest.mkdirs();
-            String[] children = source.list();
-            if (children != null) {
-                for (String child : children) {
-                    copyDirectory(new File(source, child), new File(dest, child));
-                }
-            }
-        } else {
-            try (InputStream in = new FileInputStream(source);
-                 OutputStream out = new FileOutputStream(dest)) {
-                byte[] buf = new byte[8192];
-                int len;
-                while ((len = in.read(buf)) > 0) {
-                    out.write(buf, 0, len);
-                }
-            }
         }
     }
 
