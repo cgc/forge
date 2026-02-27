@@ -121,11 +121,27 @@
              and java.nio.file.*. These stubs provide working implementations
              (stream operations backed by ArrayList) so that RoboVM's AOT
              compiler includes the types and runtime calls succeed on iOS.
-             Built by: bash scripts/build-java-stubs.sh -->
+             Built by: bash scripts/build-java-stubs.sh
+
+             Version 1.1 (previously 1.0): the stubs now strip lambda bodies
+             from java.util.function.* default methods (andThen/compose/negate/
+             and/or).  Without stripping, RoboVM's AOT compiler generates
+             $$Lambda$N synthetic classes for each invokedynamic inside those
+             default methods and emits [lookup] references to the synthetic
+             lambda$*$N methods; those symbols are never linked because the
+             interface is not in librobovm-rt.a → "Undefined symbols" linker
+             error.
+
+             Using version 1.1 (not 1.0) is essential: Maven caches release
+             artifacts permanently in ~/.m2 and will use a previously built
+             java-stubs:1.0 jar (from before lambda-stripping was added) for
+             every subsequent build, regardless of what is in forge-local.
+             Version 1.1 has never been cached so Maven always resolves it
+             fresh from forge-local. -->
         <dependency>
             <groupId>forge</groupId>
             <artifactId>java-stubs</artifactId>
-            <version>1.0</version>
+            <version>1.1</version>
         </dependency>
     </dependencies>
 
