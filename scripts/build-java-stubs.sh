@@ -98,8 +98,26 @@ LOCAL_REPO="$REPO_ROOT/forge-gui-ios/local-repo"
 DEST_DIR="$LOCAL_REPO/${GROUP_PATH}/${VERSION}"
 MARKER="$DEST_DIR/.forge-built"
 
-if [ -f "$MARKER" ]; then
-    echo "[build-java-stubs] Already built (marker found). Skipping."
+# Compute a SHA-1 of this script and store it in the marker file.
+# If the script has changed since the last build, the stored hash won't
+# match the current hash and the jar is rebuilt automatically.  This
+# ensures that changes to this script (e.g. adding the lambda-stripping
+# step) are always picked up without requiring users to manually delete
+# local-repo/.
+_script_hash() {
+    if command -v sha1sum >/dev/null 2>&1; then
+        sha1sum "${BASH_SOURCE[0]}" | cut -d' ' -f1
+    elif command -v shasum >/dev/null 2>&1; then
+        shasum "${BASH_SOURCE[0]}" | cut -d' ' -f1
+    else
+        echo "[build-java-stubs] ERROR: neither sha1sum nor shasum found; cannot compute script hash." >&2
+        exit 1
+    fi
+}
+SCRIPT_HASH="$(_script_hash)"
+
+if [ -n "$SCRIPT_HASH" ] && [ -f "$MARKER" ] && [ "$(cat "$MARKER")" = "$SCRIPT_HASH" ]; then
+    echo "[build-java-stubs] Already built (script unchanged). Skipping."
     exit 0
 fi
 
@@ -275,5 +293,5 @@ _md5  "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.jar" > "$DEST_DIR/${ARTIFACT_ID}-${VE
 _sha1 "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom" > "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom.sha1"
 _md5  "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom" > "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom.md5"
 
-touch "$MARKER"
+echo "$SCRIPT_HASH" > "$MARKER"
 echo "[build-java-stubs] Done. ${GROUP_ID}:${ARTIFACT_ID}:${VERSION} installed to local-repo."
