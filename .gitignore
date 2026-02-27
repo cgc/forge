@@ -97,3 +97,5 @@ __pycache__
 
 # Ignore Claude configuration
 .claude
+# forge-gui-ios local Maven repository (built by scripts/build-java-stubs.sh and scripts/patch-robovm-soot.sh)
+forge-gui-ios/local-repo/

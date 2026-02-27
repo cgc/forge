@@ -136,6 +136,27 @@
             <artifactId>robovm-cocoatouch</artifactId>
             <version>${robovm.version}</version>
         </dependency>
+        <!-- Java 8 API stubs: MobiVM's robovm-rt lacks java.util.function.*,
+             java.util.stream.*, java.util.Optional, java.util.Spliterator,
+             and java.nio.file.*. These stubs provide working implementations
+             (stream operations backed by ArrayList, nio.file backed by java.io)
+             so that RoboVM's AOT compiler includes the types and runtime calls
+             succeed on iOS. Also patches java.io.File to add the missing toPath()
+             method (absent from robovm-rt, which predates Java 7).
+             Built by: bash scripts/build-java-stubs.sh
+
+             Version 1.1 includes lambda-body stripping in java.util.function.*
+             default methods (andThen/compose/negate/and/or). Without stripping,
+             RoboVM's AOT compiler generates $$Lambda$N synthetic classes for each
+             invokedynamic inside those default methods and emits [lookup] references
+             to the synthetic lambda$*$N methods; those symbols are never linked
+             because the interface is not in librobovm-rt.a → "Undefined symbols"
+             linker error. -->
+        <dependency>
+            <groupId>forge</groupId>
+            <artifactId>java-stubs</artifactId>
+            <version>1.1</version>
+        </dependency>
     </dependencies>
 
     <profiles>
