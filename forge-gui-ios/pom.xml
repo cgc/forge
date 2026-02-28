@@ -179,6 +179,11 @@
              compiler includes the types and runtime calls succeed on iOS.
              Built by: bash scripts/build-java-stubs.sh
 
+             Version 1.2 (previously 1.1): added Collector.Characteristics inner enum
+             and characteristics() method to the Collector stub.  Without this enum,
+             Guava's CollectCollectors class fails to initialize with
+             NoClassDefFoundError: [Ljava/util/stream/Collector$Characteristics;
+
              Version 1.1 (previously 1.0): the stubs now strip lambda bodies
              from java.util.function.* default methods (andThen/compose/negate/
              and/or).  Without stripping, RoboVM's AOT compiler generates
@@ -188,16 +193,15 @@
              interface is not in librobovm-rt.a → "Undefined symbols" linker
              error.
 
-             Using version 1.1 (not 1.0) is essential: Maven caches release
-             artifacts permanently in ~/.m2 and will use a previously built
-             java-stubs:1.0 jar (from before lambda-stripping was added) for
-             every subsequent build, regardless of what is in forge-local.
-             Version 1.1 has never been cached so Maven always resolves it
+             Using version 1.2 (not 1.1 or 1.0) is essential: Maven caches release
+             artifacts permanently in ~/.m2 and will use a previously built stubs
+             jar for every subsequent build, regardless of what is in forge-local.
+             Version 1.2 has never been cached so Maven always resolves it
              fresh from forge-local. -->
         <dependency>
             <groupId>forge</groupId>
             <artifactId>java-stubs</artifactId>
-            <version>1.1</version>
+            <version>1.2</version>
         </dependency>
     </dependencies>
 
