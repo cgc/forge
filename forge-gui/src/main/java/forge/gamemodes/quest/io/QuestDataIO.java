@@ -55,6 +55,8 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.*;
 import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.zip.GZIPInputStream;
@@ -129,7 +131,7 @@ public class QuestDataIO {
         QuestData data;
         final StringBuilder xml = new StringBuilder();
 
-        try (GZIPInputStream zin = new GZIPInputStream(new FileInputStream(xmlSaveFile));
+        try (GZIPInputStream zin = new GZIPInputStream(Files.newInputStream(xmlSaveFile.toPath()));
              InputStreamReader reader = new InputStreamReader(zin)) {
             final char[] buf = new char[1024];
             while (reader.ready()) {
@@ -424,7 +426,7 @@ public class QuestDataIO {
 
     private static void savePacked(final String f, final XStream xStream, final QuestData qd) throws IOException {
         try(
-            final BufferedOutputStream bout = new BufferedOutputStream(new FileOutputStream(f));
+            final BufferedOutputStream bout = new BufferedOutputStream(Files.newOutputStream(Paths.get(f)));
             final GZIPOutputStream zout = new GZIPOutputStream(bout)) {
             xStream.toXML(qd, zout);
             zout.flush();
@@ -433,7 +435,7 @@ public class QuestDataIO {
 
     @SuppressWarnings("unused") // used only for debug purposes
     private static void saveUnpacked(final String f, final XStream xStream, final QuestData qd) throws IOException {
-        try(final BufferedOutputStream boutUnp = new BufferedOutputStream(new FileOutputStream(f))) {
+        try(final BufferedOutputStream boutUnp = new BufferedOutputStream(Files.newOutputStream(Paths.get(f)))) {
             xStream.toXML(qd, boutUnp);
             boutUnp.flush();
         }

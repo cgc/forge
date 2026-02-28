@@ -17,6 +17,7 @@ import forge.util.IgnoringXStream;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -78,7 +79,7 @@ public class TournamentIO {
 
     public static TournamentData loadTournament(final File xmlSaveFile) {
         boolean isCorrupt = false;
-        try (GZIPInputStream zin = new GZIPInputStream(new FileInputStream(xmlSaveFile));
+        try (GZIPInputStream zin = new GZIPInputStream(Files.newInputStream(xmlSaveFile.toPath()));
              InputStreamReader reader = new InputStreamReader(zin)) {
             final TournamentData data = (TournamentData)TournamentIO.getSerializer(true).fromXML(reader);
 
@@ -112,7 +113,7 @@ public class TournamentIO {
     }
 
     private static void savePacked(final XStream xStream0, final TournamentData gd0) throws IOException {
-        try(final BufferedOutputStream bout = new BufferedOutputStream(new FileOutputStream(getTournamentFile(gd0)));
+        try(final BufferedOutputStream bout = new BufferedOutputStream(Files.newOutputStream(getTournamentFile(gd0).toPath()));
             final GZIPOutputStream zout = new GZIPOutputStream(bout);
         ) {
             xStream0.toXML(gd0, zout);

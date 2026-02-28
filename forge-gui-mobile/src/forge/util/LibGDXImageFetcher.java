@@ -11,7 +11,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.io.FileOutputStream;
+import java.nio.file.Files;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
@@ -83,7 +83,7 @@ public class LibGDXImageFetcher extends ImageFetcher {
             FileHandle destFile = new FileHandle(newdespath + ".tmp");
             System.out.println(newdespath);
             destFile.parent().mkdirs();
-            try(OutputStream out = new FileOutputStream(destFile.file())) {
+            try(OutputStream out = Files.newOutputStream(destFile.file().toPath())) {
                 // Conversion to JPEG will be handled differently depending on the platform
                 Forge.getDeviceAdapter().convertToJPEG(is, out);
                 is.close();
