@@ -13,7 +13,6 @@ import forge.item.PaperCard;
 import forge.localinstance.properties.ForgePreferences;
 import forge.model.FModel;
 import forge.util.TextUtil;
-import forge.util.StreamUtil;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -741,7 +740,7 @@ public class LimitedPlayer {
     public void addSingleBoosterPack() {
         // if this is just a normal draft, allow picking a pack from any set
         // If this is adventure or quest or whatever then we should limit it to something
-        List<CardEdition> possibleEditions = StreamUtil.stream(FModel.getMagicDb().getEditions())
+        List<CardEdition> possibleEditions = FModel.getMagicDb().getEditions().stream()
                 .filter(CardEdition.Predicates.CAN_MAKE_BOOSTER)
                 .collect(Collectors.toList());
         CardEdition edition = chooseEdition(possibleEditions);

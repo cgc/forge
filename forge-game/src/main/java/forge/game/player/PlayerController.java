@@ -31,7 +31,6 @@ import forge.game.zone.ZoneType;
 import forge.item.PaperCard;
 import forge.util.ITriggerEvent;
 import forge.util.collect.FCollectionView;
-import forge.util.StreamUtil;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -182,7 +181,7 @@ public abstract class PlayerController {
     }
     public final void reveal(DelayedReveal delayedReveal) {
         for (ZoneType zt : delayedReveal.getZone()) {
-            reveal(StreamUtil.stream(delayedReveal.getCards()).filter(c -> c.getZone() == zt).collect(Collectors.toList()), zt, delayedReveal.getOwner(), delayedReveal.getMessagePrefix());
+            reveal(delayedReveal.getCards().stream().filter(c -> c.getZone() == zt).collect(Collectors.toList()), zt, delayedReveal.getOwner(), delayedReveal.getMessagePrefix());
         }
     }
     public abstract void reveal(List<CardView> cards, ZoneType zone, PlayerView owner, String messagePrefix, boolean addMsgSuffix);

@@ -56,7 +56,6 @@ import forge.item.PaperCard;
 import forge.util.*;
 import forge.util.collect.FCollection;
 import forge.util.collect.FCollectionView;
-import forge.util.StreamUtil;
 import io.sentry.Breadcrumb;
 import io.sentry.Sentry;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -275,7 +274,7 @@ public class GameAction {
         // need to check before it enters
         if (copied.isAura() && !copied.isAttachedToEntity() && toBattlefield && (zoneFrom == null || !zoneFrom.is(ZoneType.Stack))) {
             boolean found = false;
-            if (StreamUtil.stream(game.getPlayers()).anyMatch(PlayerPredicates.canBeAttached(copied, null))) {
+            if (game.getPlayers().stream().anyMatch(PlayerPredicates.canBeAttached(copied, null))) {
                 found = true;
             }
 
@@ -374,7 +373,7 @@ public class GameAction {
         if (copied.isAura() && !copied.isAttachedToEntity() && toBattlefield) {
             if (zoneFrom != null && zoneFrom.is(ZoneType.Stack) && game.getStack().isResolving(c)) {
                 boolean found = false;
-                if (StreamUtil.stream(game.getPlayers()).anyMatch(PlayerPredicates.canBeAttached(copied, null))) {
+                if (game.getPlayers().stream().anyMatch(PlayerPredicates.canBeAttached(copied, null))) {
                     found = true;
                 }
                 if (lastBattlefield.anyMatch(CardPredicates.canBeAttached(copied, null))) {

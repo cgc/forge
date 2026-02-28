@@ -27,7 +27,6 @@ import forge.item.IPaperCard;
 import forge.item.PaperCard;
 import forge.util.Lang;
 import forge.util.TextUtil;
-import forge.util.StreamUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -184,7 +183,7 @@ public final class CardDb implements ICardDatabase, IDeckGenPool {
         private static String getFlagSegment(Map<String, String> flags) {
             if(flags == null)
                 return "";
-            String flagText = StreamUtil.stream(flags.entrySet())
+            String flagText = flags.entrySet().stream()
                     .map(e -> e.getKey() + "=" + e.getValue())
                     .collect(Collectors.joining(FlagSeparator));
             return NameSetSeparator + FlagPrefix + "{" + flagText + "}";
@@ -284,7 +283,7 @@ public final class CardDb implements ICardDatabase, IDeckGenPool {
             }
             flagText = flagText.substring(1, flagText.length() - 1); //Trim the braces.
             //List of flags, a series of "key=value" text broken up by tabs.
-            return StreamUtil.stream(flagText.split(FlagSeparator))
+            return Arrays.stream(flagText.split(FlagSeparator))
                     .map(f -> f.split("=", 2))
                     .filter(f -> f.length > 0)
                     .collect(Collectors.toMap(
@@ -404,7 +403,7 @@ public final class CardDb implements ICardDatabase, IDeckGenPool {
     private boolean addFromSetByName(String cardName, CardEdition ed, CardRules cr) {
         List<EditionEntry> cardsInSet = ed.getCardInSet(cardName);
         if (cr.hasFunctionalVariants()) {
-            cardsInSet = StreamUtil.stream(cardsInSet).filter(c -> StringUtils.isEmpty(c.getFunctionalVariantName())
+            cardsInSet = cardsInSet.stream().filter(c -> StringUtils.isEmpty(c.getFunctionalVariantName())
                     || cr.getSupportedFunctionalVariants().contains(c.getFunctionalVariantName())
             ).collect(Collectors.toList());
         }
@@ -528,8 +527,8 @@ public final class CardDb implements ICardDatabase, IDeckGenPool {
 
         List<ICardFace> allFaces = paperCard.getAllFaces();
         Set<String> namesToAdd = new HashSet<>();
-        StreamUtil.stream(allFaces).map(ICardCharacteristics::getName).forEach(namesToAdd::add);
-        StreamUtil.stream(allFaces).map(ICardFace::getFlavorName).filter(Objects::nonNull).forEach(namesToAdd::add);
+        allFaces.stream().map(ICardCharacteristics::getName).forEach(namesToAdd::add);
+        allFaces.stream().map(ICardFace::getFlavorName).filter(Objects::nonNull).forEach(namesToAdd::add);
         namesToAdd.remove(mainName);
         for(String name : namesToAdd)
             allCardsByName.put(name, paperCard);
@@ -884,7 +883,7 @@ public final class CardDb implements ICardDatabase, IDeckGenPool {
             return cr.isFoil ? cards.get(0).getFoiled() : cards.get(0);
 
         if (flavorNameMappings.containsKey(cr.cardName)) {
-            Collection<PaperCard> matchingNames = StreamUtil.stream(cards).filter(c -> c.getDisplayName().equals(cr.cardName)).collect(Collectors.toSet());
+            Collection<PaperCard> matchingNames = cards.stream().filter(c -> c.getDisplayName().equals(cr.cardName)).collect(Collectors.toSet());
             if(!matchingNames.isEmpty())
                 cards.retainAll(matchingNames);
         }
@@ -910,7 +909,7 @@ public final class CardDb implements ICardDatabase, IDeckGenPool {
             return null;  // nothing to do
 
         // Filter Cards Editions based on set preferences
-        List<CardEdition> acceptedEditions = StreamUtil.stream(cardEditions).filter(artPref::accept).collect(Collectors.toList());
+        List<CardEdition> acceptedEditions = cardEditions.stream().filter(artPref::accept).collect(Collectors.toList());
 
         /* At this point, it may be possible that Art Preference is too-strict for the requested card!
             i.e. acceptedEditions.size() == 0!
@@ -1029,21 +1028,21 @@ public final class CardDb implements ICardDatabase, IDeckGenPool {
 
     @Override
     public Stream<PaperCard> streamAllCards() {
-        return StreamUtil.stream(allCardsByName.values());
+        return allCardsByName.values().stream();
     }
     @Override
     public Stream<PaperCard> streamUniqueCards() {
-        return StreamUtil.stream(uniqueCardsByName.values());
+        return uniqueCardsByName.values().stream();
     }
     public Stream<PaperCard> streamAllCardsNoAlt() {
-        return StreamUtil.stream(allCardsByName.entries()).filter(e -> e.getKey().equals(e.getValue().getName())).map(Entry::getValue);
+        return allCardsByName.entries().stream().filter(e -> e.getKey().equals(e.getValue().getName())).map(Entry::getValue);
     }
     public Stream<PaperCard> streamUniqueCardsNoAlt() {
-        return StreamUtil.stream(uniqueCardsByName.entrySet()).filter(e -> e.getKey().equals(e.getValue().getName())).map(Entry::getValue);
+        return uniqueCardsByName.entrySet().stream().filter(e -> e.getKey().equals(e.getValue().getName())).map(Entry::getValue);
     }
 
     public Stream<ICardFace> streamAllFaces() {
-        return StreamUtil.stream(facesByName.values());
+        return facesByName.values().stream();
     }
 
     public static final Predicate<PaperCard> EDITION_NON_PROMO = paperCard -> {
@@ -1090,7 +1089,7 @@ public final class CardDb implements ICardDatabase, IDeckGenPool {
 
     @Override
     public List<PaperCard> getAllCards(final String cardName, Predicate<PaperCard> predicate){
-        return StreamUtil.stream(getAllCards(cardName)).filter(predicate).collect(Collectors.toCollection(ArrayList::new));
+        return getAllCards(cardName).stream().filter(predicate).collect(Collectors.toCollection(ArrayList::new));
     }
 
     /**
@@ -1130,7 +1129,7 @@ public final class CardDb implements ICardDatabase, IDeckGenPool {
     @Override
     public Predicate<? super PaperCard> wasPrintedInSets(Collection<String> setCodes) {
         Set<String> sets = new HashSet<>(setCodes);
-        return paperCard -> StreamUtil.stream(getAllCards(paperCard.getName()))
+        return paperCard -> getAllCards(paperCard.getName()).stream()
                 .map(PaperCard::getEdition).anyMatch(editionCode ->
                     sets.contains(editionCode) &&
                         StaticData.instance().getCardEdition(editionCode).isCardObtainable(paperCard.getName())
@@ -1147,7 +1146,7 @@ public final class CardDb implements ICardDatabase, IDeckGenPool {
     // This Predicate validates if a card was printed at [rarity], on any of its printings
     @Override
     public Predicate<? super PaperCard> wasPrintedAtRarity(CardRarity rarity) {
-        return paperCard -> StreamUtil.stream(getAllCards(paperCard.getName()))
+        return paperCard -> getAllCards(paperCard.getName()).stream()
                 .map(PaperCard::getRarity)
                 .anyMatch(rarity::equals);
     }

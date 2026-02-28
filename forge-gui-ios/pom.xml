@@ -63,6 +63,45 @@
                     <target>17</target>
                 </configuration>
             </plugin>
+            <!--
+              Stream-desugaring: rewrite Collection.stream(), Iterable.spliterator(), and
+              Arrays.stream() call sites in the compiled class files so that RoboVM's AOT
+              compiler never encounters these Java-8 default methods, which are absent from
+              MobiVM's robovm-rt.
+
+              This runs during process-classes (after compilation, before the RoboVM package
+              phase) and transforms the sibling modules' target/classes/ directories.  In a
+              Maven reactor build ("mvn install -pl forge-gui-ios -am") those directories are
+              the exact sources RoboVM reads, so no source-code changes are needed in
+              forge-core, forge-gui, forge-game, or forge-gui-mobile.
+
+              See scripts/StreamDesugar.java and scripts/desugar-streams.sh for details.
+            -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>desugar-streams</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>bash</executable>
+                            <arguments>
+                                <argument>${project.basedir}/../scripts/desugar-streams.sh</argument>
+                                <argument>${project.basedir}/../forge-core/target/classes</argument>
+                                <argument>${project.basedir}/../forge-gui/target/classes</argument>
+                                <argument>${project.basedir}/../forge-game/target/classes</argument>
+                                <argument>${project.basedir}/../forge-gui-mobile/target/classes</argument>
+                                <argument>${project.build.outputDirectory}</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
         <resources>
             <resource>

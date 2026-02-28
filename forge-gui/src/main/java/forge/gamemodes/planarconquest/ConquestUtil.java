@@ -30,7 +30,6 @@ import forge.localinstance.skin.FSkinProp;
 import forge.localinstance.skin.IHasSkinProp;
 import forge.model.FModel;
 import forge.util.*;
-import forge.util.StreamUtil;
 
 public class ConquestUtil {
     private ConquestUtil() {}
@@ -150,8 +149,8 @@ public class ConquestUtil {
         Map<CardEdition, Integer> editionStats = currentDeck.getAllCardsInASinglePool().getCardEditionStatistics(true);
         // use flatMap instead of mapMulti for Android 13 and below
         //https://developer.android.com/reference/java/util/stream/Stream#mapMulti
-        List<CardEdition> out = StreamUtil.stream(planes)
-            .flatMap(p -> StreamUtil.stream(p.getEditions()))
+        List<CardEdition> out = planes.stream()
+            .flatMap(p -> p.getEditions().stream())
             .filter(CardEdition::hasBasicLands)
             .sorted(Comparator.comparing(e -> editionStats.getOrDefault(e, 0)))
             .collect(Collectors.toList());

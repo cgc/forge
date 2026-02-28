@@ -50,7 +50,6 @@ import forge.model.FModel;
 import forge.player.GamePlayerUtil;
 import forge.util.storage.IStorage;
 import forge.util.storage.StorageBase;
-import forge.util.StreamUtil;
 
 /**
  * TODO: Write javadoc for this type.
@@ -638,7 +637,7 @@ public class QuestController {
     public List<CardEdition> getAvailableLandSets() {
         List<String> availableEditionCodes = questFormat != null ? questFormat.getAllowedSetCodes() : Lists.newArrayList(FModel.getMagicDb().getEditions().getItemNames());
         CardEdition.Collection editions = FModel.getMagicDb().getEditions();
-        return StreamUtil.stream(availableEditionCodes)
+        return availableEditionCodes.stream()
                 .map(editions::get)
                 .filter(CardEdition::hasBasicLands)
                 .collect(Collectors.toList());

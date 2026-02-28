@@ -15,7 +15,6 @@ import forge.item.PaperCard;
 import forge.model.FModel;
 import forge.util.MyRandom;
 import forge.util.storage.IStorage;
-import forge.util.StreamUtil;
 
 public class QuestChallengeGenerator {
 
@@ -222,7 +221,7 @@ public class QuestChallengeGenerator {
 
         @Override
         public Stream<QuestEventChallenge> stream() {
-            return StreamUtil.stream(challenges.values());
+            return challenges.values().stream();
         }
     }
 }

@@ -37,7 +37,6 @@ import forge.model.CardBlock;
 import forge.model.FModel;
 import forge.util.*;
 import forge.util.storage.IStorage;
-import forge.util.StreamUtil;
 import org.apache.commons.lang3.ArrayUtils;
 
 import java.io.File;
@@ -443,7 +442,7 @@ public class BoosterDraft implements IBoosterDraft {
                 futures.clear();
             }
             // stream().toList() causes crash on Android 8-13, use Collectors.toList()
-            customs.addAll(StreamUtil.stream(queue).collect(Collectors.toList()));
+            customs.addAll(queue.stream().collect(Collectors.toList()));
         }
         return customs;
     }
@@ -613,8 +612,8 @@ public class BoosterDraft implements IBoosterDraft {
         toPass.forEach((pack, player) -> player.receiveOpenedPack(pack));
 
         if(ForgePreferences.DEV_MODE) {
-            int[] packCounts = StreamUtil.stream(players).mapToInt((p) -> p.packQueue.size()).toArray();
-            int[] unopenedPackCounts = StreamUtil.stream(players).mapToInt((p) -> p.unopenedPacks.size()).toArray();
+            int[] packCounts = players.stream().mapToInt((p) -> p.packQueue.size()).toArray();
+            int[] unopenedPackCounts = players.stream().mapToInt((p) -> p.unopenedPacks.size()).toArray();
             debugPrint("Packs passed. Remaining Opened: " + Arrays.toString(packCounts) + "; Unopened: " + Arrays.toString(unopenedPackCounts));
         }
     }
@@ -643,7 +642,7 @@ public class BoosterDraft implements IBoosterDraft {
 
     @Override
     public boolean isRoundOver() {
-        return StreamUtil.stream(players).allMatch((p) -> p.packQueue.isEmpty());
+        return players.stream().allMatch((p) -> p.packQueue.isEmpty());
     }
 
     @Override

@@ -41,7 +41,6 @@ import forge.game.spellability.SpellAbility;
 import forge.game.trigger.Trigger;
 import forge.game.zone.ZoneType;
 import forge.util.TextUtil;
-import forge.util.StreamUtil;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
@@ -259,7 +258,7 @@ public final class StaticAbilityContinuous {
 
                 addKeywords.addAll(newKeywords);
 
-                addKeywords = StreamUtil.stream(addKeywords).map(input -> {
+                addKeywords = addKeywords.stream().map(input -> {
                     if (hostCard.hasChosenColor()) {
                         input = input.replaceAll("ChosenColor", StringUtils.capitalize(hostCard.getChosenColor()));
                         input = input.replaceAll("chosenColor", hostCard.getChosenColor().toLowerCase());
@@ -398,7 +397,7 @@ public final class StaticAbilityContinuous {
                 });
                 addTypes.addAll(newTypes);
 
-                addTypes = StreamUtil.stream(addTypes).map(input -> {
+                addTypes = addTypes.stream().map(input -> {
                     if (hostCard.hasChosenType2()) {
                         input = input.replaceAll("ChosenType2", hostCard.getChosenType2());
                     }
@@ -726,7 +725,7 @@ public final class StaticAbilityContinuous {
                     });
                     newKeywords.addAll(extraKeywords);
 
-                    newKeywords = StreamUtil.stream(newKeywords).map(input -> {
+                    newKeywords = newKeywords.stream().map(input -> {
                         if (input.contains("CardManaCost")) {
                             input = input.replace("CardManaCost", affectedCard.getManaCost().getShortString());
                         } else if (input.contains("ConvertedManaCost")) {
@@ -738,7 +737,7 @@ public final class StaticAbilityContinuous {
                 }
 
                 if (newKeywords != null && !newKeywords.isEmpty() && params.containsKey("KeywordMultiplier")) {
-                    newKeywords = StreamUtil.stream(newKeywords).flatMap(s -> StreamUtil.stream(Collections.nCopies(Integer.valueOf(params.get("KeywordMultiplier")), s))).collect(Collectors.toList());
+                    newKeywords = newKeywords.stream().flatMap(s -> Collections.nCopies(Integer.valueOf(params.get("KeywordMultiplier")), s).stream()).collect(Collectors.toList());
                 }
 
                 affectedCard.addChangedCardKeywords(newKeywords, removeKeywords,

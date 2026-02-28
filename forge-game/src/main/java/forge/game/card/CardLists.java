@@ -502,7 +502,7 @@ public class CardLists {
         // first part the ones with SpyKit, and already collect them via
         Map<Boolean, List<Card>> parted = StreamUtil.stream(cardList).collect(Collectors
                 .partitioningBy(Card::hasNonLegendaryCreatureNames, Collector.of(ArrayList::new, (list, c) -> {
-                    if (!c.hasNoName() && StreamUtil.stream(list).noneMatch(c2 -> c.sharesNameWith(c2))) {
+                    if (!c.hasNoName() && list.stream().noneMatch(c2 -> c.sharesNameWith(c2))) {
                         list.add(c);
                     }
                 }, (l1, l2) -> {
@@ -513,7 +513,7 @@ public class CardLists {
 
         // then try to apply the SpyKit ones
         for (Card c : parted.get(Boolean.TRUE)) {
-            if (StreamUtil.stream(preList).noneMatch(c2 -> c.sharesNameWith(c2))) {
+            if (preList.stream().noneMatch(c2 -> c.sharesNameWith(c2))) {
                 preList.add(c);
             }
         }

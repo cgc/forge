@@ -3,6 +3,7 @@ package forge.util;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.BinaryOperator;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collector;
@@ -21,6 +22,10 @@ public class StreamUtil {
      * This helper avoids that by building the stream from {@link Collection#toArray()} —
      * which has been available since Java 1.2 — combined with {@link Stream#of(Object[])},
      * which is present in both standard JDK-8 and the forge iOS stubs.
+     *
+     * <p>The build-time bytecode transformer ({@code scripts/StreamDesugar.java}) rewrites
+     * every {@code collection.stream()} call in the compiled class files to call this method,
+     * so no source-level changes are needed in the application code.
      *
      * @return a Stream with the provided iterable as its source.
      */
@@ -46,6 +51,32 @@ public class StreamUtil {
      */
     public static <T> Stream<T> stream(T[] array) {
         return Stream.of(array);
+    }
+
+    /**
+     * Returns a {@link Spliterator} over the elements of {@code iterable}.
+     *
+     * <p>{@code Iterable.spliterator()} is a Java-8 default method absent from MobiVM's
+     * runtime. The build-time bytecode transformer rewrites every {@code iterable.spliterator()}
+     * call (including the common {@code StreamSupport.stream(X.spliterator(), false)} pattern)
+     * to call this method instead.  The returned Spliterator is backed by an Iterator, which
+     * has been available since Java 1.2.
+     *
+     * @return a Spliterator over the elements of {@code iterable}.
+     */
+    public static <T> Spliterator<T> spliterator(Iterable<T> iterable) {
+        final Iterator<T> iter = iterable.iterator();
+        return new Spliterator<T>() {
+            @Override
+            public boolean tryAdvance(Consumer<? super T> action) {
+                if (!iter.hasNext()) return false;
+                action.accept(iter.next());
+                return true;
+            }
+            @Override public Spliterator<T> trySplit()    { return null; }
+            @Override public long           estimateSize() { return Long.MAX_VALUE; }
+            @Override public int            characteristics() { return 0; }
+        };
     }
 
     /**

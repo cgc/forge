@@ -68,7 +68,6 @@ import forge.trackable.TrackableCollection;
 import forge.util.*;
 import forge.util.collect.FCollection;
 import forge.util.collect.FCollectionView;
-import forge.util.StreamUtil;
 import io.sentry.Sentry;
 import org.apache.commons.lang3.Range;
 import org.apache.commons.lang3.StringUtils;
@@ -560,9 +559,9 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
         endTempShowCards();
 
         //If any were on the saved cranked list before but aren't cranked now, remove them from the saved list.
-        StreamUtil.stream(cranked).filter(v -> !views.contains(v)).map(CardView::getId).forEach(savedCrankedIDs::remove);
+        cranked.stream().filter(v -> !views.contains(v)).map(CardView::getId).forEach(savedCrankedIDs::remove);
         //Add any that were cranked this time to the saved list.
-        StreamUtil.stream(views).map(CardView::getId).forEach(savedCrankedIDs::add);
+        views.stream().map(CardView::getId).forEach(savedCrankedIDs::add);
 
         List<Card> choices = new CardCollection();
         gameCacheChoose.addToList(views, choices);
@@ -1860,7 +1859,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
             return getGui().one(message, choices).getColorMask();
         }
 
-        final int idxChosen = InputConfirm.confirm(this, CardView.get(c), message, true, StreamUtil.stream(choices).map(MagicColor.Color::getTranslatedName).collect(Collectors.toList()))
+        final int idxChosen = InputConfirm.confirm(this, CardView.get(c), message, true, choices.stream().map(MagicColor.Color::getTranslatedName).collect(Collectors.toList()))
                 ? 0 : 1;
         return choices.get(idxChosen).getColorMask();
     }
@@ -1879,7 +1878,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
 
     @Override
     public ICardFace chooseSingleCardFace(SpellAbility sa, List<ICardFace> faces, String message) {
-        Map<CardFaceView, ICardFace> mapped = StreamUtil.stream(faces).collect(Collectors.toMap(CardFaceView::new, Function.identity(), (a, b) -> a, TreeMap::new));
+        Map<CardFaceView, ICardFace> mapped = faces.stream().collect(Collectors.toMap(CardFaceView::new, Function.identity(), (a, b) -> a, TreeMap::new));
         CardFaceView chosen = getGui().one(message, Lists.newArrayList(mapped.keySet()));
         return mapped.get(chosen);
     }
@@ -1938,7 +1937,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
         if (possibleReplacers.size() == 1) {
             return first;
         }
-        final List<String> res = StreamUtil.stream(possibleReplacers).map(ReplacementEffect::toString).collect(Collectors.toList());
+        final List<String> res = possibleReplacers.stream().map(ReplacementEffect::toString).collect(Collectors.toList());
         final String firstStr = res.get(0);
         final String prompt = localizer.getMessage("lblChooseFirstApplyReplacementEffect");
         for (int i = 1; i < res.size(); i++) {
@@ -1946,8 +1945,8 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
             if (!res.get(i).equals(firstStr)) {
                 if (!GuiBase.isNetworkplay(getGui())) //non network game don't need serialization
                     return getGui().one(prompt, possibleReplacers);
-                ReplacementEffectView rev = getGui().one(prompt, StreamUtil.stream(possibleReplacers).map(ReplacementEffect::getView).collect(Collectors.toList()));
-                return StreamUtil.stream(possibleReplacers).filter(re -> re.getId() == rev.getId()).findAny().orElse(first);
+                ReplacementEffectView rev = getGui().one(prompt, possibleReplacers.stream().map(ReplacementEffect::getView).collect(Collectors.toList()));
+                return possibleReplacers.stream().filter(re -> re.getId() == rev.getId()).findAny().orElse(first);
             }
         }
         // return first option without prompting if all options are the same
@@ -1960,15 +1959,15 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
         if (possibleStatics.size() == 1 || !isFullControl(FullControlFlag.ChooseCostOrder)) {
             return first;
         }
-        final List<String> sts = StreamUtil.stream(possibleStatics).map(StaticAbility::toString).collect(Collectors.toList());
+        final List<String> sts = possibleStatics.stream().map(StaticAbility::toString).collect(Collectors.toList());
         final String firstStr = sts.get(0);
         for (int i = 1; i < sts.size(); i++) {
             // prompt user if there are multiple different options
             if (!sts.get(i).equals(firstStr)) {
                 if (!GuiBase.isNetworkplay(getGui())) //non network game don't need serialization
                     return getGui().one(prompt, possibleStatics);
-                StaticAbilityView stv = getGui().one(prompt, StreamUtil.stream(possibleStatics).map(StaticAbility::getView).collect(Collectors.toList()));
-                return StreamUtil.stream(possibleStatics).filter(st -> st.getId() == stv.getId()).findAny().orElse(first);
+                StaticAbilityView stv = getGui().one(prompt, possibleStatics.stream().map(StaticAbility::getView).collect(Collectors.toList()));
+                return possibleStatics.stream().filter(st -> st.getId() == stv.getId()).findAny().orElse(first);
             }
         }
         // return first option without prompting if all options are the same
@@ -2928,7 +2927,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
             if (repeatLast) {
                 f = lastAdded;
             } else {
-                List<CardFaceView> choices = StreamUtil.stream(carddb.getAllFaces()).map(CardFaceView::new).collect(Collectors.toList());
+                List<CardFaceView> choices = carddb.getAllFaces().stream().map(CardFaceView::new).collect(Collectors.toList());
                 Collections.sort(choices);
                 f = getGui().oneOrNone(localizer.getMessage("lblNameTheCard"), choices);
             }

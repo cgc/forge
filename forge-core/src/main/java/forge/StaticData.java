@@ -11,7 +11,6 @@ import forge.util.ImageUtil;
 import forge.util.TextUtil;
 import forge.util.storage.IStorage;
 import forge.util.storage.StorageBase;
-import forge.util.StreamUtil;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.File;
@@ -875,10 +874,10 @@ public class StaticData {
             }
         }
         // stream().toList() causes crash on Android 8-13, use Collectors.toList()
-        List<String> NIF = StreamUtil.stream(new ArrayList<>(NIF_Q)).sorted().collect(Collectors.toList());
-        List<String> CNI = StreamUtil.stream(new ArrayList<>(CNI_Q)).sorted().collect(Collectors.toList());
-        List<String> TOK = StreamUtil.stream(new ArrayList<>(TOKEN_Q)).sorted().collect(Collectors.toList());
-        List<String> sorted_editions = StreamUtil.stream(EDITION_Q).distinct().sorted().collect(Collectors.toList());
+        List<String> NIF = new ArrayList<>(NIF_Q).stream().sorted().collect(Collectors.toList());
+        List<String> CNI = new ArrayList<>(CNI_Q).stream().sorted().collect(Collectors.toList());
+        List<String> TOK = new ArrayList<>(TOKEN_Q).stream().sorted().collect(Collectors.toList());
+        List<String> sorted_editions = EDITION_Q.stream().distinct().sorted().collect(Collectors.toList());
         for (String edition : sorted_editions) {
             String[] arr =  edition.split("_");
             String code = arr[0];

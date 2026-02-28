@@ -31,7 +31,6 @@ import forge.game.trigger.Trigger;
 import forge.game.zone.ZoneType;
 import forge.util.Expressions;
 import forge.util.ITranslatable;
-import forge.util.StreamUtil;
 
 /**
  * Base class for Triggers,ReplacementEffects and StaticAbilities.
@@ -572,7 +571,7 @@ public abstract class CardTraitBase implements GameObject, IHasCardView, IHasSVa
         return result;
     }
     protected Optional<IHasSVars> findSVar(final String name) {
-        return StreamUtil.stream(getSVarFallback(name)).filter(f -> f.hasSVar(name)).findFirst();
+        return getSVarFallback(name).stream().filter(f -> f.hasSVar(name)).findFirst();
     }
 
     @Override

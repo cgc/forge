@@ -50,7 +50,6 @@ import forge.game.zone.*;
 import forge.trackable.Tracker;
 import forge.util.*;
 import forge.util.collect.FCollection;
-import forge.util.StreamUtil;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.*;
@@ -1294,7 +1293,7 @@ public class Game {
     }
 
     public int getSingleMaxDamageDoneThisTurn() {
-        return StreamUtil.stream(globalDamageHistory).flatMap(cdh -> StreamUtil.stream(cdh.getAllDmgInstances())).
+        return globalDamageHistory.stream().flatMap(cdh -> cdh.getAllDmgInstances().stream()).
                 mapToInt(dmg -> dmg.getLeft()).max().orElse(0);
     }
 
@@ -1374,8 +1373,8 @@ public class Game {
     }
 
     public boolean isVoid() {
-        return StreamUtil.stream(getLeftBattlefieldThisTurn()).anyMatch(c -> !c.isLand()) ||
-                StreamUtil.stream(getStack().getSpellsCastThisTurn()).anyMatch(s -> s.getCastSA().isWarp());
+        return getLeftBattlefieldThisTurn().stream().anyMatch(c -> !c.isLand()) ||
+                getStack().getSpellsCastThisTurn().stream().anyMatch(s -> s.getCastSA().isWarp());
     }
 
     public int getAITimeout() {

@@ -38,7 +38,6 @@ import forge.game.trigger.Trigger;
 import forge.game.zone.ZoneType;
 import forge.util.TextUtil;
 import forge.util.collect.FCollection;
-import forge.util.StreamUtil;
 
 import java.util.List;
 import java.util.Set;
@@ -135,7 +134,7 @@ public final class CardUtil {
     }
 
     public static List<SpellAbility> getThisTurnActivated(final String valid, final Card src, final CardTraitBase ctb, final Player controller) {
-        return StreamUtil.stream(src.getGame().getStack().getAbilityActivatedThisTurn())
+        return src.getGame().getStack().getAbilityActivatedThisTurn().stream()
                 .filter(SpellAbilityPredicates.isValid(valid.split(","), controller, src, ctb))
                 .collect(Collectors.toList());
     }

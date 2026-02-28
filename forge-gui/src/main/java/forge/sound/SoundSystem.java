@@ -8,7 +8,6 @@ import forge.localinstance.properties.ForgeConstants;
 import forge.localinstance.properties.ForgePreferences.FPref;
 import forge.model.FModel;
 import forge.player.GamePlayerUtil;
-import forge.util.StreamUtil;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -429,7 +428,7 @@ public class SoundSystem {
         if(soundResourceAssetCache.containsKey(cacheKey) && soundResourceAssetCache.get(cacheKey).isFile())
             return soundResourceAssetCache.get(cacheKey);
         FilenameFilter nameFilter = (dir, name) -> name.equals(filename) || (name.startsWith(filename + ".") && PLAYABLE_AUDIO.accept(dir, name));
-        File out = StreamUtil.stream(getSoundResourceDirectoryFallbacks(profileName, ForgeConstants.SOUND_DIR))
+        File out = getSoundResourceDirectoryFallbacks(profileName, ForgeConstants.SOUND_DIR).stream()
                 .map(File::new)
                 .filter(File::isDirectory)
                 .map((d) -> d.listFiles(nameFilter))
@@ -460,7 +459,7 @@ public class SoundSystem {
      */
     public static File findMusicDirectory(MusicPlaylist playlist) {
         String profileName = FModel.getPreferences().getPref(FPref.UI_CURRENT_MUSIC_SET);
-        return StreamUtil.stream(getSoundResourceDirectoryFallbacks(profileName, ForgeConstants.MUSIC_DIR))
+        return getSoundResourceDirectoryFallbacks(profileName, ForgeConstants.MUSIC_DIR).stream()
                 .map((p) -> new File(p, playlist.getSubDir()))
                 .filter(File::isDirectory)
                 .filter((f) -> Objects.requireNonNull(f.listFiles(PLAYABLE_AUDIO)).length > 0)
@@ -473,7 +472,7 @@ public class SoundSystem {
         for(String path : SOUND_RESOURCE_PATHS) {
             File[] files = new File(path + subPath).listFiles(File::isDirectory);
             if(files != null)
-                StreamUtil.stream(files).map(File::getName).forEach(foundSets::add);
+                Arrays.stream(files).map(File::getName).forEach(foundSets::add);
         }
         foundSets.remove("Default");
         List<String> availableSets = new ArrayList<>(foundSets);

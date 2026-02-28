@@ -1,7 +1,6 @@
 package forge.game.card;
 
 import forge.util.collect.FCollection;
-import forge.util.StreamUtil;
 
 import java.util.function.Predicate;
 
@@ -132,7 +131,7 @@ public class CardCollection extends FCollection<Card> implements CardCollectionV
      */
     public CardCollection filter(Predicate<? super Card> test) {
         CardCollection out = new CardCollection();
-        StreamUtil.stream(this).filter(test).forEach(out::add);
+        this.stream().filter(test).forEach(out::add);
         return out;
     }
 

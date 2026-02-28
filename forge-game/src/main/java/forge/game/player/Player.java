@@ -58,7 +58,6 @@ import forge.item.IPaperCard;
 import forge.item.PaperCard;
 import forge.util.*;
 import forge.util.collect.FCollection;
-import forge.util.StreamUtil;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -2105,7 +2104,7 @@ public class Player extends GameEntity implements Comparable<Player> {
     }
 
     public final boolean hasRevolt() {
-        return StreamUtil.stream(getGame().getLeftBattlefieldThisTurn()).anyMatch(CardPredicates.isController(this));
+        return getGame().getLeftBattlefieldThisTurn().stream().anyMatch(CardPredicates.isController(this));
     }
 
     public final int getDescended() {
@@ -2123,7 +2122,7 @@ public class Player extends GameEntity implements Comparable<Player> {
     }
 
     public final boolean hasLandfall() {
-        return StreamUtil.stream(getZone(ZoneType.Battlefield).getCardsAddedThisTurn(null))
+        return getZone(ZoneType.Battlefield).getCardsAddedThisTurn(null).stream()
                 .anyMatch(CardPredicates.LANDS);
     }
 
@@ -3063,7 +3062,7 @@ public class Player extends GameEntity implements Comparable<Player> {
     }
 
     public void initCommanderColor(Card cmd) {
-        if (StreamUtil.stream(cmd.getStaticAbilities()).anyMatch(stAb -> stAb.hasParam("Description") && stAb.getParam("Description")
+        if (cmd.getStaticAbilities().stream().anyMatch(stAb -> stAb.hasParam("Description") && stAb.getParam("Description")
                 .contains("If CARDNAME is your commander, choose a color before the game begins."))) {
             Player p = cmd.getController();
             String prompt = Localizer.getInstance().getMessage("lblChooseAColorFor", cmd.getName());
@@ -4031,10 +4030,10 @@ public class Player extends GameEntity implements Comparable<Player> {
     }
 
     public List<String> getUnlockedDoors() {
-        return StreamUtil.stream(getCardsIn(ZoneType.Battlefield))
+        return getCardsIn(ZoneType.Battlefield).stream()
                 .filter(Card::isRoom)
                 .map(Card::getUnlockedRoomNames)
-                .flatMap(doors -> StreamUtil.stream(doors))
+                .flatMap(Collection::stream)
                 .collect(Collectors.toList());
     }
 

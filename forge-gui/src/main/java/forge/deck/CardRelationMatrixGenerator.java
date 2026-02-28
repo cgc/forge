@@ -9,7 +9,6 @@ import forge.localinstance.properties.ForgeConstants;
 import forge.model.FModel;
 import forge.util.storage.IStorage;
 import forge.util.storage.StorageImmediatelySerialized;
-import forge.util.StreamUtil;
 import org.apache.commons.lang3.ArrayUtils;
 
 import java.io.File;
@@ -63,7 +62,7 @@ public final class CardRelationMatrixGenerator {
                 ForgeConstants.DECK_GEN_DIR, false),
                 true);
 
-        List<PaperCard> cardList = StreamUtil.stream(format.getAllCards())
+        List<PaperCard> cardList = format.getAllCards().stream()
                 .filter(PaperCardPredicates.NOT_TRUE_BASIC_LAND)
                 .collect(Collectors.toList());
         cardList.add(FModel.getMagicDb().getCommonCards().getCard("Wastes"));
@@ -80,7 +79,7 @@ public final class CardRelationMatrixGenerator {
             for (Deck deck:decks){
                 if (deck.getMain().contains(card)) {
                     String cardName = card.getName();
-                    StreamUtil.stream(deck.getMain().toFlatList())
+                    deck.getMain().toFlatList().stream()
                         .filter(PaperCardPredicates.NOT_TRUE_BASIC_LAND)
                         .filter(pairCard -> !pairCard.getName().equals(cardName))
                         .forEach(pairCard -> {
@@ -148,7 +147,7 @@ public final class CardRelationMatrixGenerator {
         }
 
         //filter to just legal commanders
-        List<PaperCard> legends = StreamUtil.stream(cardList).filter(format.isLegalCommanderPredicate()).collect(Collectors.toList());
+        List<PaperCard> legends = cardList.stream().filter(format.isLegalCommanderPredicate()).collect(Collectors.toList());
 
         //generate lookups for legends to link commander names to matrix rows
         for (int i=0; i<legends.size(); ++i){
@@ -191,7 +190,7 @@ public final class CardRelationMatrixGenerator {
     public static void updateLegendMatrix(Deck deck, PaperCard legend, Map<String, Integer> cardIntegerMap,
                              Map<String, Integer> legendIntegerMap, int[][] matrix){
         String cardName = legend.getName();
-        StreamUtil.stream(deck.getMain().toFlatList())
+        deck.getMain().toFlatList().stream()
             .filter(PaperCardPredicates.NOT_TRUE_BASIC_LAND)
             .filter(pairCard -> !pairCard.getName().equals(cardName))
             .forEach(pairCard -> {

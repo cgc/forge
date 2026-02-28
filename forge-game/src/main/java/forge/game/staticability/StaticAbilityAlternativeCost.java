@@ -13,7 +13,6 @@ import forge.game.player.Player;
 import forge.game.spellability.OptionalCost;
 import forge.game.spellability.SpellAbility;
 import forge.game.zone.ZoneType;
-import forge.util.StreamUtil;
 
 public class StaticAbilityAlternativeCost {
 
@@ -56,7 +55,7 @@ public class StaticAbilityAlternativeCost {
                 if (!stAb.getHostCard().isImmutable()) {
                     Set<ZoneType> zones = stAb.getActiveZone();
                     if (zones != null && zones.size() == 1) {
-                        newSA.getRestrictions().setZone(StreamUtil.stream(zones).findFirst().get());
+                        newSA.getRestrictions().setZone(zones.stream().findFirst().get());
                     }
                 }
 

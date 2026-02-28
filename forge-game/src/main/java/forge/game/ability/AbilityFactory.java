@@ -30,7 +30,6 @@ import forge.game.cost.Cost;
 import forge.game.spellability.*;
 import forge.game.zone.ZoneType;
 import forge.util.FileSection;
-import forge.util.StreamUtil;
 import io.sentry.Breadcrumb;
 import io.sentry.Sentry;
 
@@ -271,7 +270,7 @@ public final class AbilityFactory {
             final String key = "Choices";
             if (mapParams.containsKey(key)) {
                 List<String> names = Lists.newArrayList(mapParams.get(key).split(","));
-                spellAbility.setAdditionalAbilityList(key, StreamUtil.stream(names).map(input -> {
+                spellAbility.setAdditionalAbilityList(key, names.stream().map(input -> {
                     AbilitySub sub = getSubAbility(state, input, sVarHolder);
                     if (api == ApiType.GenericChoice) {
                         // support scripters adding restrictions to filter illegal choices

@@ -18,7 +18,6 @@ import forge.game.zone.ZoneType;
 import forge.util.Lang;
 import forge.util.Localizer;
 import forge.util.MyRandom;
-import forge.util.StreamUtil;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
@@ -333,7 +332,7 @@ public class RollDiceEffect extends SpellAbilityEffect {
         runParams.put(AbilityKey.RolledToVisitAttractions, toVisitAttractions);
         player.getGame().getTriggerHandler().runTrigger(TriggerType.RolledDieOnce, runParams, false);
 
-        return StreamUtil.stream(getFinalResults(resultsList)).reduce(0, Integer::sum);
+        return getFinalResults(resultsList).stream().reduce(0, Integer::sum);
     }
 
     /**

@@ -10,7 +10,6 @@ import forge.game.ability.AbilityFactory.AbilityRecordType;
 import forge.game.ability.ApiType;
 import forge.game.replacement.ReplacementType;
 import forge.game.trigger.TriggerType;
-import forge.util.StreamUtil;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
@@ -391,7 +390,7 @@ public final class CardScriptParser {
         if (DEFINED_CARDS.contains(defined)) {
             return true;
         }
-        return StreamUtil.stream(DEFINED_CARDS_STARTSWITH).anyMatch(startsWith(defined));
+        return DEFINED_CARDS_STARTSWITH.stream().anyMatch(startsWith(defined));
     }
     private static boolean isDefinedPlayerLegal(final String defined) {
         final boolean non = defined.startsWith("Non"), flipped = defined.startsWith("Flipped");
@@ -407,7 +406,7 @@ public final class CardScriptParser {
         if (DEFINED_PLAYERS.contains(defined)) {
             return true;
         }
-        return StreamUtil.stream(DEFINED_PLAYERS_STARTSWITH).anyMatch(startsWith(defined));
+        return DEFINED_PLAYERS_STARTSWITH.stream().anyMatch(startsWith(defined));
     }
 
     private static final Set<String> VALID_INCLUSIVE = ImmutableSortedSet.of(
@@ -506,7 +505,7 @@ public final class CardScriptParser {
         if (VALID_EXCLUSIVE.contains(valid)) {
             return true;
         }
-        return StreamUtil.stream(VALID_EXCLUSIVE_STARTSWITH).anyMatch(startsWith(valid));
+        return VALID_EXCLUSIVE_STARTSWITH.stream().anyMatch(startsWith(valid));
     }
 
     private static final class KeyValuePair {

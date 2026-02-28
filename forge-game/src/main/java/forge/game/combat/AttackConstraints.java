@@ -25,7 +25,6 @@ import forge.game.staticability.StaticAbility;
 import forge.game.staticability.StaticAbilityMustAttack;
 import forge.util.collect.FCollection;
 import forge.util.collect.FCollectionView;
-import forge.util.StreamUtil;
 
 public class AttackConstraints {
 
@@ -48,7 +47,7 @@ public class AttackConstraints {
             restrictions.put(possibleAttacker, new AttackRestriction(possibleAttacker, possibleDefenders));
 
             final Multimap<Card, StaticAbility> causesToAttack = StaticAbilityMustAttack.getAttackRequirements(possibleAttacker,
-                    StreamUtil.stream(possibleAttackers).filter(p -> !p.equals(possibleAttacker)).collect(Collectors.toList()));
+                    possibleAttackers.stream().filter(p -> !p.equals(possibleAttacker)).collect(Collectors.toList()));
 
             final AttackRequirement r = new AttackRequirement(possibleAttacker, causesToAttack, possibleDefenders);
             requirements.put(possibleAttacker, r);
@@ -149,7 +148,7 @@ public class AttackConstraints {
         }
  
         // take the case with the fewest violations
-        return StreamUtil.stream(possible.entrySet())
+        return possible.entrySet().stream()
                 .min(Comparator.comparingInt(Entry::getValue))
                 .map(e -> Pair.of(e.getKey(), e.getValue()))
                 .orElseThrow(NoSuchElementException::new);
@@ -228,7 +227,7 @@ public class AttackConstraints {
             }
 
             for (final Predicate<Card> predicateRestriction : predicateRestrictions) {
-                if (StreamUtil.stream(Sets.union(myAttackers.keySet(), reserved.asSet())).anyMatch(predicateRestriction)) {
+                if (Sets.union(myAttackers.keySet(), reserved.asSet()).stream().anyMatch(predicateRestriction)) {
                     // predicate fulfilled already, ignore!
                     continue;
                 }
@@ -319,10 +318,10 @@ public class AttackConstraints {
         Multimap<GameEntity, StaticAbility> playerReqs = MultimapBuilder.hashKeys().arrayListValues().build(playerRequirements);
         CardCollection usedAttackers = new CardCollection();
         while (!playerReqs.isEmpty()) {
-            Map.Entry<GameEntity, Collection<StaticAbility>> playerReq = StreamUtil.stream(playerReqs.asMap().entrySet())
+            Map.Entry<GameEntity, Collection<StaticAbility>> playerReq = playerReqs.asMap().entrySet().stream()
                     .max(Comparator.comparing(e -> e.getValue().size())).orElse(null);
             // find best attack to also fulfill the additional requirements
-            Attack bestMatch = StreamUtil.stream(result).filter(att -> !usedAttackers.contains(att.attacker) && att.defender.equals(playerReq.getKey())).findFirst().orElse(null);
+            Attack bestMatch = result.stream().filter(att -> !usedAttackers.contains(att.attacker) && att.defender.equals(playerReq.getKey())).findFirst().orElse(null);
             if (bestMatch != null) {
                 bestMatch.requirements += playerReq.getValue().size();
                 usedAttackers.add(bestMatch.attacker);

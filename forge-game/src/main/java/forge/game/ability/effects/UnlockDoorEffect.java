@@ -18,7 +18,6 @@ import forge.game.player.Player;
 import forge.game.spellability.SpellAbility;
 import forge.game.zone.ZoneType;
 import forge.util.Localizer;
-import forge.util.StreamUtil;
 
 public class UnlockDoorEffect extends SpellAbilityEffect {
 
@@ -53,7 +52,7 @@ public class UnlockDoorEffect extends SpellAbilityEffect {
                 c.unlockRoom(activator, sa.getCardStateName());
                 break;
             case "Unlock":
-                List<CardState> states = StreamUtil.stream(c.getLockedRooms()).map(c::getState).collect(Collectors.toList());
+                List<CardState> states = c.getLockedRooms().stream().map(c::getState).collect(Collectors.toList());
 
                 // need to choose Room Name
                 CardState chosen = activator.getController().chooseSingleCardState(sa, states, "Choose Room to unlock", params);
@@ -66,7 +65,7 @@ public class UnlockDoorEffect extends SpellAbilityEffect {
                 switch (c.getLockedRooms().size()) {
                 case 0:
                     // no locked, all unlocked, can only lock door
-                    List<CardState> unlockStates = StreamUtil.stream(c.getUnlockedRooms()).map(c::getState).collect(Collectors.toList());
+                    List<CardState> unlockStates = c.getUnlockedRooms().stream().map(c::getState).collect(Collectors.toList());
                     CardState chosenUnlock = activator.getController().chooseSingleCardState(sa, unlockStates, "Choose Room to lock", params);
                     if (chosenUnlock == null) {
                         continue;
@@ -89,7 +88,7 @@ public class UnlockDoorEffect extends SpellAbilityEffect {
                     }
                     break;
                 case 2:
-                    List<CardState> lockStates = StreamUtil.stream(c.getLockedRooms()).map(c::getState).collect(Collectors.toList());
+                    List<CardState> lockStates = c.getLockedRooms().stream().map(c::getState).collect(Collectors.toList());
 
                     // need to choose Room Name
                     CardState chosenLock = activator.getController().chooseSingleCardState(sa, lockStates, "Choose Room to unlock", params);

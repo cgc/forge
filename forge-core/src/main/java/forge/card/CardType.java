@@ -22,7 +22,6 @@ import com.google.common.collect.*;
 import forge.util.ITranslatable;
 import forge.util.Localizer;
 import forge.util.Settable;
-import forge.util.StreamUtil;
 import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -320,7 +319,7 @@ public final class CardType implements Comparable<CardType>, CardTypeView {
             creatureTypes.addAll(getAllCreatureTypes());
             creatureTypes.removeAll(this.excludedCreatureSubtypes);
         } else {
-            StreamUtil.stream(subtypes).filter(CardType::isACreatureType).forEach(creatureTypes::add);
+            subtypes.stream().filter(CardType::isACreatureType).forEach(creatureTypes::add);
         }
         return creatureTypes;
     }
@@ -341,7 +340,7 @@ public final class CardType implements Comparable<CardType>, CardTypeView {
     public Set<String> getBattleTypes() {
         if(!isBattle())
             return Set.of();
-        return StreamUtil.stream(subtypes).filter(CardType::isABattleType).collect(Collectors.toSet());
+        return subtypes.stream().filter(CardType::isABattleType).collect(Collectors.toSet());
     }
 
     @Override
@@ -423,7 +422,7 @@ public final class CardType implements Comparable<CardType>, CardTypeView {
 
     @Override
     public boolean hasABasicLandType() {
-        return StreamUtil.stream(this.subtypes).anyMatch(CardType::isABasicLandType);
+        return this.subtypes.stream().anyMatch(CardType::isABasicLandType);
     }
     @Override
     public boolean hasANonBasicLandType() {
@@ -569,14 +568,14 @@ public final class CardType implements Comparable<CardType>, CardTypeView {
         if (!isCreature() && !isKindred()) {
             return false;
         }
-        return StreamUtil.stream(Constant.OUTLAW_TYPES).anyMatch(s -> hasCreatureType(s));
+        return Constant.OUTLAW_TYPES.stream().anyMatch(s -> hasCreatureType(s));
     }
     @Override
     public boolean isParty() {
         if (!isCreature() && !isKindred()) {
             return false;
         }
-        return StreamUtil.stream(Constant.PARTY_TYPES).anyMatch(s -> hasCreatureType(s));
+        return Constant.PARTY_TYPES.stream().anyMatch(s -> hasCreatureType(s));
     }
 
     @Override

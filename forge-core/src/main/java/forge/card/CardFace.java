@@ -2,7 +2,6 @@ package forge.card;
 
 import forge.card.mana.ManaCost;
 import forge.util.Lang;
-import forge.util.StreamUtil;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
@@ -101,7 +100,7 @@ final class CardFace implements ICardFace, Cloneable {
             this.attractionLights = null;
             return;
         }
-        this.attractionLights = StreamUtil.stream(value.split(" ")).map(Integer::parseInt).collect(Collectors.toSet());
+        this.attractionLights = Arrays.stream(value.split(" ")).map(Integer::parseInt).collect(Collectors.toSet());
     }
 
     void setPtText(String value) {

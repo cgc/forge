@@ -35,7 +35,6 @@ import forge.item.generation.UnOpenedProduct;
 import forge.localinstance.properties.ForgePreferences.FPref;
 import forge.model.FModel;
 import forge.util.*;
-import forge.util.StreamUtil;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
@@ -104,7 +103,7 @@ public final class QuestUtilCards {
                 wastesCodes.add("OGW");
             }
         } else {
-            StreamUtil.stream(FModel.getMagicDb().getEditions())
+            FModel.getMagicDb().getEditions().stream()
                     .filter(CardEdition.Predicates.hasBasicLands)
                     .map(CardEdition::getCode)
                     .forEach(landCodes::add);
@@ -554,7 +553,7 @@ public final class QuestUtilCards {
      *            the count
      */
     private void generateTournamentsInShop(final int count) {
-        List<TournamentPack> packs = StreamUtil.stream(FModel.getMagicDb().getEditions())
+        List<TournamentPack> packs = FModel.getMagicDb().getEditions().stream()
                 .filter(CardEdition.Predicates.HAS_TOURNAMENT_PACK)
                 .filter(isLegalInQuestFormat(questController.getFormat()))
                 .map(TournamentPack::fromSet)
@@ -569,7 +568,7 @@ public final class QuestUtilCards {
      *            the count
      */
     private void generateFatPacksInShop(final int count) {
-        List<FatPack> packs = StreamUtil.stream(FModel.getMagicDb().getEditions())
+        List<FatPack> packs = FModel.getMagicDb().getEditions().stream()
                 .filter(CardEdition.Predicates.HAS_FAT_PACK)
                 .filter(isLegalInQuestFormat(questController.getFormat()))
                 .map(FatPack::fromSet)
@@ -588,7 +587,7 @@ public final class QuestUtilCards {
             formatFilter = formatFilter.and(isLegalInQuestFormat(questController.getFormat()));
         }
 
-        List<CardEdition> editions = StreamUtil.stream(FModel.getMagicDb().getEditions())
+        List<CardEdition> editions = FModel.getMagicDb().getEditions().stream()
                 .filter(formatFilter).collect(Collectors.toList());
 
         Collections.shuffle(editions);
@@ -621,7 +620,7 @@ public final class QuestUtilCards {
         if (questController.getFormat() != null) {
             formatFilter = formatFilter.and(deck -> questController.getFormat().isSetLegal(deck.getEdition()));
         }
-        final List<PreconDeck> decks = StreamUtil.stream(QuestController.getPrecons())
+        final List<PreconDeck> decks = QuestController.getPrecons().stream()
                 .filter(formatFilter)
                 .collect(StreamUtil.random(count));
         questAssets.getShopList().addAllOfTypeFlat(decks);

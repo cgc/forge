@@ -3,7 +3,6 @@ package forge.deck.generation;
 import forge.item.PaperCard;
 import forge.item.PaperCardPredicates;
 import forge.util.IterableUtil;
-import forge.util.StreamUtil;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -39,7 +38,7 @@ public class DeckGenPool implements IDeckGenPool {
     @Override
     public PaperCard getCard(String name, String edition) {
         Predicate<PaperCard> filter = PaperCardPredicates.printedInSet(edition).and(PaperCardPredicates.name(name));
-        return StreamUtil.stream(cards.values())
+        return cards.values().stream()
                 .filter(filter)
                 .findFirst().orElseGet(() -> getCard(name));
     }

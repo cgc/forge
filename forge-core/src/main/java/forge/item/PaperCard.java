@@ -21,7 +21,6 @@ import forge.ImageKeys;
 import forge.StaticData;
 import forge.card.*;
 import forge.util.*;
-import forge.util.StreamUtil;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.*;
@@ -371,10 +370,10 @@ public class PaperCard implements Comparable<IPaperCard>, InventoryItemFromSet, 
                 names.add(mainFlavor + " // " + otherFlavor);
         }
         if(!"en-US".equals(language)) {
-            Set<String> translated = StreamUtil.stream(names).map(CardTranslation::getTranslatedName).filter(Objects::nonNull).collect(Collectors.toSet());
+            Set<String> translated = names.stream().map(CardTranslation::getTranslatedName).filter(Objects::nonNull).collect(Collectors.toSet());
             names.addAll(translated);
         }
-        Set<String> noAccents = StreamUtil.stream(names).map(StringUtils::stripAccents).collect(Collectors.toSet());
+        Set<String> noAccents = names.stream().map(StringUtils::stripAccents).collect(Collectors.toSet());
         names.addAll(noAccents);
         return names;
     }
@@ -592,7 +591,7 @@ public class PaperCard implements Comparable<IPaperCard>, InventoryItemFromSet, 
 
     @Override
     public List<ICardFace> getAllFaces() {
-        return StreamUtil.stream(this.rules.getAllFaces()).map(this::getVariantForFace).collect(Collectors.toList());
+        return this.rules.getAllFaces().stream().map(this::getVariantForFace).collect(Collectors.toList());
     }
 
     private ICardFace getVariantForFace(ICardFace face) {
@@ -692,7 +691,7 @@ public class PaperCard implements Comparable<IPaperCard>, InventoryItemFromSet, 
 
         @Override
         public String toString() {
-            return StreamUtil.stream(this.toMap().entrySet())
+            return this.toMap().entrySet().stream()
                     .map((e) -> e.getKey() + "=" + e.getValue())
                     .collect(Collectors.joining("\t"));
         }

@@ -40,7 +40,7 @@ public class IterableUtil {
     }
 
     public static <T> Iterable<T> filter(Collection<T> iterable, Predicate<? super T> filter) {
-        return () -> StreamUtil.stream(iterable).filter(filter).iterator();
+        return () -> iterable.stream().filter(filter).iterator();
     }
 
     public static <T> Iterable<T> filter(final Iterable<?> iterable, final Class<T> desiredType) {

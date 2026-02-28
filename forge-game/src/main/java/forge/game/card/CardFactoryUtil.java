@@ -49,7 +49,6 @@ import forge.game.zone.ZoneType;
 import forge.util.Lang;
 import forge.util.Localizer;
 import forge.util.TextUtil;
-import forge.util.StreamUtil;
 import io.sentry.Breadcrumb;
 import io.sentry.Sentry;
 import org.apache.commons.lang3.StringUtils;
@@ -930,7 +929,7 @@ public class CardFactoryUtil {
 
             for (Map.Entry<String, List<Integer>> e : result.entrySet()) {
                 // steam to combine Description
-                String desc = StreamUtil.stream(e.getValue()).map(TextUtil::toRoman).collect(Collectors.joining(", "));
+                String desc = e.getValue().stream().map(TextUtil::toRoman).collect(Collectors.joining(", "));
                 boolean secondary = false;
                 for (Integer i : e.getValue()) {
 

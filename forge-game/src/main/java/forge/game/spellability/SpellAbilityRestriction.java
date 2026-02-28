@@ -40,7 +40,6 @@ import forge.game.zone.Zone;
 import forge.game.zone.ZoneType;
 import forge.util.Expressions;
 import forge.util.collect.FCollection;
-import forge.util.StreamUtil;
 
 /**
  * <p>
@@ -465,7 +464,7 @@ public class SpellAbilityRestriction extends SpellAbilityVariables {
             }
 
             Predicate<GameObject> restriction = GameObjectPredicates.restriction(getIsPresent().split(","), activator, c, sa);
-            final int left = (int) StreamUtil.stream(list).filter(restriction).count();
+            final int left = (int) list.stream().filter(restriction).count();
 
             final String rightString = this.getPresentCompare().substring(2);
             int right = AbilityUtils.calculateAmount(c, rightString, sa);
@@ -573,7 +572,7 @@ public class SpellAbilityRestriction extends SpellAbilityVariables {
 
         if (this.getGameTypes().size() > 0) {
             Predicate<GameType> pgt = type -> game.getRules().hasAppliedVariant(type);
-            if (StreamUtil.stream(getGameTypes()).noneMatch(pgt)) {
+            if (getGameTypes().stream().noneMatch(pgt)) {
                 return false;
             }
         }

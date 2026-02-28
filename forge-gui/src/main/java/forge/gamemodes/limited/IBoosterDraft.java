@@ -23,7 +23,6 @@ import forge.deck.Deck;
 import forge.deck.DeckGroup;
 import forge.deck.DeckSection;
 import forge.item.PaperCard;
-import forge.util.StreamUtil;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -63,7 +62,7 @@ public interface IBoosterDraft {
     default DeckGroup getDecksAsGroup() {
         DeckGroup out = new DeckGroup();
         out.setHumanDeck(getHumanPlayer().deck);
-        out.addAiDecks(StreamUtil.stream(getOpposingPlayers()).map(LimitedPlayer::getDeck).toArray(Deck[]::new));
+        out.addAiDecks(Arrays.stream(getOpposingPlayers()).map(LimitedPlayer::getDeck).toArray(Deck[]::new));
         return out;
     }
 

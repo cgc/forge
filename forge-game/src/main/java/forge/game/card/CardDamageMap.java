@@ -17,7 +17,6 @@ import forge.game.player.Player;
 import forge.game.player.PlayerCollection;
 import forge.game.spellability.SpellAbility;
 import forge.game.trigger.TriggerType;
-import forge.util.StreamUtil;
 
 import java.util.Map;
 import java.util.Map.Entry;
@@ -189,10 +188,10 @@ public class CardDamageMap extends ForwardingTable<Card, GameEntity, Integer> {
         Set<Card> filteredSource = null;
         Set<GameEntity> filteredTarget = null;
         if (validSource != null) {
-            filteredSource = StreamUtil.stream(rowKeySet()).filter(GameObjectPredicates.restriction(validSource.split(","), host.getController(), host, sa)).collect(Collectors.toSet());
+            filteredSource = rowKeySet().stream().filter(GameObjectPredicates.restriction(validSource.split(","), host.getController(), host, sa)).collect(Collectors.toSet());
         }
         if (validTarget != null) {
-            filteredTarget = StreamUtil.stream(columnKeySet()).filter(GameObjectPredicates.restriction(validTarget.split(","), host.getController(), host, sa)).collect(Collectors.toSet());
+            filteredTarget = columnKeySet().stream().filter(GameObjectPredicates.restriction(validTarget.split(","), host.getController(), host, sa)).collect(Collectors.toSet());
         }
 
         for (Table.Cell<Card, GameEntity, Integer> c : cellSet()) {

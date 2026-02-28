@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import forge.util.*;
-import forge.util.StreamUtil;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.collect.ImmutableList;
@@ -456,7 +455,7 @@ public class PumpEffect extends SpellAbilityEffect {
             List<String> affectedKeywords = Lists.newArrayList(keywords);
 
             if (!affectedKeywords.isEmpty()) {
-                affectedKeywords = StreamUtil.stream(affectedKeywords).map(input -> {
+                affectedKeywords = affectedKeywords.stream().map(input -> {
                     if (input.contains("CardManaCost")) {
                         input = input.replace("CardManaCost", tgtC.getManaCost().getShortString());
                     } else if (input.contains("ConvertedManaCost")) {

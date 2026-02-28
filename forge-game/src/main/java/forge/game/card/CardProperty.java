@@ -31,7 +31,6 @@ import forge.util.IterableUtil;
 import forge.util.TextUtil;
 import forge.util.collect.FCollection;
 import forge.util.collect.FCollectionView;
-import forge.util.StreamUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -829,7 +828,7 @@ public class CardProperty {
                 } else if (restriction.equals(ZoneType.Battlefield.toString())) {
                     return game.getCardsIn(ZoneType.Battlefield).anyMatch(CardPredicates.sharesNameWith(card));
                 } else if (restriction.equals("ThisTurnCast")) {
-                    return StreamUtil.stream(CardUtil.getThisTurnCast("Card", source, spellAbility, sourceController)).anyMatch(CardPredicates.sharesNameWith(card));
+                    return CardUtil.getThisTurnCast("Card", source, spellAbility, sourceController).stream().anyMatch(CardPredicates.sharesNameWith(card));
                 } else if (restriction.equals("MovedToGrave")) {
                     if (!(spellAbility instanceof SpellAbility)) {
                         final SpellAbility root = ((SpellAbility) spellAbility).getRootAbility();
@@ -1607,7 +1606,7 @@ public class CardProperty {
                 return false;
             }
             String valid = property.split(" ")[1];
-            if (StreamUtil.stream(blocked).anyMatch(CardPredicates.restriction(valid, card.getController(), source, spellAbility))) {
+            if (blocked.stream().anyMatch(CardPredicates.restriction(valid, card.getController(), source, spellAbility))) {
                 return true;
             }
             for (Card c : AbilityUtils.getDefinedCards(source, valid, spellAbility)) {
@@ -1622,7 +1621,7 @@ public class CardProperty {
                 return false;
             }
             String valid = property.split(" ")[1];
-            if (StreamUtil.stream(blocked).anyMatch(CardPredicates.restriction(valid, card.getController(), source, spellAbility))) {
+            if (blocked.stream().anyMatch(CardPredicates.restriction(valid, card.getController(), source, spellAbility))) {
                 return true;
             }
             for (Card c : AbilityUtils.getDefinedCards(source, valid, spellAbility)) {
@@ -2015,7 +2014,7 @@ public class CardProperty {
             }
             List<String> typeList = Lists.newArrayList(types.split(","));
 
-            return StreamUtil.stream(card.getType().getCreatureTypes()).anyMatch(typeList::contains);
+            return card.getType().getCreatureTypes().stream().anyMatch(typeList::contains);
         } else if (property.startsWith("Triggered")) {
             if (spellAbility instanceof SpellAbility) {
                 final String key = property.substring(9);

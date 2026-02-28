@@ -31,7 +31,6 @@ import forge.game.keyword.Keyword;
 import forge.game.player.Player;
 import forge.game.spellability.SpellAbility;
 import forge.game.zone.ZoneType;
-import forge.util.StreamUtil;
 
 /**
  * The Class StaticAbilityCantTarget.
@@ -70,7 +69,7 @@ public class StaticAbilityCantTarget {
     public static boolean applyCantTargetAbility(final StaticAbility stAb, final GameEntity entity, final SpellAbility spellAbility) {
         if (entity instanceof Card card) {
             if (stAb.hasParam("AffectedZone")) {
-                if (StreamUtil.stream(ZoneType.listValueOf(stAb.getParam("AffectedZone"))).noneMatch(zt -> card.isInZone(zt))) {
+                if (ZoneType.listValueOf(stAb.getParam("AffectedZone")).stream().noneMatch(zt -> card.isInZone(zt))) {
                     return false;
                 }
             } else if (!card.isInPlay()) { // default zone is battlefield

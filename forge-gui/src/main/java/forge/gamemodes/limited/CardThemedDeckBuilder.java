@@ -30,7 +30,6 @@ import forge.localinstance.properties.ForgePreferences;
 import forge.model.FModel;
 import forge.util.IterableUtil;
 import forge.util.MyRandom;
-import forge.util.StreamUtil;
 
 /**
  * Limited format deck.
@@ -100,7 +99,7 @@ public class CardThemedDeckBuilder extends DeckGeneratorBase {
         this.isForAI = isForAI;
         // remove Unplayables
         if(isForAI) {
-            this.aiPlayables = StreamUtil.stream(availableList)
+            this.aiPlayables = availableList.stream()
                     .filter(PaperCardPredicates.fromRules(CardRulesPredicates.IS_KEPT_IN_AI_DECKS))
                     .collect(Collectors.toList());
         }else{
@@ -184,7 +183,7 @@ public class CardThemedDeckBuilder extends DeckGeneratorBase {
             System.out.println(keyCard.getName());
             System.out.println("Colors: " + colors.toEnumSet().toString());
         }
-        rankedColorList = StreamUtil.stream(aiPlayables)
+        rankedColorList = aiPlayables.stream()
                 .filter(PaperCardPredicates.fromRules(hasColor))
                 .collect(Collectors.toList());
         onColorCreaturesAndSpells = IterableUtil.filter(rankedColorList,
@@ -314,7 +313,7 @@ public class CardThemedDeckBuilder extends DeckGeneratorBase {
 
         //Add remaining non-land colour matching cards to sideboard
         final CardPool cp = result.getOrCreate(DeckSection.Sideboard);
-        List<PaperCard> sideboard = StreamUtil.stream(aiPlayables)
+        List<PaperCard> sideboard = aiPlayables.stream()
                 .filter(PaperCardPredicates.fromRules(hasColor.and(CardRulesPredicates.IS_NON_LAND)))
                 .limit(15)
                 .collect(Collectors.toList());
@@ -390,7 +389,7 @@ public class CardThemedDeckBuilder extends DeckGeneratorBase {
         }
         // Add the second keycard if not land
         if(secondKeyCard!=null && !secondKeyCard.getRules().getMainPart().getType().isLand()) {
-            final List<PaperCard> keyCardList = StreamUtil.stream(aiPlayables)
+            final List<PaperCard> keyCardList = aiPlayables.stream()
                     .filter(PaperCardPredicates.name(secondKeyCard.getName()))
                     .collect(Collectors.toList());
             deckList.addAll(keyCardList);
@@ -411,7 +410,7 @@ public class CardThemedDeckBuilder extends DeckGeneratorBase {
         }
         // Add the deck card
         if(secondKeyCard!=null && secondKeyCard.getRules().getMainPart().getType().isLand()) {
-            final List<PaperCard> keyCardList = StreamUtil.stream(aiPlayables)
+            final List<PaperCard> keyCardList = aiPlayables.stream()
                     .filter(PaperCardPredicates.name(secondKeyCard.getName()))
                     .collect(Collectors.toList());
             deckList.addAll(keyCardList);
@@ -438,7 +437,7 @@ public class CardThemedDeckBuilder extends DeckGeneratorBase {
      * If evolving wilds is in the deck and there are fewer than 4 spaces for basic lands - remove evolving wilds
      */
     protected void checkEvolvingWilds(){
-        List<PaperCard> evolvingWilds = StreamUtil.stream(deckList).filter(PaperCardPredicates.name("Evolving Wilds")).collect(Collectors.toList());
+        List<PaperCard> evolvingWilds = deckList.stream().filter(PaperCardPredicates.name("Evolving Wilds")).collect(Collectors.toList());
         if((evolvingWilds.size()>0 && landsNeeded<4 ) || colors.countColors()<2){
             deckList.removeAll(evolvingWilds);
             landsNeeded=landsNeeded+evolvingWilds.size();
@@ -490,7 +489,7 @@ public class CardThemedDeckBuilder extends DeckGeneratorBase {
     }
 
     protected void addLowCMCCard(){
-        final PaperCard card = StreamUtil.stream(rankedColorList)
+        final PaperCard card = rankedColorList.stream()
                 .filter(PaperCardPredicates.IS_NON_LAND)
                 .findFirst().orElse(null);
         if (card != null) {
@@ -904,7 +903,7 @@ public class CardThemedDeckBuilder extends DeckGeneratorBase {
         for (int i = 1; i < 7; i++) {
             creatureCosts.put(i, 0);
         }
-        StreamUtil.stream(deckList).filter(PaperCardPredicates.IS_CREATURE)
+        deckList.stream().filter(PaperCardPredicates.IS_CREATURE)
             .mapToInt(c -> c.getRules().getManaCost().getCMC())
             .map(cmc -> Math.min(Math.max(cmc, 1), 6))
             .forEach(cmc -> creatureCosts.put(cmc, creatureCosts.get(cmc) + 1));

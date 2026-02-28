@@ -18,7 +18,6 @@ import forge.game.GameEntity;
 import forge.game.card.Card;
 import forge.game.player.Player;
 import forge.util.collect.FCollectionView;
-import forge.util.StreamUtil;
 
 public class AttackRequirement {
 
@@ -83,7 +82,7 @@ public class AttackRequirement {
     }
 
     public boolean hasRequirement() {
-        return StreamUtil.stream(defenderSpecific.values()).anyMatch(i -> i > 0 ) || !causesToAttack.isEmpty();
+        return defenderSpecific.values().stream().anyMatch(i -> i > 0 ) || !causesToAttack.isEmpty();
     }
 
     public final Multimap<Card, StaticAbility> getCausesToAttack() {
@@ -96,7 +95,7 @@ public class AttackRequirement {
         }
 
         final boolean isAttacking = defender != null;
-        int violations = StreamUtil.stream(defenderSpecific.values()).mapToInt(Integer::intValue).sum()
+        int violations = defenderSpecific.values().stream().mapToInt(Integer::intValue).sum()
                 - (isAttacking ? defenderSpecific.getOrDefault(defender, 0) : 0);
         if (isAttacking) {
             final Combat combat = defender.getGame().getCombat();
