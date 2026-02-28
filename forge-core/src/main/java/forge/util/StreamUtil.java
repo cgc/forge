@@ -1,6 +1,8 @@
 package forge.util;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -93,6 +95,28 @@ public class StreamUtil {
      */
     public static Path toPath(File file) {
         return Paths.get(file.getAbsolutePath());
+    }
+
+    /**
+     * Returns a sequential {@link Stream} over the lines of {@code reader}, equivalent to
+     * {@code reader.lines()}.
+     *
+     * <p>{@code BufferedReader.lines()} was added in Java 8 and is absent from MobiVM's runtime.
+     * The build-time bytecode transformer rewrites every {@code reader.lines()} call to this method.
+     * All lines are read eagerly and returned as a stream; any {@link IOException} is wrapped in a
+     * {@link RuntimeException}.
+     */
+    public static Stream<String> lines(BufferedReader reader) {
+        try {
+            List<String> result = new ArrayList<>();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                result.add(line);
+            }
+            return stream(result);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**

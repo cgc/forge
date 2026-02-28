@@ -93,6 +93,7 @@
                             <arguments>
                                 <argument>${project.basedir}/../scripts/desugar-streams.sh</argument>
                                 <argument>${project.basedir}/../forge-core/target/classes</argument>
+                                <argument>${project.basedir}/../forge-ai/target/classes</argument>
                                 <argument>${project.basedir}/../forge-gui/target/classes</argument>
                                 <argument>${project.basedir}/../forge-game/target/classes</argument>
                                 <argument>${project.basedir}/../forge-gui-mobile/target/classes</argument>

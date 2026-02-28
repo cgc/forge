@@ -30,7 +30,7 @@ import java.util.Arrays;
  * maintain diff against upstream Forge.
  *
  * <p><b>What this transformer does</b><br>
- * For each {@code .class} file under the given directories it rewrites four instruction
+ * For each {@code .class} file under the given directories it rewrites five instruction
  * patterns — all with <em>identical</em> net stack effect so no operand-stack changes are
  * needed:
  *
@@ -43,9 +43,11 @@ import java.util.Arrays;
  *       {@code INVOKESTATIC forge/util/StreamUtil.stream([Ljava/lang/Object;)Ljava/util/stream/Stream;}</li>
  *   <li>{@code INVOKEVIRTUAL java/io/File.toPath()Ljava/nio/file/Path;} →
  *       {@code INVOKESTATIC forge/util/StreamUtil.toPath(Ljava/io/File;)Ljava/nio/file/Path;}</li>
+ *   <li>{@code INVOKEVIRTUAL java/io/BufferedReader.lines()Ljava/util/stream/Stream;} →
+ *       {@code INVOKESTATIC forge/util/StreamUtil.lines(Ljava/io/BufferedReader;)Ljava/util/stream/Stream;}</li>
  * </ol>
  *
- * <p>Patterns 1, 2, and 4 are simple opcode+owner replacements; the receiver that was the
+ * <p>Patterns 1, 2, 4, and 5 are simple opcode+owner replacements; the receiver that was the
  * implicit {@code this} of the instance call remains on the stack as the sole argument to
  * the static call.  Pattern 3 changes only the owner class.
  *
@@ -63,6 +65,7 @@ public class StreamDesugar {
     private static final String ITERABLE_PARAM     = "(Ljava/lang/Iterable;)";
     private static final String OBJECT_ARRAY_PARAM = "([Ljava/lang/Object;)";
     private static final String FILE_PARAM         = "(Ljava/io/File;)";
+    private static final String BUFFERED_READER_PARAM = "(Ljava/io/BufferedReader;)";
 
     public static void main(String[] args) throws IOException {
         if (args.length == 0) {
@@ -201,6 +204,18 @@ public class StreamDesugar {
                         && "java/io/File".equals(owner)) {
                     super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "toPath",
                             FILE_PARAM + "Ljava/nio/file/Path;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 5: bufferedReader.lines() → StreamUtil.lines(bufferedReader)
+                // BufferedReader.lines() was added in Java 8 and is absent from MobiVM's robovm-rt.
+                // Lines are read eagerly into a List and then streamed; IOExceptions are wrapped in
+                // RuntimeException, matching the behaviour of Java 8's original implementation.
+                if ("lines".equals(name) && STREAM_DESC.equals(descriptor)
+                        && "java/io/BufferedReader".equals(owner)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "lines",
+                            BUFFERED_READER_PARAM + "Ljava/util/stream/Stream;", false);
                     modified = true;
                     return;
                 }
