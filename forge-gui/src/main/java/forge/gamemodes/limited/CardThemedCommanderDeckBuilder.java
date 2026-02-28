@@ -12,6 +12,7 @@ import forge.deck.generation.DeckGenPool;
 import forge.item.PaperCard;
 import forge.item.PaperCardPredicates;
 import forge.model.FModel;
+import forge.util.StreamUtil;
 
 /**
  * Created by maustin on 28/02/2018.
@@ -25,7 +26,7 @@ public class CardThemedCommanderDeckBuilder extends CardThemedDeckBuilder {
         secondKeyCard = partner0;
         // remove Unplayables
         if(isForAI) {
-            this.aiPlayables = availableList.stream()
+            this.aiPlayables = StreamUtil.stream(availableList)
                     .filter(PaperCardPredicates.fromRules(CardRulesPredicates.IS_KEPT_IN_AI_DECKS))
                     .collect(Collectors.toList());
         }else{

@@ -5,6 +5,7 @@ import forge.game.player.Player;
 import forge.game.player.PlayerCollection;
 import forge.game.player.PlayerPredicates;
 import forge.util.Localizer;
+import forge.util.StreamUtil;
 
 public class AgainstAllOdds extends Achievement {
     public AgainstAllOdds() {
@@ -24,9 +25,9 @@ public class AgainstAllOdds extends Achievement {
             for (Player opp : player.getRegisteredOpponents()) {
                 PlayerCollection otherOpps = player.getRegisteredOpponents();
                 otherOpps.remove(opp);
-                if (otherOpps.stream().allMatch(PlayerPredicates.sameTeam(opp))) {
+                if (StreamUtil.stream(otherOpps).allMatch(PlayerPredicates.sameTeam(opp))) {
                     teamNum++;   
-                } else if (otherOpps.stream().allMatch(PlayerPredicates.sameTeam(opp).negate())) {
+                } else if (StreamUtil.stream(otherOpps).allMatch(PlayerPredicates.sameTeam(opp).negate())) {
                     teamNum--;
                 }
             }

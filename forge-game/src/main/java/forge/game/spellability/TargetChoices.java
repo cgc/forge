@@ -33,6 +33,7 @@ import forge.game.card.CardCollectionView;
 import forge.game.player.Player;
 import forge.util.IterableUtil;
 import forge.util.collect.FCollection;
+import forge.util.StreamUtil;
 
 /**
  * <p>
@@ -117,15 +118,15 @@ public class TargetChoices extends ForwardingList<GameObject> implements Cloneab
     }
 
     public final boolean isTargetingAnyCard() {
-        return targets.stream().anyMatch(Card.class::isInstance);
+        return StreamUtil.stream(targets).anyMatch(Card.class::isInstance);
     }
 
     public final boolean isTargetingAnyPlayer() {
-        return targets.stream().anyMatch(Player.class::isInstance);
+        return StreamUtil.stream(targets).anyMatch(Player.class::isInstance);
     }
 
     public final boolean isTargetingAnySpell() {
-        return targets.stream().anyMatch(SpellAbility.class::isInstance);
+        return StreamUtil.stream(targets).anyMatch(SpellAbility.class::isInstance);
     }
 
     public final Card getFirstTargetedCard() {

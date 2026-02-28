@@ -31,6 +31,7 @@ import forge.game.player.Player;
 import forge.game.zone.ZoneType;
 import forge.util.Expressions;
 import forge.util.collect.FCollection;
+import forge.util.StreamUtil;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
@@ -369,7 +370,7 @@ public class SpellAbilityCondition extends SpellAbilityVariables {
             }
 
             Predicate<GameObject> restriction = GameObjectPredicates.restriction(getIsPresent().split(","), activator, host, sa);
-            final int left = (int) list.stream().filter(restriction).count();
+            final int left = (int) StreamUtil.stream(list).filter(restriction).count();
 
             final String rightString = this.getPresentCompare().substring(2);
             int right = AbilityUtils.calculateAmount(host, rightString, sa);
@@ -401,7 +402,7 @@ public class SpellAbilityCondition extends SpellAbilityVariables {
             }
 
             Predicate<GameObject> restriction = GameObjectPredicates.restriction(getIsPresent2().split(","), activator, host, sa);
-            final int left = (int) list.stream().filter(restriction).count();
+            final int left = (int) StreamUtil.stream(list).filter(restriction).count();
 
             final String rightString = this.getPresentCompare2().substring(2);
             int right = AbilityUtils.calculateAmount(host, rightString, sa);

@@ -30,6 +30,7 @@ import forge.item.generation.UnOpenedProduct;
 import forge.model.FModel;
 import forge.util.TextUtil;
 import forge.util.storage.IStorage;
+import forge.util.StreamUtil;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import java.util.*;
@@ -138,12 +139,12 @@ public class QuestUtilUnlockSets {
         CardEdition.Collection editions = FModel.getMagicDb().getEditions();
 
         // Sort current sets by date
-        List<CardEdition> allowedSets = qData.getFormat().getAllowedSetCodes().stream()
+        List<CardEdition> allowedSets = StreamUtil.stream(qData.getFormat().getAllowedSetCodes())
                 .map(editions::get)
                 .sorted().collect(Collectors.toList());
         
         // Sort unlockable sets by date
-        List<CardEdition> excludedSets = qData.getFormat().getLockedSets().stream()
+        List<CardEdition> excludedSets = StreamUtil.stream(qData.getFormat().getLockedSets())
                 .map(editions::get)
                 .sorted().collect(Collectors.toList());
         

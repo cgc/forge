@@ -19,6 +19,7 @@ import forge.model.FModel;
 import forge.util.MyRandom;
 import forge.util.storage.IStorage;
 import forge.util.storage.StorageBase;
+import forge.util.StreamUtil;
 
 public class MainWorldEventDuelManager implements QuestEventDuelManagerInterface {
 
@@ -32,7 +33,7 @@ public class MainWorldEventDuelManager implements QuestEventDuelManagerInterface
      */
     public MainWorldEventDuelManager(final File dir) {
         allDuels = new StorageBase<>("Quest duels", new MainWorldDuelReader(dir));
-        sortedDuels = allDuels.stream().collect(Multimaps.toMultimap(QuestEventDuel::getDifficulty, Function.identity(), MultimapBuilder.enumKeys(QuestEventDifficulty.class).arrayListValues()::build));
+        sortedDuels = StreamUtil.stream(allDuels).collect(Multimaps.toMultimap(QuestEventDuel::getDifficulty, Function.identity(), MultimapBuilder.enumKeys(QuestEventDifficulty.class).arrayListValues()::build));
     }
 
     public Iterable<QuestEventDuel> getAllDuels() {

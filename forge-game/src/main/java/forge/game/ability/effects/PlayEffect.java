@@ -9,6 +9,7 @@ import forge.card.CardStateName;
 import forge.card.GamePieceType;
 import forge.item.PaperCardPredicates;
 import forge.util.*;
+import forge.util.StreamUtil;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.collect.ImmutableList;
@@ -114,7 +115,7 @@ public class PlayEffect extends SpellAbilityEffect {
             Stream<PaperCard> cards;
             CardDb cardDb = StaticData.instance().getCommonCards();
             if (valid.startsWith("Names:")) {
-                cards = Arrays.stream(valid.substring(6).split(","))
+                cards = StreamUtil.stream(valid.substring(6).split(","))
                         .map(name -> name.replace(";", ","))
                         .map(cardDb::getUniqueByName);
             } else if (valid.equalsIgnoreCase("sorcery")) {
@@ -186,7 +187,7 @@ public class PlayEffect extends SpellAbilityEffect {
 
         if (sa.hasParam("ValidSA")) {
             final String valid[] = sa.getParam("ValidSA").split(",");
-            final List<Card> invalid = tgtCards.stream().filter(c -> !IterableUtil.any(AbilityUtils.getBasicSpellsFromPlayEffect(c, controller), SpellAbilityPredicates.isValid(valid, controller, source, sa))).collect(Collectors.toList());
+            final List<Card> invalid = StreamUtil.stream(tgtCards).filter(c -> !IterableUtil.any(AbilityUtils.getBasicSpellsFromPlayEffect(c, controller), SpellAbilityPredicates.isValid(valid, controller, source, sa))).collect(Collectors.toList());
             if (!invalid.isEmpty())
                 tgtCards.removeAll(invalid);
             if (tgtCards.isEmpty()) {
@@ -222,7 +223,7 @@ public class PlayEffect extends SpellAbilityEffect {
             if (hasTotalCMCLimit) {
                 // filter out cards with mana value greater than limit
                 final String [] valid = {"Spell.cmcLE" + totalCMCLimit};
-                final List<Card> invalid = tgtCards.stream().filter(c -> !IterableUtil.any(AbilityUtils.getBasicSpellsFromPlayEffect(c, controller), SpellAbilityPredicates.isValid(valid, controller, c, sa))).collect(Collectors.toList());
+                final List<Card> invalid = StreamUtil.stream(tgtCards).filter(c -> !IterableUtil.any(AbilityUtils.getBasicSpellsFromPlayEffect(c, controller), SpellAbilityPredicates.isValid(valid, controller, c, sa))).collect(Collectors.toList());
                 if (!invalid.isEmpty())
                     tgtCards.removeAll(invalid);
                 if (tgtCards.isEmpty())

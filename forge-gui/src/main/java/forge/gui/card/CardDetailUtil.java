@@ -23,6 +23,7 @@ import forge.util.CardTranslation;
 import forge.util.Lang;
 import forge.util.Localizer;
 import forge.util.TextUtil;
+import forge.util.StreamUtil;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
@@ -124,7 +125,7 @@ public class CardDetailUtil {
     }
 
     public static String getCurrentColors(final CardStateView c) {
-        return c.getColors().stream().map(MagicColor.Color::getSymbol).collect(Collectors.joining());
+        return StreamUtil.stream(c.getColors()).map(MagicColor.Color::getSymbol).collect(Collectors.joining());
     }
 
     public static DetailColors getRarityColor(final CardRarity rarity) {
@@ -447,7 +448,7 @@ public class CardDetailUtil {
         if (card.getMarkedColors() != null && !card.getMarkedColors().isColorless()) {
             area.append("\n");
             area.append("(").append(Localizer.getInstance().getMessage("lblSelected")).append(": ");
-            area.append(Lang.joinHomogenous(card.getMarkedColors().stream().map(MagicColor.Color::getTranslatedName).collect(Collectors.toList())));
+            area.append(Lang.joinHomogenous(StreamUtil.stream(card.getMarkedColors()).map(MagicColor.Color::getTranslatedName).collect(Collectors.toList())));
             area.append(")");
         }
 
@@ -455,7 +456,7 @@ public class CardDetailUtil {
         if (card.getChosenColors() != null && !card.getChosenColors().isEmpty()) {
             area.append("\n");
             area.append("(").append(Localizer.getInstance().getMessage("lblChosenColors")).append(" ");
-            area.append(Lang.joinHomogenous(ColorSet.fromNames(card.getChosenColors()).stream().map(MagicColor.Color::getTranslatedName).collect(Collectors.toList())));
+            area.append(Lang.joinHomogenous(StreamUtil.stream(ColorSet.fromNames(card.getChosenColors())).map(MagicColor.Color::getTranslatedName).collect(Collectors.toList())));
             area.append(")");
         }
 

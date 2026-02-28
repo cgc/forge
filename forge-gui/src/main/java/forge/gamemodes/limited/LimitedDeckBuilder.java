@@ -25,6 +25,7 @@ import forge.item.PaperCardPredicates;
 import forge.model.FModel;
 import forge.util.IterableUtil;
 import forge.util.MyRandom;
+import forge.util.StreamUtil;
 
 /**
  * Limited format deck.
@@ -77,13 +78,13 @@ public class LimitedDeckBuilder extends DeckGeneratorBase {
         this.colors = pClrs.getChosenColors();
 
         // remove Unplayables
-        this.aiPlayables = availableList.stream()
+        this.aiPlayables = StreamUtil.stream(availableList)
                 .filter(PaperCardPredicates.fromRules(CardRulesPredicates.IS_KEPT_IN_AI_LIMITED_DECKS))
                 .collect(Collectors.toList());
         this.availableList.removeAll(aiPlayables);
 
         // keep Conspiracies in a separate list
-        this.draftedConspiracies = aiPlayables.stream()
+        this.draftedConspiracies = StreamUtil.stream(aiPlayables)
                 .filter(PaperCardPredicates.fromRules(CardRulesPredicates.IS_CONSPIRACY))
                 .collect(Collectors.toList());
         this.aiPlayables.removeAll(draftedConspiracies);
@@ -164,7 +165,7 @@ public class LimitedDeckBuilder extends DeckGeneratorBase {
         // 6. If there are still on-color cards, and the average cmc is low, add
         // an extra.
         if (deckList.size() == numSpellsNeeded && getAverageCMC(deckList) < 4) {
-            final PaperCard card = rankedColorList.stream()
+            final PaperCard card = StreamUtil.stream(rankedColorList)
                     .filter(PaperCardPredicates.IS_NON_LAND)
                     .findFirst().orElse(null);
             if (card != null) {
@@ -660,7 +661,7 @@ public class LimitedDeckBuilder extends DeckGeneratorBase {
         for (int i = 1; i < 7; i++) {
             creatureCosts.put(i, 0);
         }
-        deckList.stream().filter(PaperCardPredicates.IS_CREATURE)
+        StreamUtil.stream(deckList).filter(PaperCardPredicates.IS_CREATURE)
                 .mapToInt(creature -> creature.getRules().getManaCost().getCMC())
                 .map(cmc -> Math.max(1, Math.min(cmc, 6)))
                 .forEach(cmc -> creatureCosts.put(cmc, creatureCosts.get(cmc) + 1));

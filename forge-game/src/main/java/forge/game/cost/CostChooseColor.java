@@ -23,6 +23,7 @@ import forge.card.MagicColor;
 import forge.game.card.Card;
 import forge.game.player.Player;
 import forge.game.spellability.SpellAbility;
+import forge.util.StreamUtil;
 
 /**
  * the class CostChooseColor
@@ -58,7 +59,7 @@ public class CostChooseColor extends CostPart {
 
     @Override
     public boolean payAsDecided(Player payer, PaymentDecision pd, SpellAbility sa, final boolean effect) {
-        sa.getHostCard().setChosenColors(pd.colors.stream().map(MagicColor.Color::getName).collect(Collectors.toList()));
+        sa.getHostCard().setChosenColors(StreamUtil.stream(pd.colors).map(MagicColor.Color::getName).collect(Collectors.toList()));
         return true;
     }
 

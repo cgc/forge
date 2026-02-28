@@ -11,6 +11,7 @@ import forge.game.card.Card;
 import forge.game.player.Player;
 import forge.game.staticability.StaticAbilityAttackRestrict;
 import forge.util.collect.FCollectionView;
+import forge.util.StreamUtil;
 
 public class GlobalAttackRestrictions {
 
@@ -33,7 +34,7 @@ public class GlobalAttackRestrictions {
             return false;
         }
 
-        return attackers.values().stream().distinct().noneMatch(defender -> {
+        return StreamUtil.stream(attackers.values()).distinct().noneMatch(defender -> {
             final Integer max = defenderMax.get(defender);
             if (max == null) {
                 return false;
@@ -42,7 +43,7 @@ public class GlobalAttackRestrictions {
                 // there's at least one creature attacking this defender
                 return true;
             }
-            return attackers.values().stream().filter(attDef -> attDef == defender).count() > max;
+            return StreamUtil.stream(attackers.values()).filter(attDef -> attDef == defender).count() > max;
         });
     }
 
@@ -69,7 +70,7 @@ public class GlobalAttackRestrictions {
         }
         if (defenderMax.size() == possibleDefenders.size()) {
             // maximum on each defender, global maximum is sum of these
-            max = Math.min(Objects.requireNonNullElse(max, Integer.MAX_VALUE), defenderMax.values().stream().mapToInt(Integer::intValue).sum());
+            max = Math.min(Objects.requireNonNullElse(max, Integer.MAX_VALUE), StreamUtil.stream(defenderMax.values()).mapToInt(Integer::intValue).sum());
         }
 
         return new GlobalAttackRestrictions(max, defenderMax);

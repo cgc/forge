@@ -4,6 +4,7 @@ import forge.card.CardRarity;
 import forge.card.CardRules;
 import forge.card.ColorSet;
 import forge.card.ICardFace;
+import forge.util.StreamUtil;
 
 import java.io.Serializable;
 import java.util.List;
@@ -46,7 +47,7 @@ public interface IPaperCard extends InventoryItem, Serializable {
     @Override
     default String getTranslationKey() {
         //Cards with flavor names will use that flavor name as their translation key. Other variants are just appended as a suffix.
-        if(!NO_FUNCTIONAL_VARIANT.equals(getFunctionalVariant()) && getAllFaces().stream().noneMatch(pc -> pc.getFlavorName() != null))
+        if(!NO_FUNCTIONAL_VARIANT.equals(getFunctionalVariant()) && StreamUtil.stream(getAllFaces()).noneMatch(pc -> pc.getFlavorName() != null))
             return getName() + " $" + getFunctionalVariant();
         return getDisplayName();
     }

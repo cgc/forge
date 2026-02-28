@@ -26,6 +26,7 @@ import forge.deck.DeckFormat;
 import forge.item.PaperCard;
 import forge.item.PaperCardPredicates;
 import forge.util.*;
+import forge.util.StreamUtil;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import java.util.*;
@@ -236,7 +237,7 @@ public abstract class DeckGeneratorBase {
         else if (actualSize > targetSize) {
 
             for (int i = 0; i < 3 && actualSize > targetSize; i++) {
-                List<PaperCard> toRemove = tDeck.toFlatList().stream()
+                List<PaperCard> toRemove = StreamUtil.stream(tDeck.toFlatList())
                         .filter(PaperCardPredicates.NOT_BASIC_LAND)
                         .collect(StreamUtil.random(actualSize - targetSize));
                 tDeck.removeAllFlat(toRemove);

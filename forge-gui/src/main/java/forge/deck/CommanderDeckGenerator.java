@@ -8,6 +8,7 @@ import forge.item.PaperCard;
 import forge.item.PaperCardPredicates;
 import forge.model.FModel;
 import forge.util.ItemPool;
+import forge.util.StreamUtil;
 
 import java.util.HashMap;
 import java.util.List;
@@ -39,7 +40,7 @@ public class CommanderDeckGenerator extends DeckProxy implements Comparable<Comm
             uniqueCards = ItemPool.createFrom(FModel.getMagicDb().getCommonCards().getUniqueCards(), PaperCard.class);
         }
         Predicate<CardRules> canPlay = isForAi ? DeckGeneratorBase.AI_CAN_PLAY : CardRulesPredicates.IS_KEPT_IN_RANDOM_DECKS;
-        return uniqueCards.toFlatList().stream()
+        return StreamUtil.stream(uniqueCards.toFlatList())
                 .filter(format.isLegalCommanderPredicate())
                 .filter(PaperCardPredicates.fromRules(canPlay))
                 .map(legend -> new CommanderDeckGenerator(legend, format, isForAi, isCardGen))
@@ -60,7 +61,7 @@ public class CommanderDeckGenerator extends DeckProxy implements Comparable<Comm
             uniqueCards = ItemPool.createFrom(FModel.getMagicDb().getCommonCards().getUniqueCards(), PaperCard.class);
         }
         Predicate<CardRules> canPlay = isForAi ? DeckGeneratorBase.AI_CAN_PLAY : CardRulesPredicates.IS_KEPT_IN_RANDOM_DECKS;
-        return uniqueCards.toFlatList().stream()
+        return StreamUtil.stream(uniqueCards.toFlatList())
                 .filter(format.isLegalCardPredicate())
                 .filter(PaperCardPredicates.fromRules(CardRulesPredicates.CAN_BE_BRAWL_COMMANDER.and(canPlay)))
                 .map(legend -> new CommanderDeckGenerator(legend, format, isForAi, isCardGen))

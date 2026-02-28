@@ -10,6 +10,7 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Set;
+import forge.util.StreamUtil;
 
 public interface IDeviceAdapter {
     boolean isConnectedToInternet();
@@ -35,6 +36,6 @@ public interface IDeviceAdapter {
     Set<String> LWJGL_SUPPORTED_AUDIO_TYPES = Set.of(".wav", ".mp3", ".ogg");
     default boolean isSupportedAudioFormat(File file) {
         String path = file.getPath().toLowerCase();
-        return LWJGL_SUPPORTED_AUDIO_TYPES.stream().anyMatch(path::endsWith);
+        return StreamUtil.stream(LWJGL_SUPPORTED_AUDIO_TYPES).anyMatch(path::endsWith);
     }
 }

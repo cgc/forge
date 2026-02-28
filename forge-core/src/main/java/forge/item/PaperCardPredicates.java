@@ -6,6 +6,7 @@ import forge.StaticData;
 import forge.card.*;
 import forge.card.CardEdition.EditionEntry;
 import forge.util.PredicateString;
+import forge.util.StreamUtil;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.Arrays;
@@ -67,7 +68,7 @@ public abstract class PaperCardPredicates {
     public static Predicate<PaperCard> printedInAnyEditions(final String[] editionCodes) {
         Set<String> editions = new HashSet<>(Arrays.asList(editionCodes));
 
-        return card -> StaticData.instance().getCommonCards().getAllCards(card.getName()).stream()
+        return card -> StreamUtil.stream(StaticData.instance().getCommonCards().getAllCards(card.getName()))
             .map(PaperCard::getEdition).anyMatch(editionCode ->
                 editions.contains(editionCode) &&
                     StaticData.instance().getCardEdition(editionCode).isCardObtainable(card.getName())
@@ -80,7 +81,7 @@ public abstract class PaperCardPredicates {
     public static Predicate<PaperCard> onlyPrintedInEditions(final String[] editionCodes) {
         Set<String> editions = new HashSet<>(Arrays.asList(editionCodes));
 
-        return card -> StaticData.instance().getCommonCards().getAllCards(card.getName()).stream()
+        return card -> StreamUtil.stream(StaticData.instance().getCommonCards().getAllCards(card.getName()))
             .map(PaperCard::getEdition).allMatch(editionCode ->
                 editions.contains(editionCode) &&
                     StaticData.instance().getCardEdition(editionCode).isCardObtainable(card.getName())
@@ -91,7 +92,7 @@ public abstract class PaperCardPredicates {
      * Filters cards that are obtainable in any edition.
      */
     public static Predicate<PaperCard> isObtainableAnyEdition() {
-        return card -> StaticData.instance().getCommonCards().getAllCards(card.getName()).stream()
+        return card -> StreamUtil.stream(StaticData.instance().getCommonCards().getAllCards(card.getName()))
             .map(PaperCard::getEdition).anyMatch(editionCode ->
                 StaticData.instance().getCardEdition(editionCode).isCardObtainable(card.getName())
             );
@@ -106,8 +107,8 @@ public abstract class PaperCardPredicates {
     public static Predicate<PaperCard> isObtainableNotRestricted(final String[] restrictedEditionCodes) {
         Set<String> restrictedEditions = new HashSet<>(Arrays.asList(restrictedEditionCodes));
 
-        return card -> StaticData.instance().getCommonCards()
-            .getAllCards(card.getName()).stream()
+        return card -> StreamUtil.stream(StaticData.instance().getCommonCards()
+            .getAllCards(card.getName()))
             .map(PaperCard::getEdition)
             .anyMatch(editionCode ->
                 !restrictedEditions.contains(editionCode) &&
@@ -120,10 +121,10 @@ public abstract class PaperCardPredicates {
 
         @Override
         public boolean test(final PaperCard card) {
-            return StaticData.instance().getEditions().stream()
+            return StreamUtil.stream(StaticData.instance().getEditions())
                 .anyMatch(ce -> {
                     List<EditionEntry> entries = ce.getCardInSet(card.getName());
-                    return entries != null && entries.stream()
+                    return entries != null && StreamUtil.stream(entries)
                         .anyMatch(ee -> ee.rarity() == matchingRarity);
                 });
         }
@@ -216,7 +217,7 @@ public abstract class PaperCardPredicates {
 
         @Override
         public boolean test(PaperCard paperCard) {
-            return paperCard.getAllSearchableNames().stream().anyMatch(name -> this.op(name, this.operand));
+            return StreamUtil.stream(paperCard.getAllSearchableNames()).anyMatch(name -> this.op(name, this.operand));
         }
     }
 

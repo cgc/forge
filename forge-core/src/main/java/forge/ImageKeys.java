@@ -5,6 +5,7 @@ import forge.item.PaperCard;
 import forge.util.FileUtil;
 import forge.util.TextUtil;
 import forge.util.ThreadUtil;
+import forge.util.StreamUtil;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
@@ -333,7 +334,7 @@ public final class ImageKeys {
         if (filename == null)
             return false;
         if (!StaticData.instance().getSetLookup().isEmpty()) {
-            return StaticData.instance().getSetLookup().keySet().stream().anyMatch(filename::startsWith);
+            return StreamUtil.stream(StaticData.instance().getSetLookup().keySet()).anyMatch(filename::startsWith);
         }
 
         return false;

@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import forge.util.StreamUtil;
 
 public class SealedTemplateWithSlots extends SealedTemplate {
     private final List<BoosterSlot> boosterSlots;
@@ -16,6 +17,6 @@ public class SealedTemplateWithSlots extends SealedTemplate {
     }
 
     public Map<String, BoosterSlot> getNamedSlots() {
-        return boosterSlots.stream().collect(Collectors.toMap(BoosterSlot::getSlotName, Function.identity()));
+        return StreamUtil.stream(boosterSlots).collect(Collectors.toMap(BoosterSlot::getSlotName, Function.identity()));
     }
 }

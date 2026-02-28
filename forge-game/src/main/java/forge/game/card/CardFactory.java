@@ -42,6 +42,7 @@ import forge.game.trigger.WrappedAbility;
 import forge.item.IPaperCard;
 import forge.util.CardTranslation;
 import forge.util.TextUtil;
+import forge.util.StreamUtil;
 
 import java.util.Arrays;
 import java.util.List;
@@ -277,7 +278,7 @@ public class CardFactory {
         }
         else if (card.getType().getBattleTypes().isEmpty()) {
             //Probably a custom card? Check if it already has an RE for designating a protector.
-            if(card.getReplacementEffects().stream().anyMatch((re) -> re.hasParam("BattleProtector")))
+            if(StreamUtil.stream(card.getReplacementEffects()).anyMatch((re) -> re.hasParam("BattleProtector")))
                 return;
             //Battles with no battle type enter protected by their controller.
             String abProtector = "DB$ ChoosePlayer | Choices$ You | Protect$ True | DontNotify$ True";
@@ -426,7 +427,7 @@ public class CardFactory {
             to.setAdditionalAbility(e.getKey(), e.getValue().copy(host, p, lki, keepTextChanges));
         }
         for (Map.Entry<String, List<AbilitySub>> e : from.getAdditionalAbilityLists().entrySet()) {
-            to.setAdditionalAbilityList(e.getKey(), e.getValue().stream().map(input -> (AbilitySub) input.copy(host, p, lki, keepTextChanges)).collect(Collectors.toList()));
+            to.setAdditionalAbilityList(e.getKey(), StreamUtil.stream(e.getValue()).map(input -> (AbilitySub) input.copy(host, p, lki, keepTextChanges)).collect(Collectors.toList()));
         }
         if (from.getRestrictions() != null) {
             to.setRestrictions((SpellAbilityRestriction) from.getRestrictions().copy());
@@ -581,7 +582,7 @@ public class CardFactory {
 
             List<String> finalizedKWs = keywords;
             if (KWifNew) {
-                finalizedKWs = keywords.stream().filter(k -> !state.hasIntrinsicKeyword(Keyword.getInstance(k).getKeyword())).collect(Collectors.toList());
+                finalizedKWs = StreamUtil.stream(keywords).filter(k -> !state.hasIntrinsicKeyword(Keyword.getInstance(k).getKeyword())).collect(Collectors.toList());
             }
             state.addIntrinsicKeywords(finalizedKWs);
             for (String kw : removeKeywords) {

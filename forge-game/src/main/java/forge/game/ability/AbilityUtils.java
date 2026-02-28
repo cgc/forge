@@ -35,6 +35,7 @@ import forge.game.zone.ZoneType;
 import forge.util.*;
 import forge.util.collect.FCollection;
 import forge.util.collect.FCollectionView;
+import forge.util.StreamUtil;
 import io.sentry.Breadcrumb;
 import io.sentry.Sentry;
 import org.apache.commons.lang3.StringUtils;
@@ -2575,7 +2576,7 @@ public class AbilityUtils {
                 // extra logic for "all creature types" cards
                 if (type.hasAllCreatureTypes()) {
                     // one of the party types could be excluded, so check each of them separate
-                    creatureTypes = CardType.Constant.PARTY_TYPES.stream().filter(p -> type.hasCreatureType(p)).collect(Collectors.toSet());
+                    creatureTypes = StreamUtil.stream(CardType.Constant.PARTY_TYPES).filter(p -> type.hasCreatureType(p)).collect(Collectors.toSet());
                 } else { // shortcut for others 
                     creatureTypes = type.getCreatureTypes();
                     creatureTypes.retainAll(CardType.Constant.PARTY_TYPES);
@@ -2606,7 +2607,7 @@ public class AbilityUtils {
                 multityped.keySet().removeAll(chosenParty);
 
                 // sort by amount of members
-                Multimaps.asMap(multityped).entrySet().stream()
+                StreamUtil.stream(Multimaps.asMap(multityped).entrySet())
                     .sorted(Map.Entry.<String, List<Card>>comparingByValue(Comparator.<List<Card>>comparingInt(Collection::size)))
                     .forEach(e -> {
                         e.getValue().removeAll(chosenMulti);
@@ -3801,7 +3802,7 @@ public class AbilityUtils {
             c1.getType().getCoreTypes().forEach(types::add);
         }
         if (permanentTypes)
-            return (int) types.stream().filter(type -> type.isPermanent).count();
+            return (int) StreamUtil.stream(types).filter(type -> type.isPermanent).count();
         return types.size();
     }
 

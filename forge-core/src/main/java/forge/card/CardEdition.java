@@ -30,6 +30,7 @@ import forge.util.*;
 import forge.util.storage.StorageBase;
 import forge.util.storage.StorageReaderBase;
 import forge.util.storage.StorageReaderFolder;
+import forge.util.StreamUtil;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
@@ -227,7 +228,7 @@ public final class CardEdition implements Comparable<CardEdition> {
             }
             if (extraParams != null) {
                 sb.append(" $");
-                sb.append(extraParams.entrySet().stream().map(e -> String.format("\"%s\"=\"%s\"", e.getKey(), e.getValue())).collect(Collectors.joining(", ")));
+                sb.append(StreamUtil.stream(extraParams.entrySet()).map(e -> String.format("\"%s\"=\"%s\"", e.getKey(), e.getValue())).collect(Collectors.joining(", ")));
             }
             return sb.toString();
         }
@@ -328,7 +329,7 @@ public final class CardEdition implements Comparable<CardEdition> {
         this.cardMap = cardMap;
         this.cardsInSet = new ArrayList<>(cardMap.values());
         Collections.sort(cardsInSet);
-        this.cardsInSetLookupMap = cardsInSet.stream().collect(
+        this.cardsInSetLookupMap = StreamUtil.stream(cardsInSet).collect(
             Multimaps.toMultimap(
                 e -> e.name,
                 e -> e,
@@ -928,7 +929,7 @@ public final class CardEdition implements Comparable<CardEdition> {
         }
 
         public Iterable<CardEdition> getPrereleaseEditions() {
-            return this.stream()
+            return StreamUtil.stream(this)
                     .filter(edition -> edition.getPrerelease() != null)
                     .collect(Collectors.toList());
         }

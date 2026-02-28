@@ -4,13 +4,13 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import forge.game.card.CardView;
 import forge.game.player.Player;
 import forge.game.player.PlayerView;
 import forge.util.Lang;
 import forge.util.TextUtil;
+import forge.util.StreamUtil;
 
 /**
  * This means card's characteristics have changed on server, clients must re-request them
@@ -19,7 +19,7 @@ public record GameEventPlayerStatsChanged(Collection<PlayerView> players, boolea
 
     public GameEventPlayerStatsChanged(Collection<Player> players, boolean updateCards) {
         this(PlayerView.getCollection(players), updateCards,
-             updateCards ? players.stream().flatMap(p -> StreamSupport.stream(p.getAllCards().spliterator(), false))
+             updateCards ? StreamUtil.stream(players).flatMap(p -> StreamUtil.stream(p.getAllCards()))
                      .map(CardView::get).collect(Collectors.toList()) : Collections.emptyList());
     }
 

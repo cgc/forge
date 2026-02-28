@@ -22,6 +22,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import forge.card.mana.ManaCost;
 import forge.util.TextUtil;
+import forge.util.StreamUtil;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
@@ -71,7 +72,7 @@ public final class CardRules implements ICardCharacteristics {
         }
 
         // Android doesn't support toUnmodifiableList
-        allFaces = Arrays.stream(faces).filter(Objects::nonNull).collect(Collectors.toList());
+        allFaces = StreamUtil.stream(faces).filter(Objects::nonNull).collect(Collectors.toList());
 
         aiHints = cah;
         meldWith = "";

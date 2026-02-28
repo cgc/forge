@@ -32,6 +32,7 @@ import forge.game.GameFormat;
 import forge.gamemodes.quest.data.QuestPreferences.QPref;
 import forge.model.FModel;
 import forge.util.PredicateString.StringOp;
+import forge.util.StreamUtil;
 
 /**
  * <p>
@@ -129,7 +130,7 @@ public final class BoosterUtils {
         }
 
         final boolean allowDuplicates = userPrefs != null && userPrefs.allowDuplicates();
-        final boolean mythicsAvailable = cardPool.stream().anyMatch(PaperCardPredicates.IS_MYTHIC_RARE);
+        final boolean mythicsAvailable = StreamUtil.stream(cardPool).anyMatch(PaperCardPredicates.IS_MYTHIC_RARE);
         final int numMythics = mythicsAvailable ? numRares / RARES_PER_MYTHIC : 0;
         final int adjustedRares = numRares - numMythics;
 
@@ -297,7 +298,7 @@ public final class BoosterUtils {
                             Predicate<CardRules> predicateRules =  CardRulesPredicates.cost(StringOp.CONTAINS_IC, "p/");
                             Predicate<PaperCard> predicateCard = PaperCardPredicates.fromRules(predicateRules);
 
-                            int size = (int) cardPool.stream().filter(predicateCard).count();
+                            int size = (int) StreamUtil.stream(cardPool).filter(predicateCard).count();
                             int totalSize = cardPool.size();
 
                             double phyrexianAmount = (double) size / totalSize;
@@ -319,7 +320,7 @@ public final class BoosterUtils {
                         //Adjust for the number of multicolored possibilities. This prevents flooding of non-selected
                         //colors if multicolored cards aren't in the selected sets. The more multi-colored cards in the
                         //sets, the more that will be selected.
-                        if (usedMulticolor / 8 < cardPool.stream().filter(predicateCard).count()) {
+                        if (usedMulticolor / 8 < StreamUtil.stream(cardPool).filter(predicateCard).count()) {
                             colorFilters.add(predicateRules);
                             usedMulticolor++;
                         } else {

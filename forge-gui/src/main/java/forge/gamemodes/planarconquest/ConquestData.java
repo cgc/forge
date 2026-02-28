@@ -41,6 +41,7 @@ import forge.util.FileUtil;
 import forge.util.Localizer;
 import forge.util.XmlReader;
 import forge.util.XmlWriter;
+import forge.util.StreamUtil;
 
 public final class ConquestData {
     private static final String XML_FILE = "data.xml";
@@ -195,11 +196,11 @@ public final class ConquestData {
     }
 
     public int getAccessiblePlaneCount() {
-        return (int) FModel.getPlanes().stream().filter(Predicate.not(ConquestPlane::isUnreachable)).count();
+        return (int) StreamUtil.stream(FModel.getPlanes()).filter(Predicate.not(ConquestPlane::isUnreachable)).count();
     }
 
     public Set<ConquestPlane> getUnlockedPlanes() {
-        return planeDataMap.values().stream().map(ConquestPlaneData::getLocation).map(ConquestLocation::getPlane).collect(Collectors.toSet());
+        return StreamUtil.stream(planeDataMap.values()).map(ConquestPlaneData::getLocation).map(ConquestLocation::getPlane).collect(Collectors.toSet());
     }
 
     public void unlockPlane(ConquestPlane plane) {

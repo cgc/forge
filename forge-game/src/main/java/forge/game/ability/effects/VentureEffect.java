@@ -30,6 +30,7 @@ import forge.game.trigger.TriggerType;
 import forge.game.trigger.WrappedAbility;
 import forge.game.zone.ZoneType;
 import forge.util.Localizer;
+import forge.util.StreamUtil;
 
 public class VentureEffect extends SpellAbilityEffect {
 
@@ -56,8 +57,8 @@ public class VentureEffect extends SpellAbilityEffect {
             // Create a new dungeon card chosen by player in command zone.
             filter = e -> e.getValue().isEnterableDungeon();
         }
-        Map<ICardFace, String> mapping = StaticData.instance().getAllTokens().getRules().entrySet()
-                .stream().filter(filter).collect(Collectors.toMap(e -> e.getValue().getMainPart(), Map.Entry::getKey, (a,b) -> a, TreeMap::new));
+        Map<ICardFace, String> mapping = StreamUtil.stream(StaticData.instance().getAllTokens().getRules().entrySet())
+                .filter(filter).collect(Collectors.toMap(e -> e.getValue().getMainPart(), Map.Entry::getKey, (a,b) -> a, TreeMap::new));
         String message = Localizer.getInstance().getMessage("lblChooseDungeon");
         ICardFace chosen = player.getController().chooseSingleCardFace(sa, Lists.newArrayList(mapping.keySet()), message);
         if (chosen == null) {

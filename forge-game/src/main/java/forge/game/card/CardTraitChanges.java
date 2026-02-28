@@ -6,6 +6,7 @@ import forge.game.spellability.SpellAbility;
 import forge.game.staticability.StaticAbility;
 import forge.game.staticability.StaticAbilityMode;
 import forge.game.trigger.Trigger;
+import forge.util.StreamUtil;
 
 import java.util.Collection;
 import java.util.List;
@@ -70,11 +71,11 @@ public record CardTraitChanges(
 
     public CardTraitChanges copy(Card host, boolean lki) {
         return new CardTraitChanges(
-                this.getAbilities().stream().map(sa -> sa.copy(host, lki)).collect(Collectors.toList()),
-                this.getRemovedAbilities().stream().map(sa -> sa.copy(host, lki)).collect(Collectors.toList()),
-                this.getTriggers().stream().map(tr -> tr.copy(host, lki)).collect(Collectors.toList()),
-                this.getReplacements().stream().map(re -> re.copy(host, lki)).collect(Collectors.toList()),
-                this.getStaticAbilities().stream().map(st -> st.copy(host, lki)).collect(Collectors.toList()),
+                StreamUtil.stream(this.getAbilities()).map(sa -> sa.copy(host, lki)).collect(Collectors.toList()),
+                StreamUtil.stream(this.getRemovedAbilities()).map(sa -> sa.copy(host, lki)).collect(Collectors.toList()),
+                StreamUtil.stream(this.getTriggers()).map(tr -> tr.copy(host, lki)).collect(Collectors.toList()),
+                StreamUtil.stream(this.getReplacements()).map(re -> re.copy(host, lki)).collect(Collectors.toList()),
+                StreamUtil.stream(this.getStaticAbilities()).map(st -> st.copy(host, lki)).collect(Collectors.toList()),
                 remove
             );
     }

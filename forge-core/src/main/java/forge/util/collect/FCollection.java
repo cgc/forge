@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
+import forge.util.StreamUtil;
 
 import org.apache.commons.lang3.ArrayUtils;
 
@@ -549,17 +550,17 @@ public class FCollection<T> implements List<T>, /*Set<T>,*/ FCollectionView<T>, 
 
     @Override
     public Stream<T> stream() {
-        return list.stream();
+        return StreamUtil.stream(list);
     }
 
     @Override
     public boolean anyMatch(Predicate<? super T> test) {
-        return set.stream().anyMatch(test);
+        return StreamUtil.stream(set).anyMatch(test);
     }
 
     @Override
     public boolean allMatch(Predicate<? super T> test) {
-        return set.stream().allMatch(test);
+        return StreamUtil.stream(set).allMatch(test);
     }
 
     /**

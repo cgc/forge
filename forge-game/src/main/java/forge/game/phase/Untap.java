@@ -41,6 +41,7 @@ import forge.game.staticability.StaticAbilityCantPhase;
 import forge.game.staticability.StaticAbilityUntapOtherPlayer;
 import forge.game.trigger.TriggerType;
 import forge.game.zone.ZoneType;
+import forge.util.StreamUtil;
 
 /**
  * <p>
@@ -255,7 +256,7 @@ public class Untap extends Phase {
         final Game game = previous.getGame();
         List<Card> casted = game.getStack().getSpellsCastLastTurn();
 
-        if (game.isDay() && casted.stream().noneMatch(CardPredicates.isController(previous))) {
+        if (game.isDay() && StreamUtil.stream(casted).noneMatch(CardPredicates.isController(previous))) {
             game.setDayTime(true);
         } else if (game.isNight() && CardLists.count(casted, CardPredicates.isController(previous)) > 1) {
             game.setDayTime(false);

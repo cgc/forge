@@ -27,6 +27,7 @@ import forge.game.card.*;
 import forge.game.cost.CostSacrifice;
 import forge.game.staticability.StaticAbilityCantBeCopied;
 import forge.util.*;
+import forge.util.StreamUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -2658,7 +2659,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
         return Objects.requireNonNullElse(this.optionalKeywordAmount.get(kw.getKeyword(), Pair.of(kw.getIdx(), staticId)), 0);
     }
     public int getOptionalKeywordAmount(Keyword kw) {
-        return this.optionalKeywordAmount.row(kw).values().stream().mapToInt(i->i).sum();
+        return StreamUtil.stream(this.optionalKeywordAmount.row(kw).values()).mapToInt(i->i).sum();
     }
     public void setOptionalKeywordAmount(KeywordInterface kw, int amount) {
         long staticId = kw.getStatic() == null ? 0 : kw.getStatic().getId();

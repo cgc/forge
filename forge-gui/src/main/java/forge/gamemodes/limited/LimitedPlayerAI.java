@@ -190,7 +190,7 @@ public class LimitedPlayerAI extends LimitedPlayer {
     public LimitedPlayer handleIllusionaryInformant() {
         // Always choose the next pack I will open
         // What do I do with this information? Great question. I have no idea.
-        LimitedPlayer peekAt = draft.getAllPlayers().stream().filter((s) -> s != this).collect(StreamUtil.random()).orElse(null);
+        LimitedPlayer peekAt = StreamUtil.stream(draft.getAllPlayers()).filter((s) -> s != this).collect(StreamUtil.random()).orElse(null);
         // Not really sure what the AI does with this information. But its' known now.
         //peekAt.getLastPick();
         return peekAt;

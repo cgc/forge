@@ -19,6 +19,7 @@ package forge.util.storage;
 
 import forge.util.IItemReader;
 import forge.util.IterableUtil;
+import forge.util.StreamUtil;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -68,7 +69,7 @@ public class StorageBase<T> implements IStorage<T> {
 
     @Override
     public Stream<T> stream() {
-        return map.values().stream();
+        return StreamUtil.stream(map.values());
     }
 
     @Override

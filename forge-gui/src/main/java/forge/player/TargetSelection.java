@@ -37,6 +37,7 @@ import forge.gamemodes.match.input.InputSelectTargets;
 import forge.util.Aggregates;
 import forge.util.IterableUtil;
 import forge.util.TextUtil;
+import forge.util.StreamUtil;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -181,7 +182,7 @@ public class TargetSelection {
         }
 
         PlayerView playerView = controller.getLocalPlayerView();
-        PlayerZoneUpdates playerZoneUpdates = controller.getGui().openZones(playerView, validTargets.stream().map(c -> c.getZone().getZoneType()).collect(Collectors.toSet()), playersWithValidTargets, true);
+        PlayerZoneUpdates playerZoneUpdates = controller.getGui().openZones(playerView, StreamUtil.stream(validTargets).map(c -> c.getZone().getZoneType()).collect(Collectors.toSet()), playersWithValidTargets, true);
         if (!zones.contains(ZoneType.Stack)) {
             InputSelectTargets inp = new InputSelectTargets(controller, validTargets, ability, mandatory, numTargets, divisionValues, filter, mustTargetFiltered);
             inp.showAndWait();

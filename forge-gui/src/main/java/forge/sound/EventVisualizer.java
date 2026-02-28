@@ -11,6 +11,7 @@ import forge.gui.events.UiEventAttackerDeclared;
 import forge.gui.events.UiEventBlockerAssigned;
 import forge.gui.events.UiEventNextGameDecision;
 import forge.util.TextUtil;
+import forge.util.StreamUtil;
 
 import java.util.Objects;
 
@@ -100,7 +101,7 @@ public class EventVisualizer extends IGameEventVisitor.Base<SoundEffectType> imp
             return null; // already played sounds in interactive mode
         }
 
-        if (event.blockers().values().stream().noneMatch(Multimap::isEmpty)) {
+        if (StreamUtil.stream(event.blockers().values()).noneMatch(Multimap::isEmpty)) {
             // hasAnyBlocker = true;
             return SoundEffectType.Block;
         }

@@ -58,6 +58,7 @@ import forge.trackable.Tracker;
 import forge.util.*;
 import forge.util.collect.FCollection;
 import forge.util.collect.FCollectionView;
+import forge.util.StreamUtil;
 import io.sentry.Breadcrumb;
 import io.sentry.Sentry;
 import org.apache.commons.lang3.StringUtils;
@@ -980,7 +981,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
     }
 
     public final boolean hasNameOverwrite() {
-        return changedCardNames.values().stream().anyMatch(CardChangedName::isOverwrite);
+        return StreamUtil.stream(changedCardNames.values()).anyMatch(CardChangedName::isOverwrite);
     }
 
     public final boolean hasNonLegendaryCreatureNames() {
@@ -1932,7 +1933,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
 
     @Override
     public final void setCounters(final Map<CounterType, Integer> allCounters) {
-        boolean changed = counters.containsKey(CounterEnumType.MANABOND) || counters.keySet().stream().allMatch(CounterType::isKeywordCounter);
+        boolean changed = counters.containsKey(CounterEnumType.MANABOND) || StreamUtil.stream(counters.keySet()).allMatch(CounterType::isKeywordCounter);
         counters = allCounters;
         view.updateCounters(this);
 
@@ -1951,7 +1952,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
     @Override
     public final void clearCounters() {
         if (counters.isEmpty()) { return; }
-        boolean changed = counters.containsKey(CounterEnumType.MANABOND) || counters.keySet().stream().allMatch(CounterType::isKeywordCounter);
+        boolean changed = counters.containsKey(CounterEnumType.MANABOND) || StreamUtil.stream(counters.keySet()).allMatch(CounterType::isKeywordCounter);
 
         counters.clear();
         view.updateCounters(this);
@@ -2625,7 +2626,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
                     sbLong.append(" (").append(inst.getReminderText()).append(")");
                 } else if (keyword.equals("Gift")) {
                     sbLong.append(keyword);
-                    Trigger trig = inst.getTriggers().stream().findFirst().orElse(null);
+                    Trigger trig = StreamUtil.stream(inst.getTriggers()).findFirst().orElse(null);
                     if (trig != null && trig.getCardState().getFirstSpellAbility().hasAdditionalAbility("GiftAbility")) {
                         sbLong.append(" ").append(trig.getCardState().getFirstSpellAbility().getAdditionalAbility("GiftAbility").getParam("GiftDescription"));
                     }

@@ -11,6 +11,7 @@ import forge.deck.Deck;
 import forge.item.PaperCard;
 import forge.item.PaperCardPredicates;
 import forge.util.MyRandom;
+import forge.util.StreamUtil;
 
 public class WinstonDraft extends BoosterDraft {
     private WinstonDraftAI draftAI = null;
@@ -40,7 +41,7 @@ public class WinstonDraft extends BoosterDraft {
         for (final Supplier<List<PaperCard>> supply : this.product) {
             for (int j = 0; j < NUM_PLAYERS; j++) {
                 // Remove Basic Lands from draft for simplicity
-                supply.get().stream()
+                StreamUtil.stream(supply.get())
                         .filter(PaperCardPredicates.IS_BASIC_LAND_RARITY.negate())
                         .forEach(this.deck::add);
             }

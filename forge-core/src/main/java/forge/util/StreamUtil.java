@@ -7,24 +7,45 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collector;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 public class StreamUtil {
 
     private StreamUtil(){}
 
     /**
+     * Returns a sequential {@link Stream} over the elements of {@code iterable}.
+     *
+     * <p>MobiVM (RoboVM / iOS) uses a Java-7-era class library that is missing the
+     * Java-8 default methods {@code Collection.stream()} and {@code Iterable.spliterator()}.
+     * Calling those methods at runtime on iOS throws {@link NoSuchMethodError}.
+     * This helper avoids that by building the stream from {@link Collection#toArray()} —
+     * which has been available since Java 1.2 — combined with {@link Stream#of(Object[])},
+     * which is present in both standard JDK-8 and the forge iOS stubs.
+     *
      * @return a Stream with the provided iterable as its source.
      */
+    @SuppressWarnings("unchecked")
     public static <T> Stream<T> stream(Iterable<T> iterable) {
-        return StreamSupport.stream(iterable.spliterator(), false);
+        if (iterable instanceof Collection) {
+            return Stream.of((T[]) ((Collection<T>) iterable).toArray());
+        }
+        List<T> list = new ArrayList<>();
+        for (T t : iterable) {
+            list.add(t);
+        }
+        return Stream.of((T[]) list.toArray());
     }
 
     /**
+     * Returns a sequential {@link Stream} over the elements of {@code array}.
+     *
+     * <p>Prefers {@link Stream#of(Object[])} over {@code Arrays.stream()} because
+     * {@code Arrays.stream()} was added in Java 8 and is absent from MobiVM's runtime.
+     *
      * @return a Stream with the provided array as its source.
      */
     public static <T> Stream<T> stream(T[] array) {
-        return Arrays.stream(array);
+        return Stream.of(array);
     }
 
     /**

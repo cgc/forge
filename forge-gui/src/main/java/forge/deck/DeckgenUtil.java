@@ -28,6 +28,7 @@ import forge.localinstance.properties.ForgePreferences.FPref;
 import forge.model.FModel;
 import forge.util.*;
 import forge.util.storage.IStorage;
+import forge.util.StreamUtil;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.*;
@@ -454,7 +455,7 @@ public class DeckgenUtil {
         try {
             if (useGeneticAI) {
                 if (!selection.isEmpty())
-                    deck = geneticAI.stream()
+                    deck = StreamUtil.stream(geneticAI)
                             .filter(deckProxy -> deckProxy.getColorIdentity().sharesColorWith(ColorSet.fromNames(colors.toCharArray())))
                             .collect(StreamUtil.random()).get().getDeck();
                 else
@@ -469,7 +470,7 @@ public class DeckgenUtil {
                 if (!selection.isEmpty() && selection.size() < 4)
                     predicate = predicate.and(deckProxy -> deckProxy.getColorIdentity().hasAllColors(ColorSet.fromNames(colors.toCharArray()).getColor()));
                 List<DeckProxy> source = isTheme ? advThemes : advPrecons;
-                deck = source.stream().filter(predicate).collect(StreamUtil.random()).get().getDeck();
+                deck = StreamUtil.stream(source).filter(predicate).collect(StreamUtil.random()).get().getDeck();
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -826,7 +827,7 @@ public class DeckgenUtil {
 
         // determine how many additional lands we need, but don't take lands already in deck into consideration,
         // or we risk incorrectly determining the target deck size
-        int numLands = (int) cards.stream().filter(PaperCardPredicates.IS_LAND).count();
+        int numLands = (int) StreamUtil.stream(cards).filter(PaperCardPredicates.IS_LAND).count();
         int sizeNoLands = cards.size() - numLands;
 
         // attempt to determine if building for sealed, constructed or EDH

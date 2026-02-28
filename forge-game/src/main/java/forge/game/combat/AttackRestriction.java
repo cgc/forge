@@ -6,6 +6,7 @@ import forge.game.GameEntity;
 import forge.game.card.Card;
 import forge.util.collect.FCollection;
 import forge.util.collect.FCollectionView;
+import forge.util.StreamUtil;
 
 public class AttackRestriction {
 
@@ -50,11 +51,11 @@ public class AttackRestriction {
             violations.add(AttackRestrictionType.ONLY_ALONE);
         }
         if (restrictions.contains(AttackRestrictionType.NEED_GREATER_POWER)
-                && attackers.keySet().stream().noneMatch(AttackRestrictionType.NEED_GREATER_POWER.getPredicate(attacker))) {
+                && StreamUtil.stream(attackers.keySet()).noneMatch(AttackRestrictionType.NEED_GREATER_POWER.getPredicate(attacker))) {
             violations.add(AttackRestrictionType.NEED_GREATER_POWER);
         }
         if (restrictions.contains(AttackRestrictionType.NEED_BLACK_OR_GREEN)
-                && attackers.keySet().stream().noneMatch(AttackRestrictionType.NEED_BLACK_OR_GREEN.getPredicate(attacker))) {
+                && StreamUtil.stream(attackers.keySet()).noneMatch(AttackRestrictionType.NEED_BLACK_OR_GREEN.getPredicate(attacker))) {
             violations.add(AttackRestrictionType.NEED_BLACK_OR_GREEN);
         }
         if (restrictions.contains(AttackRestrictionType.NOT_ALONE) && nAttackers <= 1) {

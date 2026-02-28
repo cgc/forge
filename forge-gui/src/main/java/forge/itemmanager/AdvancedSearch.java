@@ -46,6 +46,7 @@ import forge.model.FModel;
 import forge.util.CardTranslation;
 import forge.util.FSerializableFunction;
 import forge.util.Localizer;
+import forge.util.StreamUtil;
 
 public class AdvancedSearch {
     public enum FilterOption {
@@ -1258,7 +1259,7 @@ public class AdvancedSearch {
 
         @Override
         protected List<Integer> getValuesFromString(String valueText, FilterOption option, FilterOperator operator) {
-            return Arrays.stream(valueText.split(";")).map(String::trim).map(Integer::parseInt).collect(Collectors.toList());
+            return StreamUtil.stream(valueText.split(";")).map(String::trim).map(Integer::parseInt).collect(Collectors.toList());
         }
 
         @Override
@@ -1330,7 +1331,7 @@ public class AdvancedSearch {
         @Override
         protected List<V> getValuesFromString(String valueText, FilterOption option, FilterOperator operator) {
             String[] values = valueText.split(";");
-            return choices.stream().filter((choice) -> Arrays.stream(values).anyMatch((name) -> eitherStringMatches(choice, name))).collect(Collectors.toList());
+            return StreamUtil.stream(choices).filter((choice) -> StreamUtil.stream(values).anyMatch((name) -> eitherStringMatches(choice, name))).collect(Collectors.toList());
         }
 
         private boolean eitherStringMatches(V choice, String name) {

@@ -20,6 +20,7 @@ package forge.card;
 import forge.card.MagicColor.Color;
 import forge.card.mana.ManaCost;
 import forge.util.BinaryUtil;
+import forge.util.StreamUtil;
 
 import java.io.Serializable;
 import java.util.*;
@@ -359,7 +360,7 @@ public enum ColorSet implements Iterable<Color>, Serializable {
     }
 
     public Stream<Color> stream() {
-        return this.orderedShards.stream();
+        return StreamUtil.stream(this.orderedShards);
     }
 
     //Get array of mana cost shards for color set in the proper order

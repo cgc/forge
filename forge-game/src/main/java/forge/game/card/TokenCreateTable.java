@@ -7,6 +7,7 @@ import forge.game.CardTraitBase;
 import forge.game.GameObject;
 import forge.game.GameObjectPredicates;
 import forge.game.player.Player;
+import forge.util.StreamUtil;
 
 import java.util.List;
 import java.util.Map;
@@ -48,7 +49,7 @@ public class TokenCreateTable extends ForwardingTable<Player, Card, Integer> {
 
         if (validOwner != null) {
             Predicate<GameObject> restriction = GameObjectPredicates.restriction(validOwner.split(","), host.getController(), host, ctb);
-            filteredPlayer = rowKeySet().stream().filter(restriction).collect(Collectors.toList());
+            filteredPlayer = StreamUtil.stream(rowKeySet()).filter(restriction).collect(Collectors.toList());
             if (filteredPlayer.isEmpty()) {
                 return 0;
             }
