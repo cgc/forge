@@ -20,7 +20,29 @@
     <pattern>org.apache.xalan.processor.TransformerFactoryImpl</pattern>
     <pattern>java.util.logging.**</pattern>
     <pattern>com.esotericsoftware.minlog.Log</pattern>
-    <pattern>com.badlogic.gdx.**</pattern>
+    <!--
+      Use targeted patterns instead of com.badlogic.gdx.** (the previous wildcard).
+
+      The wildcard caused UIAccelerometer's static initializer to run eagerly at
+      process startup:  static { ObjCRuntime.bind(UIAccelerometer.class) }  which
+      calls [UIAccelerometer class], firing its +initialize, which creates an
+      internal CMMotionManager that tries to read the MDM-controlled CoreMotion
+      plist and logs a noisy permission warning on supervised devices.
+
+      With targeted patterns the UIAccelerometer class is still compiled into the
+      binary (it is referenced transitively by DefaultIOSInput), but its static
+      initializer runs only when the class is first *used*.  Because
+      config.useAccelerometer = false the setupAccelerometer() code is never
+      entered, UIAccelerometer is never touched, and CoreMotion stays dormant.
+
+      Pattern rationale (matches Shattered Pixel Dungeon's robovm.xml approach):
+        scenes.scene2d.ui.*  – Skin loads widget classes by name from JSON; these
+                               classes must be force-linked or the linker strips them.
+      All libGDX iOS backend classes (IOSApplication, IOSGraphics, DefaultIOSInput,
+      etc.) are reachable via the compile-time reference chain from Main and are
+      compiled and registered automatically without force-linking.
+    -->
+    <pattern>com.badlogic.gdx.scenes.scene2d.ui.*</pattern>
   </forceLinkClasses>
   <libs>
     <lib>libs/libgdx.a</lib>
@@ -35,6 +57,5 @@
     <framework>OpenAL</framework>
     <framework>AudioToolbox</framework>
     <framework>AVFoundation</framework>
-    <framework>CoreMotion</framework>
   </frameworks>
 </config>

@@ -57,5 +57,26 @@
             </array>
         </dict>
     </dict>
+    <!--
+      UIRequiresFullScreen: games must opt out of iPad split-screen / slide-over.
+      Without this key the app can be windowed on iPad, which is not supported by
+      a libGDX game using OpenGL ES in full-screen mode.
+    -->
+    <key>UIRequiresFullScreen</key>
+    <true/>
+    <!--
+      MinimumOSVersion: target iOS 12+ to match the RoboVM/libGDX toolchain and
+      ensure modern API availability.  Without this the binary carries no explicit
+      minimum, which can suppress OS-version-gated optimisations.
+    -->
+    <key>MinimumOSVersion</key>
+    <string>12.0</string>
+    <!--
+      CADisableMinimumFrameDurationOnPhone: allows the app to render at the full
+      ProMotion refresh rate (120 Hz) on iPhone 13 Pro and later.  Without this
+      key iOS caps rendering at 60 fps on high-refresh-rate displays.
+    -->
+    <key>CADisableMinimumFrameDurationOnPhone</key>
+    <true/>
 </dict>
 </plist>

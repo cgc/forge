@@ -8,37 +8,137 @@ import java.util.Date;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.jupnp.UpnpServiceConfiguration;
+import org.robovm.apple.foundation.Foundation;
 import org.robovm.apple.foundation.NSAutoreleasePool;
+import org.robovm.apple.foundation.NSBundle;
+import org.robovm.apple.foundation.NSException;
+import org.robovm.apple.foundation.NSString;
 import org.robovm.apple.uikit.UIApplication;
+import org.robovm.apple.uikit.UIApplicationLaunchOptions;
 import org.robovm.apple.uikit.UIPasteboard;
 
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.backends.iosrobovm.DefaultIOSInput;
 import com.badlogic.gdx.backends.iosrobovm.IOSApplication;
 import com.badlogic.gdx.backends.iosrobovm.IOSApplicationConfiguration;
 import com.badlogic.gdx.backends.iosrobovm.IOSFiles;
+import com.badlogic.gdx.backends.iosrobovm.IOSInput;
 
 import forge.Forge;
 import forge.interfaces.IDeviceAdapter;
 
 public class Main extends IOSApplication.Delegate {
 
+    // Thin NSLog wrapper usable at any point — does not require Gdx.app to be set.
+    static void nslog(String msg) {
+        Foundation.log("%@", new NSString("[Forge] " + msg));
+    }
+
+    @Override
+    public boolean didFinishLaunching(UIApplication application, UIApplicationLaunchOptions launchOptions) {
+        // Wrap the entire launch sequence so that any Java exception is printed to
+        // the device console via NSLog before the process aborts.  Without this
+        // wrapper, an uncaught Java exception crossing the JNI/ObjC boundary
+        // produces a silent abort — nothing appears in the device console and
+        // SpringBoard reports only "Scene create failed (null)".
+        try {
+            nslog("didFinishLaunching: start");
+            boolean result = super.didFinishLaunching(application, launchOptions);
+            nslog("didFinishLaunching: complete, result=" + result);
+            return result;
+        } catch (Throwable t) {
+            nslog("didFinishLaunching: EXCEPTION " + t.getClass().getName() + ": " + t.getMessage());
+            t.printStackTrace(System.err);
+            throw t;
+        }
+    }
+
     @Override
     protected IOSApplication createApplication() {
-        final String assetsDir = new IOSFiles().getLocalStoragePath() + "/../../forge.ios.Main.app/";
+        nslog("createApplication(): building IOSApplication");
+
+        // On iOS 8+, the app bundle (containing all resources) lives in a separate
+        // read-only "Bundle container", while $HOME points to the writable "Data
+        // container".  The old localStoragePath-based calculation landed in the Data
+        // container and forge could never find its res/ assets.  NSBundle gives the
+        // canonical bundle path that works on every iOS version and deployment type.
+        final String assetsDir = NSBundle.getMainBundle().getBundlePath() + "/";
+        nslog("createApplication: assetsDir=" + assetsDir);
+        nslog("createApplication: HOME=" + System.getenv("HOME"));
 
         final IOSApplicationConfiguration config = new IOSApplicationConfiguration();
         config.useAccelerometer = false;
         config.useCompass = false;
+        // Disable audio until OAL/OpenAL is confirmed working on the target device.
+        // OALSimpleAudio.sharedInstance() can return null on some configurations;
+        // with audio enabled that logs an error but otherwise continues.  If the
+        // underlying OpenAL context creation fails it can throw, silently killing
+        // the app before any diagnostic output appears.  Re-enable once the app
+        // launches successfully.
+        config.useAudio = false;
         final ApplicationListener app = Forge.getApp(null, new IOSClipboard(), new IOSAdapter(), assetsDir, false, false, 0, false, 0);
-        final IOSApplication iosApp = new IOSApplication(app, config);
+        // Override createInput() so that setupAccelerometer() and setupCompass()
+        // are unconditional no-ops.  DefaultIOSInput guards them behind the config
+        // flags, but those guards are evaluated at runtime; overriding here
+        // eliminates any path to UIAccelerometer.getSharedAccelerometer(), which
+        // on iOS 14+ internally initializes CMMotionManager (CoreMotion) and
+        // causes a noisy permission warning on physical devices.
+        final IOSApplication iosApp = new IOSApplication(app, config) {
+            @Override
+            protected IOSInput createInput() {
+                return new DefaultIOSInput(this) {
+                    @Override protected void setupAccelerometer() {}
+                    @Override protected void setupCompass() {}
+                };
+            }
+        };
         return iosApp;
     }
 
     public static void main(String[] args) {
+        // ── Breadcrumb 1: file write ────────────────────────────────────────────
+        // Written before any ObjC call.  If the JVM reaches main() this file will
+        // exist in the app's Documents directory; retrieve it via Xcode → Devices &
+        // Simulators → Download Container, or via the iOS Files app.  Its presence
+        // confirms the JVM started and main() was called even after a later crash.
+        try {
+            String home = System.getenv("HOME");
+            if (home != null) {
+                new java.io.FileOutputStream(home + "/Documents/forge_boot.txt").close();
+            }
+        } catch (Throwable ignored) {}
+
+        // ── Breadcrumb 2: stdout ────────────────────────────────────────────────
+        // System.out is remapped to os_log by RoboVM; visible in Console.app and
+        // in Xcode's debug console.  Use this as a cross-check against nslog().
+        System.out.println("[Forge] main() entered");
+
+        // Create the autorelease pool before the first NSObject allocation.
+        // NOTE: Gdx.app is NULL here; it is only set inside didFinishLaunching().
         final NSAutoreleasePool pool = new NSAutoreleasePool();
-        UIApplication.main(args, null, Main.class);
-        pool.close();
+
+        // ── Breadcrumb 3: NSLog ─────────────────────────────────────────────────
+        // Foundation.log() calls NSLog() which writes to the unified logging system
+        // (os_log).  Visible in Console.app on macOS when the device is connected,
+        // even during a crash (os_log is synchronous).
+        nslog("main() entered: Forge iOS starting");
+
+        // Register the uncaught-exception handler before UIApplication.main() so
+        // that any Java exception thrown during UIKit's own startup (before
+        // createApplication() runs) also produces a full stack trace in the log.
+        // This is the standard pattern used by production RoboVM+libGDX apps.
+        NSException.registerDefaultJavaUncaughtExceptionHandler();
+
+        try {
+            UIApplication.main(args, null, Main.class);
+        } catch (Throwable t) {
+            // Surface any uncaught exception so it appears in the system log.
+            nslog("main() EXCEPTION " + t.getClass().getName() + ": " + t.getMessage());
+            throw t;
+        } finally {
+            pool.close();
+        }
     }
 
     //special clipboard that works on iOS

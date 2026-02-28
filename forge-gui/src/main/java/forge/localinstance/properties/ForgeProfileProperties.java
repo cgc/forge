@@ -160,6 +160,23 @@ public class ForgeProfileProperties {
     private static Pair<String, String> getDefaultDirs() {
         if (!GuiBase.getInterface().isRunningOnDesktop()) { //special case for mobile devices
             final String assetsDir = ForgeConstants.ASSETS_DIR;
+            // On iOS 8+, the app bundle (assetsDir) is a read-only "Bundle container"
+            // while the writable "Data container" is a sibling tree under $HOME.
+            // We detect this situation by checking whether $HOME looks like an iOS
+            // data-container path (contains "/Containers/Data/Application/") AND the
+            // assetsDir is not inside it (i.e. it is the separate bundle container).
+            // The path fragment is the conventional container layout introduced in iOS 8
+            // (still valid through iOS 17+); may need revisiting if Apple changes it.
+            // In that case, route mutable user data to the standard iOS Documents and
+            // Caches directories inside the Data container.
+            final String home = System.getenv("HOME");
+            if (home != null
+                    && home.contains("/Containers/Data/Application/")
+                    && !assetsDir.startsWith(home)) {
+                return Pair.of(
+                        home + File.separator + "Documents" + File.separator + "forge" + File.separator,
+                        home + File.separator + "Library"   + File.separator + "Caches" + File.separator + "forge" + File.separator);
+            }
             return Pair.of(assetsDir + "data" + File.separator, assetsDir + "cache" + File.separator);
         }
 
