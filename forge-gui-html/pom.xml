@@ -1,0 +1,199 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <artifactId>forge</artifactId>
+        <groupId>forge</groupId>
+        <version>${revision}</version>
+    </parent>
+
+    <artifactId>forge-gui-html</artifactId>
+    <packaging>war</packaging>
+    <name>Forge HTML5</name>
+
+    <!--
+      HTML5 / GWT viability spec module.
+
+      This module targets an HTML5 deployment of the Forge mobile UI using
+      LibGDX's GWT backend (gdx-backend-gwt).  It mirrors the pattern used by
+      forge-gui-mobile-dev (LWJGL3 desktop launcher) but replaces the native
+      LWJGL3 backend with the GWT/WebGL backend so the game can be served as a
+      web application.
+
+      Known limitations / open work items before a production build is feasible:
+        1. GWT version pinning: gdx-backend-gwt is published up through
+           LibGDX 1.9.14.  For LibGDX 1.10+ the GWT backend was extracted to an
+           external project (e.g. gdx-teavm or gdx-html5).  The dependency block
+           below targets 1.9.14; bump to whatever version aligns with the
+           project-wide gdx version once a compatible artifact is available.
+        2. GWT source compatibility: GWT compiles Java to JavaScript and only
+           supports a subset of the Java standard library.  Several forge-gui and
+           forge-core classes use APIs that are not GWT-compatible:
+             - java.lang.Thread / java.util.concurrent.*
+             - java.io.File / java.nio.file.*
+             - org.jupnp (UPnP – not available in browsers)
+             - io.sentry (native agent – not available in GWT)
+             - oshi (hardware info – not available in GWT)
+           These will need stub replacements or conditional compilation
+           (using GWT.isClient() or deferred binding) before a full GWT build
+           succeeds.
+        3. Asset loading: all game assets must be bundled as GWT classpath
+           resources or fetched asynchronously via AssetManager; the synchronous
+           file-system access used by the desktop launcher will not work.
+        4. Audio: the GWT backend supports WebAudio; .ogg files work in most
+           browsers.  .mid / .wav may require format conversion.
+        5. Networking: only HTTP/WebSocket transports are available; the UPnP /
+           LAN multiplayer features are unsupported in a browser context.
+    -->
+
+    <properties>
+        <!-- Pin the GWT SDK version used for compilation.  2.11.0 is the latest
+             stable release as of the time this spec was written.              -->
+        <gwt.version>2.11.0</gwt.version>
+        <!-- Last LibGDX version that ships gdx-backend-gwt on Maven Central.
+             Upgrade once a compatible HTML5 backend for 1.13.x is available.  -->
+        <gdx.gwt.version>1.9.14</gdx.gwt.version>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <!-- Forge mobile UI (the shared libgdx-based front-end) -->
+        <dependency>
+            <groupId>forge</groupId>
+            <artifactId>forge-gui-mobile</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- LibGDX core -->
+        <dependency>
+            <groupId>com.badlogicgames.gdx</groupId>
+            <artifactId>gdx</artifactId>
+            <version>${gdx.gwt.version}</version>
+        </dependency>
+
+        <!-- LibGDX GWT backend (jar contains GWT super-source) -->
+        <dependency>
+            <groupId>com.badlogicgames.gdx</groupId>
+            <artifactId>gdx-backend-gwt</artifactId>
+            <version>${gdx.gwt.version}</version>
+        </dependency>
+
+        <!-- Sources jars are required for GWT compilation of LibGDX -->
+        <dependency>
+            <groupId>com.badlogicgames.gdx</groupId>
+            <artifactId>gdx</artifactId>
+            <version>${gdx.gwt.version}</version>
+            <classifier>sources</classifier>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.badlogicgames.gdx</groupId>
+            <artifactId>gdx-backend-gwt</artifactId>
+            <version>${gdx.gwt.version}</version>
+            <classifier>sources</classifier>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- GWT SDK (provided – only needed for compilation, not packaging) -->
+        <dependency>
+            <groupId>com.google.gwt</groupId>
+            <artifactId>gwt-user</artifactId>
+            <version>${gwt.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.gwt</groupId>
+            <artifactId>gwt-dev</artifactId>
+            <version>${gwt.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>11</source>
+                    <target>11</target>
+                    <!-- Exclude GWT-specific source from the standard javac compile;
+                         it is only meaningful when GWT is on the classpath. -->
+                </configuration>
+            </plugin>
+
+            <!-- Package as a deployable WAR -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-war-plugin</artifactId>
+                <version>3.4.0</version>
+                <configuration>
+                    <webXml>webapp/WEB-INF/web.xml</webXml>
+                    <webResources>
+                        <resource>
+                            <directory>webapp</directory>
+                        </resource>
+                    </webResources>
+                    <!-- Suppress the warning about missing web.xml in the default location -->
+                    <failOnMissingWebXml>false</failOnMissingWebXml>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!--
+      Activate this profile with -Pgwt to run the full GWT compilation:
+        mvn -pl forge-gui-html -Pgwt package
+
+      Prerequisites before this profile will succeed:
+        - All transitive Forge source jars must be available (see pom.xml notes).
+        - GWT-incompatible imports must be replaced with browser-safe stubs.
+        - gdx-backend-gwt for LibGDX 1.10+ must be sourced (see gdx.gwt.version).
+    -->
+    <profiles>
+        <profile>
+            <id>gwt</id>
+            <build>
+                <plugins>
+                    <!--
+                      net.ltgt.gwt.maven is the actively maintained GWT Maven plugin
+                      for GWT 2.9+ (codehaus mojo plugin was retired at 2.8.x).
+                    -->
+                    <plugin>
+                        <groupId>net.ltgt.gwt.maven</groupId>
+                        <artifactId>gwt-maven-plugin</artifactId>
+                        <version>1.1.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <moduleName>forge.html.ForgeHtml</moduleName>
+                            <moduleShortName>forge</moduleShortName>
+                            <logLevel>INFO</logLevel>
+                            <optimize>9</optimize>
+                            <!-- Super Dev Mode recompile server port -->
+                            <devmodeArgs>
+                                <devmodeArg>-port</devmodeArg>
+                                <devmodeArg>8888</devmodeArg>
+                            </devmodeArgs>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

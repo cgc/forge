@@ -1,0 +1,79 @@
+<!--
+  GWT Module Descriptor for Forge HTML5.
+
+  This file tells the GWT compiler which Java sources to compile and which
+  browser permutations to generate.  The fully-qualified module name
+  (forge.html.ForgeHtml) is referenced in pom.xml and in GwtLauncher.java.
+
+  Viability notes
+  ===============
+  Before gwt:compile can succeed the following issues must be resolved:
+
+  1. Source inclusions
+     Every transitive dependency that is compiled by GWT must either:
+       a) ship a *-sources.jar on Maven Central, or
+       b) have its sources available on the GWT compile classpath.
+     This means forge-gui-mobile, forge-gui, forge-game, forge-ai and
+     forge-core all need source jars (or be built as GWT modules themselves).
+
+  2. GWT-incompatible imports
+     Several classes in the forge source tree import Java SE APIs that GWT
+     does not emulate:
+       - java.lang.Thread, java.util.concurrent.*
+       - java.io.File, java.nio.file.*
+       - org.jupnp.* (UPnP)
+       - io.sentry.* (error reporting)
+       - oshi.* (hardware info)
+     These require either GWT "super-source" replacements or conditional
+     removal via GWT.isClient() guards.
+
+  3. Reflection
+     GWT has limited support for reflection.  Any forge code that uses
+     Class.forName(), getDeclaredMethods(), etc. will not compile.
+
+  4. Asset pipeline
+     The <public> element below declares the webapp/assets directory as the
+     source for static files served to the browser.  All game resources
+     (card images, skin textures, sounds) must either be bundled here or
+     fetched lazily from a CDN via AssetManager.
+
+  Intended usage
+  ==============
+  Once the above issues are addressed run:
+    mvn -pl forge-gui-html gwt:compile
+  to produce the JavaScript output in target/forge-gui-html-<version>/
+  and then deploy that directory to any HTTP server.
+-->
+<module rename-to="forge">
+
+    <!-- LibGDX GWT backend (provides WebGL rendering, audio, etc.) -->
+    <inherits name="com.badlogic.gdx.backends.gdx_backends_gwt"/>
+
+    <!-- GWT core emulation -->
+    <inherits name="com.google.gwt.user.User"/>
+
+    <!-- Entry point: the class that extends GwtApplication -->
+    <entry-point class="forge.html.GwtLauncher"/>
+
+    <!--
+      Source path: tell GWT which packages to compile.
+      NOTE: the transitive forge source jars listed in pom.xml must all be
+      on the classpath for these paths to resolve.
+    -->
+    <source path="forge/html"/>
+
+    <!--
+      Public resources: static files that are copied verbatim into the
+      output WAR.  Game assets (images, sounds, etc.) should be placed under
+      webapp/assets/ and referenced with GWT's AssetManager or ClasspathFile.
+    -->
+    <public path="assets"/>
+
+    <!--
+      Restrict to modern browsers that support WebGL.
+      Remove or adjust the user.agent property to generate permutations for
+      other browsers.
+    -->
+    <set-property name="user.agent" value="gecko1_8,safari"/>
+
+</module>
