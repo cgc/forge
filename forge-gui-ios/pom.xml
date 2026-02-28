@@ -179,6 +179,11 @@
              compiler includes the types and runtime calls succeed on iOS.
              Built by: bash scripts/build-java-stubs.sh
 
+             Version 1.3 (previously 1.2): added Collector.of IDENTITY_FINISH 4-param
+             overload, Collectors.toMap 4-arg overload (with mapFactory), and
+             Stream.forEachOrdered.  Without these, Guava's CollectCollectors throws
+             NoSuchMethodError when initializing multimap/set collectors.
+
              Version 1.2 (previously 1.1): added Collector.Characteristics inner enum
              and characteristics() method to the Collector stub.  Without this enum,
              Guava's CollectCollectors class fails to initialize with
@@ -193,15 +198,15 @@
              interface is not in librobovm-rt.a → "Undefined symbols" linker
              error.
 
-             Using version 1.2 (not 1.1 or 1.0) is essential: Maven caches release
-             artifacts permanently in ~/.m2 and will use a previously built stubs
-             jar for every subsequent build, regardless of what is in forge-local.
-             Version 1.2 has never been cached so Maven always resolves it
-             fresh from forge-local. -->
+             Using version 1.3 (not 1.2, 1.1, or 1.0) is essential: Maven caches
+             release artifacts permanently in ~/.m2 and will use a previously built
+             stubs jar for every subsequent build, regardless of what is in
+             forge-local.  Version 1.3 has never been cached so Maven always
+             resolves it fresh from forge-local. -->
         <dependency>
             <groupId>forge</groupId>
             <artifactId>java-stubs</artifactId>
-            <version>1.2</version>
+            <version>1.3</version>
         </dependency>
     </dependencies>
 

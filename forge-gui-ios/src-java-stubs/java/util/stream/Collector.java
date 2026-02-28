@@ -40,6 +40,34 @@ public interface Collector<T, A, R> {
     }
 
     /**
+     * Returns a new IDENTITY_FINISH {@code Collector} described by the given supplier,
+     * accumulator, combiner, and optional characteristics.
+     *
+     * <p>The finisher is the identity function and {@link Characteristics#IDENTITY_FINISH}
+     * is always included in the returned characteristics set.  This overload mirrors the
+     * JDK 8 {@code Collector.of(Supplier, BiConsumer, BinaryOperator, Characteristics...)}
+     * method that Guava's {@code CollectCollectors} and {@code TableCollectors} use when
+     * building collectors whose accumulator container IS the result (e.g. multimap collectors).
+     */
+    static <T, R> Collector<T, R, R> of(
+            Supplier<R> supplier,
+            BiConsumer<R, T> accumulator,
+            BinaryOperator<R> combiner,
+            Characteristics... characteristics) {
+        Set<Characteristics> characteristicsSet = new HashSet<>();
+        characteristicsSet.add(Characteristics.IDENTITY_FINISH);
+        for (Characteristics c : characteristics) characteristicsSet.add(c);
+        final Set<Characteristics> chars = Collections.unmodifiableSet(characteristicsSet);
+        return new Collector<T, R, R>() {
+            @Override public Supplier<R> supplier()              { return supplier; }
+            @Override public BiConsumer<R, T> accumulator()      { return accumulator; }
+            @Override public BinaryOperator<R> combiner()        { return combiner; }
+            @Override public Function<R, R> finisher()           { return r -> r; }
+            @Override public Set<Characteristics> characteristics() { return chars; }
+        };
+    }
+
+    /**
      * Returns a new {@code Collector} described by the given supplier, accumulator,
      * combiner, finisher, and optional characteristics.
      */

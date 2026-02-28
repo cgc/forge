@@ -13,6 +13,14 @@ public interface Stream<T> extends AutoCloseable {
 
     void forEach(Consumer<? super T> action);
 
+    /**
+     * Performs an action for each element of this stream, in the encounter order of the
+     * stream if the stream has a defined encounter order.  For sequential (non-parallel)
+     * streams this is identical to {@link #forEach}; provided because Guava's
+     * {@code CollectCollectors} calls it on streams returned by its multimap collectors.
+     */
+    void forEachOrdered(Consumer<? super T> action);
+
     long count();
 
     boolean anyMatch(Predicate<? super T> predicate);
