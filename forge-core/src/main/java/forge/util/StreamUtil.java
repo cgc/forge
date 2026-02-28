@@ -1,5 +1,8 @@
 package forge.util;
 
+import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.BinaryOperator;
@@ -77,6 +80,19 @@ public class StreamUtil {
             @Override public long           estimateSize() { return Long.MAX_VALUE; }
             @Override public int            characteristics() { return 0; }
         };
+    }
+
+    /**
+     * Returns the {@link Path} corresponding to {@code file}, equivalent to {@code file.toPath()}.
+     *
+     * <p>{@code File.toPath()} is a Java-7 method absent from MobiVM's runtime.  The build-time
+     * bytecode transformer rewrites every {@code file.toPath()} call to call this method instead,
+     * so no source-level changes are needed in application code.
+     *
+     * @return a Path representing the same file system location as {@code file}.
+     */
+    public static Path toPath(File file) {
+        return Paths.get(file.getAbsolutePath());
     }
 
     /**

@@ -30,9 +30,9 @@ import java.util.Arrays;
  * maintain diff against upstream Forge.
  *
  * <p><b>What this transformer does</b><br>
- * For each {@code .class} file under the given directories it rewrites three instruction
- * patterns — with <em>identical</em> net stack effect so no stack-map-frame recomputation
- * is needed for patterns 1 and 2:
+ * For each {@code .class} file under the given directories it rewrites four instruction
+ * patterns — all with <em>identical</em> net stack effect so no operand-stack changes are
+ * needed:
  *
  * <ol>
  *   <li>{@code INVOKEINTERFACE/VIRTUAL *.stream()Ljava/util/stream/Stream;} →
@@ -41,9 +41,11 @@ import java.util.Arrays;
  *       {@code INVOKESTATIC forge/util/StreamUtil.spliterator(Ljava/lang/Iterable;)Ljava/util/Spliterator;}</li>
  *   <li>{@code INVOKESTATIC java/util/Arrays.stream([Ljava/lang/Object;)Ljava/util/stream/Stream;} →
  *       {@code INVOKESTATIC forge/util/StreamUtil.stream([Ljava/lang/Object;)Ljava/util/stream/Stream;}</li>
+ *   <li>{@code INVOKEVIRTUAL java/io/File.toPath()Ljava/nio/file/Path;} →
+ *       {@code INVOKESTATIC forge/util/StreamUtil.toPath(Ljava/io/File;)Ljava/nio/file/Path;}</li>
  * </ol>
  *
- * <p>Patterns 1 and 2 are simple opcode+owner replacements; the receiver that was the
+ * <p>Patterns 1, 2, and 4 are simple opcode+owner replacements; the receiver that was the
  * implicit {@code this} of the instance call remains on the stack as the sole argument to
  * the static call.  Pattern 3 changes only the owner class.
  *
@@ -57,8 +59,10 @@ public class StreamDesugar {
     private static final String STREAM_UTIL        = "forge/util/StreamUtil";
     private static final String STREAM_DESC        = "()Ljava/util/stream/Stream;";
     private static final String SPLITERATOR_DESC   = "()Ljava/util/Spliterator;";
+    private static final String TO_PATH_DESC       = "()Ljava/nio/file/Path;";
     private static final String ITERABLE_PARAM     = "(Ljava/lang/Iterable;)";
     private static final String OBJECT_ARRAY_PARAM = "([Ljava/lang/Object;)";
+    private static final String FILE_PARAM         = "(Ljava/io/File;)";
 
     public static void main(String[] args) throws IOException {
         if (args.length == 0) {
@@ -185,6 +189,18 @@ public class StreamDesugar {
                         && descriptor.startsWith("([L")) {
                     super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "stream",
                             OBJECT_ARRAY_PARAM + "Ljava/util/stream/Stream;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 4: file.toPath() → StreamUtil.toPath(file)
+                // File.toPath() was added in Java 7 but is absent from MobiVM's robovm-rt.
+                // The net stack effect is identical: the File receiver stays as the sole
+                // argument of the static call.
+                if ("toPath".equals(name) && TO_PATH_DESC.equals(descriptor)
+                        && "java/io/File".equals(owner)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "toPath",
+                            FILE_PARAM + "Ljava/nio/file/Path;", false);
                     modified = true;
                     return;
                 }

@@ -5,7 +5,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -67,7 +66,7 @@ public class ZipUtil {
         isClassic = backupClsFile.equalsIgnoreCase(fileZip.getName());
         StringBuilder val = new StringBuilder();
         byte[] buffer = new byte[1024];
-        ZipInputStream zis = new ZipInputStream(Files.newInputStream(Paths.get(fileZip.getAbsolutePath())));
+        ZipInputStream zis = new ZipInputStream(Files.newInputStream(fileZip.toPath()));
         ZipEntry zipEntry = zis.getNextEntry();
         while (zipEntry != null) {
             File newFile = newFile(destDir, zipEntry);

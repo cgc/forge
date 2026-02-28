@@ -5,7 +5,6 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -42,7 +41,7 @@ public class MainWorldDuelReader extends StorageReaderFolder<QuestEventDuel> {
         final Map<String, QuestEventDuel> result = new TreeMap<>();
         
         // First I add wild decks in quest directory
-        try (Stream<Path> stream = Files.walk(Paths.get(directory.getAbsolutePath()))) {
+        try (Stream<Path> stream = Files.walk(directory.toPath())) {
             stream.forEach(path -> {
                 File actualFile = new File(path.toString());
                 if (!actualFile.isFile()) return;
