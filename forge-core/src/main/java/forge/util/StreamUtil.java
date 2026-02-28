@@ -7,10 +7,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.function.ToIntFunction;
 import java.util.stream.Collector;
 import java.util.stream.Stream;
 
@@ -117,6 +120,182 @@ public class StreamUtil {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    // ── Map helpers (Java 8 default methods absent from MobiVM's robovm-rt) ─────
+
+    /** Equivalent to {@code map.getOrDefault(key, defaultValue)} (Java 8). */
+    @SuppressWarnings("unchecked")
+    public static <K, V> V getOrDefault(Map<K, V> map, K key, V defaultValue) {
+        V v = map.get(key);
+        return (v != null || map.containsKey(key)) ? v : defaultValue;
+    }
+
+    /** Equivalent to {@code map.computeIfAbsent(key, fn)} (Java 8). */
+    @SuppressWarnings("unchecked")
+    public static <K, V> V computeIfAbsent(Map<K, V> map, K key,
+            Function<? super K, ? extends V> mappingFunction) {
+        V v = map.get(key);
+        if (v == null) {
+            V newValue = mappingFunction.apply(key);
+            if (newValue != null) {
+                map.put(key, newValue);
+                return newValue;
+            }
+        }
+        return v;
+    }
+
+    /** Equivalent to {@code map.computeIfPresent(key, fn)} (Java 8). */
+    @SuppressWarnings("unchecked")
+    public static <K, V> V computeIfPresent(Map<K, V> map, K key,
+            BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        V oldValue = map.get(key);
+        if (oldValue != null) {
+            V newValue = remappingFunction.apply(key, oldValue);
+            if (newValue != null) {
+                map.put(key, newValue);
+                return newValue;
+            } else {
+                map.remove(key);
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /** Equivalent to {@code map.compute(key, fn)} (Java 8). */
+    @SuppressWarnings("unchecked")
+    public static <K, V> V compute(Map<K, V> map, K key,
+            BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
+        V oldValue = map.get(key);
+        V newValue = remappingFunction.apply(key, oldValue);
+        if (newValue == null) {
+            if (oldValue != null || map.containsKey(key)) {
+                map.remove(key);
+            }
+            return null;
+        } else {
+            map.put(key, newValue);
+            return newValue;
+        }
+    }
+
+    /** Equivalent to {@code map.merge(key, value, fn)} (Java 8). */
+    @SuppressWarnings("unchecked")
+    public static <K, V> V merge(Map<K, V> map, K key, V value,
+            BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
+        V oldValue = map.get(key);
+        V newValue = (oldValue == null) ? value : remappingFunction.apply(oldValue, value);
+        if (newValue == null) {
+            map.remove(key);
+        } else {
+            map.put(key, newValue);
+        }
+        return newValue;
+    }
+
+    /** Equivalent to {@code map.putIfAbsent(key, value)} (Java 8). */
+    @SuppressWarnings("unchecked")
+    public static <K, V> V putIfAbsent(Map<K, V> map, K key, V value) {
+        V v = map.get(key);
+        if (v == null) {
+            v = map.put(key, value);
+        }
+        return v;
+    }
+
+    // ── Collection helpers ────────────────────────────────────────────────────
+
+    /** Equivalent to {@code collection.removeIf(filter)} (Java 8). */
+    public static <E> boolean removeIf(Collection<E> collection,
+            Predicate<? super E> filter) {
+        boolean removed = false;
+        Iterator<E> each = collection.iterator();
+        while (each.hasNext()) {
+            if (filter.test(each.next())) {
+                each.remove();
+                removed = true;
+            }
+        }
+        return removed;
+    }
+
+    // ── Predicate helpers (Java 8 default/static methods; stubs strip lambda ─
+    //    bodies → UnsupportedOperationException at runtime)
+
+    /** Equivalent to {@code predicate.negate()} (Java 8 default method). */
+    public static <T> Predicate<T> predicateNegate(Predicate<T> target) {
+        return t -> !target.test(t);
+    }
+
+    /** Equivalent to {@code p1.and(p2)} (Java 8 default method). */
+    public static <T> Predicate<T> predicateAnd(Predicate<T> first,
+            Predicate<? super T> second) {
+        return t -> first.test(t) && second.test(t);
+    }
+
+    /** Equivalent to {@code p1.or(p2)} (Java 8 default method). */
+    public static <T> Predicate<T> predicateOr(Predicate<T> first,
+            Predicate<? super T> second) {
+        return t -> first.test(t) || second.test(t);
+    }
+
+    /** Equivalent to {@code Predicate.not(target)} (Java 11 static method). */
+    public static <T> Predicate<T> predicateNot(Predicate<? super T> target) {
+        return t -> !target.test(t);
+    }
+
+    // ── Comparator helpers (Java 8 static/default methods) ───────────────────
+
+    /** Equivalent to {@code Comparator.comparing(keyExtractor)} (Java 8). */
+    @SuppressWarnings("unchecked")
+    public static <T, U extends Comparable<? super U>> Comparator<T> comparatorComparing(
+            Function<? super T, ? extends U> keyExtractor) {
+        return (a, b) -> ((Comparable<Object>) keyExtractor.apply(a))
+                .compareTo(keyExtractor.apply(b));
+    }
+
+    /** Equivalent to {@code Comparator.comparingInt(keyExtractor)} (Java 8). */
+    public static <T> Comparator<T> comparatorComparingInt(
+            ToIntFunction<? super T> keyExtractor) {
+        return (a, b) -> Integer.compare(keyExtractor.applyAsInt(a),
+                keyExtractor.applyAsInt(b));
+    }
+
+    /** Equivalent to {@code comparator.reversed()} (Java 8 default method). */
+    public static <T> Comparator<T> comparatorReversed(Comparator<T> cmp) {
+        return (a, b) -> cmp.compare(b, a);
+    }
+
+    /** Equivalent to {@code first.thenComparing(second)} — Comparator overload (Java 8). */
+    public static <T> Comparator<T> comparatorThenComparing(Comparator<T> first,
+            Comparator<? super T> second) {
+        return (a, b) -> {
+            int c = first.compare(a, b);
+            return (c != 0) ? c : second.compare(a, b);
+        };
+    }
+
+    /** Equivalent to {@code first.thenComparing(keyExtractor)} — Function overload (Java 8). */
+    @SuppressWarnings("unchecked")
+    public static <T, U extends Comparable<? super U>> Comparator<T> comparatorThenComparingFn(
+            Comparator<T> first, Function<? super T, ? extends U> keyExtractor) {
+        return (a, b) -> {
+            int c = first.compare(a, b);
+            return (c != 0) ? c : ((Comparable<Object>) keyExtractor.apply(a))
+                    .compareTo(keyExtractor.apply(b));
+        };
+    }
+
+    /** Equivalent to {@code first.thenComparingInt(keyExtractor)} (Java 8). */
+    public static <T> Comparator<T> comparatorThenComparingInt(Comparator<T> first,
+            ToIntFunction<? super T> keyExtractor) {
+        return (a, b) -> {
+            int c = first.compare(a, b);
+            return (c != 0) ? c : Integer.compare(keyExtractor.applyAsInt(a),
+                    keyExtractor.applyAsInt(b));
+        };
     }
 
     /**

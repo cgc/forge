@@ -4,12 +4,18 @@
 # Build-time bytecode transformer for the iOS (MobiVM/RoboVM) build.
 #
 # MobiVM's robovm-rt is based on Android's Java-7 class library and lacks several
-# Java-8 methods:
+# Java-8+ methods on existing classes:
+#
 #   • Collection.stream()          (NoSuchMethodError at runtime on iOS)
 #   • Iterable.spliterator()
 #   • Arrays.stream(T[])
 #   • File.toPath()
 #   • BufferedReader.lines()
+#   • Map.getOrDefault, computeIfAbsent, computeIfPresent, compute, merge, putIfAbsent
+#   • Collection.removeIf(Predicate)
+#   • Predicate.negate(), .and(), .or()  (stubs strip lambda bodies → UnsupportedOperationException)
+#   • Predicate.not(target)              (Java 11 static; stubs impl calls stripped negate())
+#   • Comparator.comparing, comparingInt, reversed, thenComparing, thenComparingInt
 #
 # Those methods cannot be patched via stub JARs because the pre-compiled
 # librobovm-rt.a has fixed dispatch tables.  Instead, this script rewrites the

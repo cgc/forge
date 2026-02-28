@@ -64,10 +64,15 @@
                 </configuration>
             </plugin>
             <!--
-              Stream-desugaring: rewrite Collection.stream(), Iterable.spliterator(),
-              Arrays.stream(), File.toPath(), and BufferedReader.lines() call sites in the
-              compiled class files so that RoboVM's AOT compiler never encounters these
-              Java-8 methods that are absent from MobiVM's robovm-rt.
+              Stream-desugaring: rewrite Java-8+ call sites in the compiled class files so
+              that RoboVM's AOT compiler never encounters these methods absent from MobiVM's
+              robovm-rt.  Rewrites:
+                • Collection.stream(), Iterable.spliterator(), Arrays.stream(), File.toPath(),
+                  BufferedReader.lines()
+                • Map.getOrDefault, computeIfAbsent, computeIfPresent, compute, merge, putIfAbsent
+                • Collection.removeIf(Predicate)
+                • Predicate.negate(), .and(), .or(), Predicate.not()
+                • Comparator.comparing, comparingInt, reversed, thenComparing, thenComparingInt
 
               This runs during process-classes (after compilation, before the RoboVM package
               phase) and transforms BOTH the sibling modules' target/classes/ directories AND

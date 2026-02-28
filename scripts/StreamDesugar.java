@@ -14,42 +14,49 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 
 /**
- * Build-time bytecode transformer: desugars Java-8 Collection / Iterable methods that are
- * absent from MobiVM's robovm-rt (a Java-7-era class library) into calls to
- * {@code forge.util.StreamUtil}, which provides compatible implementations.
+ * Build-time bytecode transformer: desugars Java-8+ Collection / Iterable / Map / Predicate /
+ * Comparator methods that are absent from MobiVM's robovm-rt (a Java-7-era class library) into
+ * calls to {@code forge.util.StreamUtil}, which provides compatible implementations.
  *
  * <p><b>Why this exists</b><br>
  * MobiVM's runtime is based on the Android 7 class library and lacks several Java-8 default
- * methods that were added to {@code java.util.Collection} and {@code java.lang.Iterable}:
- * {@code stream()}, {@code spliterator()}.  It also lacks {@code java.util.Arrays.stream()}.
- * Calling any of these at runtime throws {@link NoSuchMethodError}.  Unlike missing
- * <em>classes</em> (e.g. {@code java.nio.file.*}, which can be supplied as stub JARs),
- * missing <em>default methods on existing classes</em> cannot be patched through the
- * classpath because the pre-compiled {@code librobovm-rt.a} has fixed dispatch tables.
- * Changing the source code at every call site (91+ files) would create a large, hard-to-
- * maintain diff against upstream Forge.
+ * methods that were added to existing classes. Calling any of these at runtime throws
+ * {@link NoSuchMethodError}.  Unlike missing <em>classes</em> (e.g. {@code java.nio.file.*},
+ * which can be supplied as stub JARs), missing <em>default methods on existing classes</em>
+ * cannot be patched through the classpath because the pre-compiled {@code librobovm-rt.a} has
+ * fixed dispatch tables. Changing the source code at every call site would create a large,
+ * hard-to-maintain diff against upstream Forge.
+ *
+ * <p>Additionally, the iOS stubs jar supplies {@code java.util.function.Predicate} (absent from
+ * robovm-rt) but the build script strips lambda bodies from default methods to avoid RoboVM AOT
+ * linker errors. This means the default methods {@code Predicate.negate/and/or} throw
+ * {@code UnsupportedOperationException} at runtime. This transformer rewrites those call sites
+ * to {@code StreamUtil} helpers that use ordinary lambda expressions compiled by forge-core's
+ * own javac (which RoboVM handles correctly).
  *
  * <p><b>What this transformer does</b><br>
- * For each {@code .class} file under the given directories it rewrites five instruction
- * patterns — all with <em>identical</em> net stack effect so no operand-stack changes are
- * needed:
+ * For each {@code .class} file under the given directories it rewrites the following instruction
+ * patterns — all with <em>identical</em> net stack effect so no operand-stack changes are needed:
  *
  * <ol>
  *   <li>{@code INVOKEINTERFACE/VIRTUAL *.stream()Ljava/util/stream/Stream;} →
- *       {@code INVOKESTATIC forge/util/StreamUtil.stream(Ljava/lang/Iterable;)Ljava/util/stream/Stream;}</li>
+ *       {@code INVOKESTATIC forge/util/StreamUtil.stream(Ljava/lang/Iterable;)...}</li>
  *   <li>{@code INVOKEINTERFACE/VIRTUAL *.spliterator()Ljava/util/Spliterator;} →
- *       {@code INVOKESTATIC forge/util/StreamUtil.spliterator(Ljava/lang/Iterable;)Ljava/util/Spliterator;}</li>
- *   <li>{@code INVOKESTATIC java/util/Arrays.stream([Ljava/lang/Object;)Ljava/util/stream/Stream;} →
- *       {@code INVOKESTATIC forge/util/StreamUtil.stream([Ljava/lang/Object;)Ljava/util/stream/Stream;}</li>
+ *       {@code INVOKESTATIC forge/util/StreamUtil.spliterator(Ljava/lang/Iterable;)...}</li>
+ *   <li>{@code INVOKESTATIC java/util/Arrays.stream([Ljava/lang/Object;)...} →
+ *       {@code INVOKESTATIC forge/util/StreamUtil.stream([Ljava/lang/Object;)...}</li>
  *   <li>{@code INVOKEVIRTUAL java/io/File.toPath()Ljava/nio/file/Path;} →
- *       {@code INVOKESTATIC forge/util/StreamUtil.toPath(Ljava/io/File;)Ljava/nio/file/Path;}</li>
- *   <li>{@code INVOKEVIRTUAL java/io/BufferedReader.lines()Ljava/util/stream/Stream;} →
- *       {@code INVOKESTATIC forge/util/StreamUtil.lines(Ljava/io/BufferedReader;)Ljava/util/stream/Stream;}</li>
+ *       {@code INVOKESTATIC forge/util/StreamUtil.toPath(Ljava/io/File;)...}</li>
+ *   <li>{@code INVOKEVIRTUAL java/io/BufferedReader.lines()...} →
+ *       {@code INVOKESTATIC forge/util/StreamUtil.lines(Ljava/io/BufferedReader;)...}</li>
+ *   <li>Map.getOrDefault, computeIfAbsent, computeIfPresent, compute, merge, putIfAbsent →
+ *       corresponding {@code StreamUtil} static helpers (receiver becomes first argument)</li>
+ *   <li>Collection.removeIf(Predicate) → {@code StreamUtil.removeIf(Collection, Predicate)}</li>
+ *   <li>Predicate.negate(), .and(), .or(), Predicate.not() →
+ *       {@code StreamUtil.predicateNegate/And/Or/Not} helpers</li>
+ *   <li>Comparator.comparing, comparingInt, reversed, thenComparing (both overloads),
+ *       thenComparingInt → corresponding {@code StreamUtil.comparator*} helpers</li>
  * </ol>
- *
- * <p>Patterns 1, 2, 4, and 5 are simple opcode+owner replacements; the receiver that was the
- * implicit {@code this} of the instance call remains on the stack as the sole argument to
- * the static call.  Pattern 3 changes only the owner class.
  *
  * <p>The transformation is idempotent: files that have already been transformed are
  * detected (the new owner {@code forge/util/StreamUtil} is already present) and skipped.
@@ -66,6 +73,16 @@ public class StreamDesugar {
     private static final String OBJECT_ARRAY_PARAM = "([Ljava/lang/Object;)";
     private static final String FILE_PARAM         = "(Ljava/io/File;)";
     private static final String BUFFERED_READER_PARAM = "(Ljava/io/BufferedReader;)";
+
+    // Descriptor fragments reused across the new Map/Collection/Predicate/Comparator patterns.
+    private static final String OBJ  = "Ljava/lang/Object;";
+    private static final String MAP  = "Ljava/util/Map;";
+    private static final String COLL = "Ljava/util/Collection;";
+    private static final String PRED = "Ljava/util/function/Predicate;";
+    private static final String FN   = "Ljava/util/function/Function;";
+    private static final String BIFN = "Ljava/util/function/BiFunction;";
+    private static final String TIFN = "Ljava/util/function/ToIntFunction;";
+    private static final String CMP  = "Ljava/util/Comparator;";
 
     public static void main(String[] args) throws IOException {
         if (args.length == 0) {
@@ -216,6 +233,203 @@ public class StreamDesugar {
                         && "java/io/BufferedReader".equals(owner)) {
                     super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "lines",
                             BUFFERED_READER_PARAM + "Ljava/util/stream/Stream;", false);
+                    modified = true;
+                    return;
+                }
+
+                // ── Map helpers (Java 8 default methods on java.util.Map) ─────────────
+                // For all Map patterns the receiver (map) is on the stack before the other
+                // args, so it becomes the first explicit argument of the INVOKESTATIC call.
+                // Owner restriction "java/" catches both Map (INVOKEINTERFACE) and concrete
+                // implementations like HashMap/TreeMap (INVOKEVIRTUAL).
+
+                // Pattern 6: map.getOrDefault(key, defaultValue)
+                if ("getOrDefault".equals(name)
+                        && ("(" + OBJ + OBJ + ")" + OBJ).equals(descriptor)
+                        && owner.startsWith("java/")) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "getOrDefault",
+                            "(" + MAP + OBJ + OBJ + ")" + OBJ, false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 7: map.computeIfAbsent(key, fn)
+                if ("computeIfAbsent".equals(name)
+                        && ("(" + OBJ + FN + ")" + OBJ).equals(descriptor)
+                        && owner.startsWith("java/")) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "computeIfAbsent",
+                            "(" + MAP + OBJ + FN + ")" + OBJ, false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 8: map.computeIfPresent(key, fn)
+                if ("computeIfPresent".equals(name)
+                        && ("(" + OBJ + BIFN + ")" + OBJ).equals(descriptor)
+                        && owner.startsWith("java/")) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "computeIfPresent",
+                            "(" + MAP + OBJ + BIFN + ")" + OBJ, false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 9: map.compute(key, fn)
+                if ("compute".equals(name)
+                        && ("(" + OBJ + BIFN + ")" + OBJ).equals(descriptor)
+                        && owner.startsWith("java/")) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "compute",
+                            "(" + MAP + OBJ + BIFN + ")" + OBJ, false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 10: map.merge(key, value, fn)
+                if ("merge".equals(name)
+                        && ("(" + OBJ + OBJ + BIFN + ")" + OBJ).equals(descriptor)
+                        && owner.startsWith("java/")) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "merge",
+                            "(" + MAP + OBJ + OBJ + BIFN + ")" + OBJ, false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 11: map.putIfAbsent(key, value)
+                if ("putIfAbsent".equals(name)
+                        && ("(" + OBJ + OBJ + ")" + OBJ).equals(descriptor)
+                        && owner.startsWith("java/")) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "putIfAbsent",
+                            "(" + MAP + OBJ + OBJ + ")" + OBJ, false);
+                    modified = true;
+                    return;
+                }
+
+                // ── Collection helper ─────────────────────────────────────────────────
+
+                // Pattern 12: collection.removeIf(predicate) → StreamUtil.removeIf(coll, pred)
+                // Restricted to java.* owners so that forge's own removeIf overrides (e.g.
+                // FCollection.removeIf) are not touched.
+                if ("removeIf".equals(name)
+                        && ("(" + PRED + ")Z").equals(descriptor)
+                        && owner.startsWith("java/")) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "removeIf",
+                            "(" + COLL + PRED + ")Z", false);
+                    modified = true;
+                    return;
+                }
+
+                // ── Predicate helpers ─────────────────────────────────────────────────
+                // The iOS stubs jar supplies java.util.function.Predicate (absent from robovm-rt)
+                // but the build script strips lambda bodies from default methods to prevent
+                // RoboVM linker errors. The stripped bodies throw UnsupportedOperationException,
+                // so negate/and/or/not must be redirected to StreamUtil lambdas compiled by
+                // forge-core's javac (which RoboVM handles correctly).
+
+                // Pattern 13: predicate.negate()
+                if ("negate".equals(name)
+                        && ("()" + PRED).equals(descriptor)
+                        && "java/util/function/Predicate".equals(owner)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "predicateNegate",
+                            "(" + PRED + ")" + PRED, false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 14: predicate.and(other)
+                if ("and".equals(name)
+                        && ("(" + PRED + ")" + PRED).equals(descriptor)
+                        && "java/util/function/Predicate".equals(owner)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "predicateAnd",
+                            "(" + PRED + PRED + ")" + PRED, false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 15: predicate.or(other)
+                if ("or".equals(name)
+                        && ("(" + PRED + ")" + PRED).equals(descriptor)
+                        && "java/util/function/Predicate".equals(owner)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "predicateOr",
+                            "(" + PRED + PRED + ")" + PRED, false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 16: Predicate.not(target) — static method (Java 11); the stubs
+                // implementation calls negate() which is stripped, so redirect to StreamUtil.
+                if ("not".equals(name)
+                        && ("(" + PRED + ")" + PRED).equals(descriptor)
+                        && "java/util/function/Predicate".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "predicateNot",
+                            "(" + PRED + ")" + PRED, false);
+                    modified = true;
+                    return;
+                }
+
+                // ── Comparator helpers ────────────────────────────────────────────────
+                // Java 8 added static factory methods and default methods to java.util.Comparator.
+                // If robovm-rt's Comparator pre-dates these, they would throw NoSuchMethodError.
+                // Redirect to StreamUtil equivalents; if robovm-rt already has them, these stubs
+                // are equivalent and the transformation is safe (harmless but not strictly needed).
+
+                // Pattern 17: Comparator.comparing(keyExtractor) — static
+                if ("comparing".equals(name)
+                        && ("(" + FN + ")" + CMP).equals(descriptor)
+                        && "java/util/Comparator".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "comparatorComparing",
+                            "(" + FN + ")" + CMP, false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 18: Comparator.comparingInt(keyExtractor) — static
+                if ("comparingInt".equals(name)
+                        && ("(" + TIFN + ")" + CMP).equals(descriptor)
+                        && "java/util/Comparator".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "comparatorComparingInt",
+                            "(" + TIFN + ")" + CMP, false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 19: comparator.reversed() — default
+                if ("reversed".equals(name)
+                        && ("()" + CMP).equals(descriptor)
+                        && "java/util/Comparator".equals(owner)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "comparatorReversed",
+                            "(" + CMP + ")" + CMP, false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 20: comparator.thenComparing(Comparator) — default
+                if ("thenComparing".equals(name)
+                        && ("(" + CMP + ")" + CMP).equals(descriptor)
+                        && "java/util/Comparator".equals(owner)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "comparatorThenComparing",
+                            "(" + CMP + CMP + ")" + CMP, false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 21: comparator.thenComparing(Function) — default
+                if ("thenComparing".equals(name)
+                        && ("(" + FN + ")" + CMP).equals(descriptor)
+                        && "java/util/Comparator".equals(owner)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "comparatorThenComparingFn",
+                            "(" + CMP + FN + ")" + CMP, false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 22: comparator.thenComparingInt(ToIntFunction) — default
+                if ("thenComparingInt".equals(name)
+                        && ("(" + TIFN + ")" + CMP).equals(descriptor)
+                        && "java/util/Comparator".equals(owner)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "comparatorThenComparingInt",
+                            "(" + CMP + TIFN + ")" + CMP, false);
                     modified = true;
                     return;
                 }
