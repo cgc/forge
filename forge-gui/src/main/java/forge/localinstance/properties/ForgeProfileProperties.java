@@ -19,7 +19,7 @@ package forge.localinstance.properties;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.io.FileInputStream;
 import java.util.Map;
 import java.util.Properties;
 
@@ -61,7 +61,7 @@ public class ForgeProfileProperties {
         final File propFile = new File(ForgeConstants.PROFILE_FILE);
         try {
             if (propFile.canRead() && !isUsingAppDirectory) {
-                props.load(Files.newInputStream(propFile.toPath()));
+                props.load(new FileInputStream(propFile));
             }
         } catch (final IOException e) {
             System.err.println("error while reading from profile properties file");

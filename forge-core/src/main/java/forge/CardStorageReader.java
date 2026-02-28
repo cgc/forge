@@ -388,7 +388,7 @@ public class CardStorageReader {
      * @return a new Card instance
      */
     protected final CardRules loadCard(final CardRules.Reader reader, final File file) {
-        try (InputStream fileInputStream = java.nio.file.Files.newInputStream(file.toPath())) {
+        try (InputStream fileInputStream = new FileInputStream(file)) {
             reader.reset();
             final List<String> lines = readScript(fileInputStream);
             CardRules rules = reader.readCard(lines, Files.getNameWithoutExtension(file.getName()));
