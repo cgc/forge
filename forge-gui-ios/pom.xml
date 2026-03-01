@@ -179,10 +179,17 @@
         </dependency>
         <!-- Java 8 API stubs: MobiVM's robovm-rt lacks java.util.function.*,
              java.util.stream.*, java.util.Optional, java.util.Spliterator,
-             and java.nio.file.*. These stubs provide working implementations
-             (stream operations backed by ArrayList) so that RoboVM's AOT
-             compiler includes the types and runtime calls succeed on iOS.
+             java.nio.file.*, and java.time.*.  These stubs provide working
+             implementations so that RoboVM's AOT compiler includes the types
+             and runtime calls succeed on iOS.
              Built by: bash scripts/build-java-stubs.sh
+
+             Version 1.5 (previously 1.4): added java.time.* classes by
+             downloading ThreeTen-Backport 1.7.0 sources and renaming the
+             package from org.threeten.bp to java.time.  This fixes
+             NoClassDefFoundError: java/time/Instant (and related classes)
+             which was thrown by commons-lang3's StopWatch and by forge's own
+             adventure-mode code that uses LocalDate, LocalDateTime, etc.
 
              Version 1.4 (previously 1.3): added java.lang.Record stub so that all
              Java record classes (CardEdition.EditionEntry, StateChangedType,
@@ -210,15 +217,15 @@
              interface is not in librobovm-rt.a → "Undefined symbols" linker
              error.
 
-             Using version 1.4 (not 1.3, 1.2, 1.1, or 1.0) is essential: Maven
+             Using version 1.5 (not 1.4, 1.3, 1.2, 1.1, or 1.0) is essential: Maven
              caches release artifacts permanently in ~/.m2 and will use a previously
              built stubs jar for every subsequent build, regardless of what is in
-             forge-local.  Version 1.4 has never been cached so Maven always
+             forge-local.  Version 1.5 has never been cached so Maven always
              resolves it fresh from forge-local. -->
         <dependency>
             <groupId>forge</groupId>
             <artifactId>java-stubs</artifactId>
-            <version>1.4</version>
+            <version>1.5</version>
         </dependency>
     </dependencies>
 

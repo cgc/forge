@@ -4,7 +4,7 @@
 # Builds a supplement jar containing the Java 8 APIs missing from MobiVM's robovm-rt
 # and installs it into forge-gui-ios/local-repo/ as:
 #
-#     forge:java-stubs:1.4
+#     forge:java-stubs:1.5
 #
 # MobiVM's runtime (robovm-rt) is based on Android's class library, which predates
 # Java 8 SE and is missing:
@@ -14,6 +14,8 @@
 #   java.util.Spliterator  – Spliterator and its primitive specialisation inner interfaces
 #   java.util.stream.*     – Stream, IntStream, Collector, Collectors, StreamSupport
 #   java.nio.file.*        – Paths, Files, Path, OpenOption
+#   java.time.*            – Instant, Duration, LocalDate, LocalDateTime, LocalTime,
+#                            ZonedDateTime, OffsetDateTime, ZoneId, DateTimeFormatter, …
 #
 # HOW THE JAR IS BUILT
 # --------------------
@@ -22,6 +24,14 @@
 # compiled from source.  This avoids any dependency on the locally-installed JDK
 # version, keeps the process transparent and reproducible, and requires only
 # curl + javac (any JDK 9+).
+#
+# java.time.* is provided by downloading ThreeTen-Backport (a Java 6/7-compatible
+# backport of the java.time API, https://www.threeten.org/threetenbp/) and
+# renaming its package from org.threeten.bp to java.time.  ThreeTen-Backport is
+# published under a BSD 3-clause licence that is compatible with forge's licence.
+# We rename the package rather than using it as-is because third-party libraries
+# (e.g. commons-lang3's StopWatch) reference java.time.* directly and cannot be
+# changed without forking.
 #
 # The remaining 11 files (java.util.stream.* and java.nio.file.*) cannot be
 # downloaded from OpenJDK and must remain as custom stubs in
@@ -76,7 +86,7 @@
 # ----------------
 # forge-gui-ios/local-repo/ is listed in .gitignore so the built jar is never
 # committed.  forge-gui-ios/pom.xml declares forge-local as a repository and
-# lists forge:java-stubs:1.4 as a compile dependency so that RoboVM's AOT
+# lists forge:java-stubs:1.5 as a compile dependency so that RoboVM's AOT
 # compiler includes these classes in the native binary.
 #
 # Usage:  bash scripts/build-java-stubs.sh
@@ -87,7 +97,7 @@ set -euo pipefail
 
 GROUP_ID="forge"
 ARTIFACT_ID="java-stubs"
-VERSION="1.4"
+VERSION="1.5"
 GROUP_PATH="forge/java-stubs"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -173,6 +183,83 @@ done
 echo "[build-java-stubs]   downloaded Optional/Spliterator classes"
 
 # ---------------------------------------------------------------------------
+# Step 1b – ThreeTen-Backport as java.time.* sources.
+#
+# ThreeTen-Backport (https://www.threeten.org/threetenbp/) provides a Java 6/7-
+# compatible implementation of the java.time API (JSR-310) under its original
+# org.threeten.bp package.  MobiVM's robovm-rt (Android 7-era) lacks java.time.*
+# entirely, so we download ThreeTen-Backport's sources and rename the package
+# from org.threeten.bp to java.time before compiling.  This lets both forge's
+# own code and third-party libraries (e.g. commons-lang3's StopWatch) use
+# java.time.* without NoClassDefFoundError at runtime on iOS.
+#
+# The TZDB.dat timezone database and ChronologyText.properties resource bundle
+# are taken from the ThreeTen-Backport binary JAR and placed at their renamed
+# paths (java/time/TZDB.dat, java/time/format/ChronologyText.properties) in
+# the compiled classes directory so that ZoneRulesProvider and
+# DateTimeFormatterBuilder can locate them at runtime.
+#
+# DateTimeUtils.java is excluded because it references java.sql.* which is
+# not part of the java.base module; forge does not use its sql-conversion
+# methods and they are not needed on iOS.
+#
+# Pinned: threetenbp 1.7.0 (latest stable, BSD 3-clause licence)
+# ---------------------------------------------------------------------------
+THREETEN_VERSION="1.7.0"
+THREETEN_BASE="https://repo1.maven.org/maven2/org/threeten/threetenbp/${THREETEN_VERSION}"
+
+echo "[build-java-stubs] Downloading ThreeTen-Backport ${THREETEN_VERSION} (sources + binary for resources) ..."
+curl -fsSL "${THREETEN_BASE}/threetenbp-${THREETEN_VERSION}-sources.jar" \
+    -o "$WORK_DIR/threetenbp-sources.jar"
+curl -fsSL "${THREETEN_BASE}/threetenbp-${THREETEN_VERSION}.jar" \
+    -o "$WORK_DIR/threetenbp-binary.jar"
+
+# Extract sources into a staging directory, then rename package tree.
+mkdir -p "$WORK_DIR/threeten_stage"
+(cd "$WORK_DIR/threeten_stage" && jar xf "$WORK_DIR/threetenbp-sources.jar")
+
+# Move org/threeten/bp/ tree to java/time/ under the shared src directory.
+mkdir -p "$WORK_DIR/src/java/time"
+if [ -d "$WORK_DIR/threeten_stage/org/threeten/bp" ]; then
+    cp -a "$WORK_DIR/threeten_stage/org/threeten/bp/." "$WORK_DIR/src/java/time/"
+fi
+rm -rf "$WORK_DIR/threeten_stage" "$WORK_DIR/threetenbp-sources.jar"
+
+# Rename package declarations, imports, and any hardcoded resource paths.
+#   org.threeten.bp  → java.time  (package / import / string literal references)
+#   org/threeten/bp  → java/time  (classpath resource path strings, e.g. TZDB.dat)
+# We use two separate patterns because dots and slashes appear in different contexts.
+find "$WORK_DIR/src/java/time" -name "*.java" | while IFS= read -r f; do
+    sed -i \
+        -e 's|org\.threeten\.bp|java.time|g' \
+        -e 's|org/threeten/bp|java/time|g' \
+        "$f"
+done
+
+# Remove DateTimeUtils.java: it references java.sql.* which is in a separate
+# module (java.sql) not readable by java.base under --patch-module.
+# forge does not call any of its sql-conversion methods on iOS.
+rm -f "$WORK_DIR/src/java/time/DateTimeUtils.java"
+
+# Extract resources from the binary JAR and copy them to the renamed paths
+# inside the classes output directory (resources are not produced by javac).
+mkdir -p "$WORK_DIR/threeten_res"
+(cd "$WORK_DIR/threeten_res" && jar xf "$WORK_DIR/threetenbp-binary.jar")
+mkdir -p "$WORK_DIR/classes/java/time/format"
+[ -f "$WORK_DIR/threeten_res/org/threeten/bp/TZDB.dat" ] && \
+    cp "$WORK_DIR/threeten_res/org/threeten/bp/TZDB.dat" \
+       "$WORK_DIR/classes/java/time/TZDB.dat"
+[ -f "$WORK_DIR/threeten_res/org/threeten/bp/format/ChronologyText.properties" ] && \
+    cp "$WORK_DIR/threeten_res/org/threeten/bp/format/ChronologyText.properties" \
+       "$WORK_DIR/classes/java/time/format/ChronologyText.properties"
+# ServiceLoader configuration for ZoneRulesProvider (loaded by ZoneRulesInitializer).
+mkdir -p "$WORK_DIR/classes/META-INF/services"
+echo "java.time.zone.TzdbZoneRulesProvider" \
+    > "$WORK_DIR/classes/META-INF/services/java.time.zone.ZoneRulesProvider"
+rm -rf "$WORK_DIR/threeten_res" "$WORK_DIR/threetenbp-binary.jar"
+echo "[build-java-stubs]   ThreeTen-Backport sources prepared under java/time/"
+
+# ---------------------------------------------------------------------------
 # Step 1.5 – Strip lambda bodies from downloaded function interface sources.
 #
 # OpenJDK's java.util.function interfaces have default methods (andThen,
@@ -245,9 +332,9 @@ PYEOF
 echo "[build-java-stubs]   default-method lambda stripping complete"
 
 # ---------------------------------------------------------------------------
-# Step 2 – Compile all sources together: downloaded OpenJDK sources and the
-#          custom stubs for java.util.stream.* and java.nio.file.* from
-#          forge-gui-ios/src-java-stubs/.
+# Step 2 – Compile all sources together: downloaded OpenJDK sources, the
+#          renamed ThreeTen-Backport (java.time.*), and the custom stubs for
+#          java.util.stream.* and java.nio.file.* from forge-gui-ios/src-java-stubs/.
 #
 # java.util.stream.* and java.nio.file.* cannot be taken from the JVM because
 # their implementations reference jdk.internal.* absent from robovm-rt, so we
@@ -256,7 +343,7 @@ echo "[build-java-stubs]   default-method lambda stripping complete"
 # --patch-module java.base=<src1>:<src2> is required for javac to accept
 # source files in java.* packages without "package exists in another module".
 # ---------------------------------------------------------------------------
-echo "[build-java-stubs] Compiling all sources (downloaded + stream/nio stubs) ..."
+echo "[build-java-stubs] Compiling all sources (downloaded + ThreeTen-Backport + stream/nio stubs) ..."
 # shellcheck disable=SC2046
 javac \
     --patch-module java.base="$WORK_DIR/src:$STUBS_SRC" \
