@@ -349,7 +349,7 @@ public class PaperCard implements Comparable<IPaperCard>, InventoryItemFromSet, 
             else {
                 String translatedName = CardTranslation.getTranslatedName(this.name);
                 return Stream.of(this.name, translatedName, StringUtils.stripAccents(translatedName))
-                        .filter(x -> x != null)
+                        .filter(Objects::nonNull)
                         .collect(Collectors.toSet());
             }
         }
@@ -370,7 +370,7 @@ public class PaperCard implements Comparable<IPaperCard>, InventoryItemFromSet, 
                 names.add(mainFlavor + " // " + otherFlavor);
         }
         if(!"en-US".equals(language)) {
-            Set<String> translated = names.stream().map(CardTranslation::getTranslatedName).filter(x -> x != null).collect(Collectors.toSet());
+            Set<String> translated = names.stream().map(CardTranslation::getTranslatedName).filter(Objects::nonNull).collect(Collectors.toSet());
             names.addAll(translated);
         }
         Set<String> noAccents = names.stream().map(StringUtils::stripAccents).collect(Collectors.toSet());

@@ -72,7 +72,17 @@
                 • Map.getOrDefault, computeIfAbsent, computeIfPresent, compute, merge, putIfAbsent
                 • Collection.removeIf(Predicate)
                 • Predicate.negate(), .and(), .or(), Predicate.not()
-                • Comparator.comparing, comparingInt, reversed, thenComparing, thenComparingInt
+                • Comparator.comparing, comparingInt, naturalOrder, reverseOrder,
+                  reversed, thenComparing, thenComparingInt
+                • Objects.nonNull, isNull (direct calls AND method references via INVOKEDYNAMIC)
+                • Objects.requireNonNullElse, requireNonNullElseGet
+
+              NOTE: java.util.Objects and java.util.Comparator both exist in robovm-rt's
+              Android 4.4-era partial implementation.  Unlike missing classes (e.g.
+              java.util.stream.*) which can be supplied as stub JARs on the app classpath,
+              missing default/static methods on existing java.* classes cannot be patched
+              via stubs — the bootstrap classloader always serves robovm-rt's version.
+              The bytecode transformer below is the only way to handle these.
 
               This runs during process-classes (after compilation, before the RoboVM package
               phase) and transforms BOTH the sibling modules' target/classes/ directories AND
@@ -190,8 +200,11 @@
              serves robovm-rt's version and app-classpath stubs cannot override
              it.  Call sites that require missing Java 8+ methods on those classes
              (Objects.nonNull, Objects.requireNonNullElse, Comparator.naturalOrder,
-             etc.) must be fixed directly in the forge source code — the stubs for
-             those two classes are kept only so the code compiles.
+             etc.) are handled by the build-time bytecode transformer
+             (scripts/StreamDesugar.java) which rewrites them to equivalent calls
+             in forge.util.StreamUtil — no source-level changes to application
+             code are needed.  The Objects.java and Comparator.java stubs are
+             kept in src-java-stubs/ only so that the application code compiles.
 
              Version 1.5 (previously 1.4): added java.time.* classes by
              downloading ThreeTen-Backport 1.7.0 sources and renaming the
@@ -232,14 +245,16 @@
              forge-local.  Version 1.7 has never been cached so Maven always
              resolves it fresh from forge-local.
 
-             Version 1.6 (previously 1.5): adds java.util.Objects stub (compile-only;
-             see note above about bootstrap classloader) and fixes all forge call sites
-             that used Objects.isNull/nonNull/requireNonNullElse with Java 7-compatible
-             inline equivalents so they no longer throw NoSuchMethodError on iOS.
+             Version 1.6 (previously 1.5): added java.util.Objects stub for
+             compilation; the bytecode transformer now rewrites Objects.isNull/
+             nonNull/requireNonNullElse call sites to StreamUtil helpers at
+             build time so they work at runtime despite robovm-rt's partial
+             Objects implementation.
 
-             Version 1.7 (previously 1.6): adds java.util.Comparator stub (compile-only;
-             see note above) and fixes the Comparator.naturalOrder() call site in
-             GameFormat.java. -->
+             Version 1.7 (previously 1.6): added java.util.Comparator stub for
+             compilation; the bytecode transformer now rewrites Comparator.naturalOrder/
+             reverseOrder call sites (and already rewrote comparing/reversed/etc.)
+             to StreamUtil helpers at build time. -->
         <dependency>
             <groupId>forge</groupId>
             <artifactId>java-stubs</artifactId>

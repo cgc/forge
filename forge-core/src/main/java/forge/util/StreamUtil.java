@@ -305,6 +305,92 @@ public class StreamUtil {
         };
     }
 
+    /** Equivalent to {@code Comparator.naturalOrder()} (Java 8 static). */
+    @SuppressWarnings("unchecked")
+    public static <T extends Comparable<? super T>> Comparator<T> comparatorNaturalOrder() {
+        return (a, b) -> ((Comparable<Object>) a).compareTo(b);
+    }
+
+    /** Equivalent to {@code Comparator.reverseOrder()} (Java 8 static). */
+    @SuppressWarnings("unchecked")
+    public static <T extends Comparable<? super T>> Comparator<T> comparatorReverseOrder() {
+        return (a, b) -> ((Comparable<Object>) b).compareTo(a);
+    }
+
+    // ── Objects helpers (Java 8/9 static methods absent from MobiVM's robovm-rt) ─────────
+
+    /**
+     * Equivalent to {@code Objects.nonNull(obj)} (Java 8).
+     *
+     * <p>The build-time bytecode transformer rewrites direct {@code Objects.nonNull(x)}
+     * call sites to this method.  For {@code Objects::nonNull} method references used as
+     * a {@code Predicate} (e.g. {@code stream.filter(Objects::nonNull)}), the transformer
+     * instead replaces the entire {@code INVOKEDYNAMIC} instruction with a call to
+     * {@link #objectsNonNullPredicate()}.
+     */
+    public static boolean objectsNonNull(Object obj) {
+        return obj != null;
+    }
+
+    /**
+     * Equivalent to {@code Objects.isNull(obj)} (Java 8).
+     *
+     * <p>The build-time bytecode transformer rewrites direct {@code Objects.isNull(x)}
+     * call sites to this method.  For {@code Objects::isNull} method references used as
+     * a {@code Predicate}, the transformer calls {@link #objectsIsNullPredicate()} instead.
+     */
+    public static boolean objectsIsNull(Object obj) {
+        return obj == null;
+    }
+
+    /**
+     * Returns a {@link Predicate} equivalent to the {@code Objects::nonNull} method reference.
+     *
+     * <p>When the bytecode transformer sees {@code INVOKEDYNAMIC} instructions that capture
+     * {@code Objects::nonNull} as the implementation method, it replaces the entire instruction
+     * with a call to this factory method, avoiding the missing {@code Objects.nonNull} in
+     * robovm-rt at runtime.
+     */
+    public static <T> Predicate<T> objectsNonNullPredicate() {
+        return obj -> obj != null;
+    }
+
+    /**
+     * Returns a {@link Predicate} equivalent to the {@code Objects::isNull} method reference.
+     *
+     * <p>Counterpart to {@link #objectsNonNullPredicate()} for the {@code Objects::isNull}
+     * method reference pattern.
+     */
+    public static <T> Predicate<T> objectsIsNullPredicate() {
+        return obj -> obj == null;
+    }
+
+    /**
+     * Equivalent to {@code Objects.requireNonNullElse(obj, defaultObj)} (Java 9).
+     *
+     * <p>The build-time bytecode transformer rewrites all
+     * {@code Objects.requireNonNullElse(a, b)} call sites to this method.
+     */
+    public static <T> T objectsRequireNonNullElse(T obj, T defaultObj) {
+        if (obj != null) return obj;
+        if (defaultObj == null) throw new NullPointerException("defaultObj");
+        return defaultObj;
+    }
+
+    /**
+     * Equivalent to {@code Objects.requireNonNullElseGet(obj, supplier)} (Java 9).
+     *
+     * <p>The build-time bytecode transformer rewrites all
+     * {@code Objects.requireNonNullElseGet(a, supplier)} call sites to this method.
+     */
+    public static <T> T objectsRequireNonNullElseGet(T obj, Supplier<? extends T> supplier) {
+        if (obj != null) return obj;
+        if (supplier == null) throw new NullPointerException("supplier");
+        T val = supplier.get();
+        if (val == null) throw new NullPointerException("supplier.get()");
+        return val;
+    }
+
     /**
      * Reduces a stream to a random element of the stream. Used with {@link Stream#collect}.
      * Result will be wrapped in an Optional, absent only if the stream is empty.

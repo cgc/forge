@@ -71,7 +71,7 @@ public final class CardRules implements ICardCharacteristics {
         }
 
         // Android doesn't support toUnmodifiableList
-        allFaces = Arrays.stream(faces).filter(x -> x != null).collect(Collectors.toList());
+        allFaces = Arrays.stream(faces).filter(Objects::nonNull).collect(Collectors.toList());
 
         aiHints = cah;
         meldWith = "";
@@ -467,11 +467,11 @@ public final class CardRules implements ICardCharacteristics {
         if(supportedFunctionalVariants == null || !supportedFunctionalVariants.contains(variantName))
             return getName();
 
-        ICardFace mainFace = mainPart.getFunctionalVariant(variantName) != null ? mainPart.getFunctionalVariant(variantName) : mainPart;
+        ICardFace mainFace = Objects.requireNonNullElse(mainPart.getFunctionalVariant(variantName), mainPart);
         String mainPartName = mainFace.getDisplayName();
 
         if(splitType.getAggregationMethod() == CardSplitType.FaceSelectionMethod.COMBINE) {
-            ICardFace otherFace = otherPart.getFunctionalVariant(variantName) != null ? otherPart.getFunctionalVariant(variantName) : otherPart;
+            ICardFace otherFace = Objects.requireNonNullElse(otherPart.getFunctionalVariant(variantName), otherPart);
             String otherPartName = otherFace.getDisplayName();
             return mainPartName + " // " + otherPartName;
         }

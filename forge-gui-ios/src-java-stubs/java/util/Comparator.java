@@ -8,18 +8,19 @@ import java.util.function.ToLongFunction;
 /**
  * Stub for {@code java.util.Comparator} that supplements MobiVM's robovm-rt.
  *
- * <p><b>NOTE — this stub does NOT take effect at runtime on iOS.</b>
- * {@code java.util.Comparator} exists in robovm-rt (Android 4.4-era), and when a class
- * already exists in robovm-rt the bootstrap classloader serves that version;
- * app-classpath stubs cannot override it.  App-classpath stubs only work for classes
- * that are <em>completely absent</em> from robovm-rt (e.g. {@code java.util.stream.*},
- * {@code java.util.function.*}, {@code java.nio.file.*}).
+ * <p><b>NOTE — this stub does NOT replace robovm-rt's {@code Comparator} interface at runtime.</b>
+ * {@code java.util.Comparator} exists in robovm-rt (Android 4.4-era), and the bootstrap
+ * classloader always serves that pre-existing version; app-classpath stubs cannot override
+ * it.  App-classpath stubs only work for classes that are <em>completely absent</em> from
+ * robovm-rt (e.g. {@code java.util.stream.*}, {@code java.util.function.*},
+ * {@code java.nio.file.*}).
  *
- * <p>This file is kept so that the code compiles cleanly against the stubs JAR.
- * All call sites that would require the missing Java 8+ methods
- * ({@code naturalOrder}, {@code reverseOrder}, {@code comparing}, etc.) have been
- * replaced with equivalent Java 7-compatible expressions in the forge source,
- * or use the workaround helpers in {@code forge.util.StreamUtil}.
+ * <p>This file is used for <em>compilation only</em>.  At build time, the bytecode
+ * transformer ({@code scripts/StreamDesugar.java}) rewrites all call sites that invoke
+ * Java 8+ methods on {@code Comparator} ({@code naturalOrder}, {@code reverseOrder},
+ * {@code comparing}, {@code comparingInt}, {@code reversed}, {@code thenComparing}, etc.)
+ * to equivalent calls on {@code forge.util.StreamUtil}.  No source-level changes to
+ * application code are needed.
  */
 @FunctionalInterface
 public interface Comparator<T> {

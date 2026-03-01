@@ -1742,7 +1742,7 @@ public class AiAttackController {
         }
 
         int life = ai.canLoseLife() && !ai.cantLoseForZeroOrLessLife() ? ai.getLife() : Integer.MAX_VALUE;
-        maxAttack = maxAttack != null ? maxAttack : Integer.MAX_VALUE - 1;
+        maxAttack = Objects.requireNonNullElse(maxAttack, Integer.MAX_VALUE - 1);
         if (Math.min(maxAttack, numForcedAttackers) >= life) {
             return false;
         }

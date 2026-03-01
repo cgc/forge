@@ -1,6 +1,7 @@
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Handle;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
@@ -54,8 +55,15 @@ import java.util.Arrays;
  *   <li>Collection.removeIf(Predicate) → {@code StreamUtil.removeIf(Collection, Predicate)}</li>
  *   <li>Predicate.negate(), .and(), .or(), Predicate.not() →
  *       {@code StreamUtil.predicateNegate/And/Or/Not} helpers</li>
- *   <li>Comparator.comparing (1-arg and 2-arg), comparingInt, reversed, thenComparing (both overloads),
- *       thenComparingInt → corresponding {@code StreamUtil.comparator*} helpers</li>
+ *   <li>{@code Comparator.comparing (1-arg and 2-arg), comparingInt, naturalOrder, reverseOrder,
+ *       reversed, thenComparing (both overloads), thenComparingInt →
+ *       corresponding {@code StreamUtil.comparator*} helpers}</li>
+ *   <li>{@code Objects.nonNull(x), Objects.isNull(x)} →
+ *       {@code StreamUtil.objectsNonNull/objectsIsNull}</li>
+ *   <li>{@code Objects::nonNull} / {@code Objects::isNull} as {@code Predicate} method references
+ *       (INVOKEDYNAMIC) → {@code StreamUtil.objectsNonNullPredicate/objectsIsNullPredicate()}</li>
+ *   <li>{@code Objects.requireNonNullElse(a,b)}, {@code requireNonNullElseGet(a,sup)} →
+ *       {@code StreamUtil.objectsRequireNonNullElse/objectsRequireNonNullElseGet}</li>
  * </ol>
  *
  * <p>The transformation is idempotent: files that have already been transformed are
@@ -83,6 +91,7 @@ public class StreamDesugar {
     private static final String BIFN = "Ljava/util/function/BiFunction;";
     private static final String TIFN = "Ljava/util/function/ToIntFunction;";
     private static final String CMP  = "Ljava/util/Comparator;";
+    private static final String SUP  = "Ljava/util/function/Supplier;";
 
     public static void main(String[] args) throws IOException {
         if (args.length == 0) {
@@ -445,7 +454,131 @@ public class StreamDesugar {
                     return;
                 }
 
+                // Pattern 23: Comparator.naturalOrder() — static (Java 8)
+                // robovm-rt's Android 4.4-era Comparator does not have this method.
+                if ("naturalOrder".equals(name)
+                        && ("()" + CMP).equals(descriptor)
+                        && "java/util/Comparator".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "comparatorNaturalOrder",
+                            "()" + CMP, false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 24: Comparator.reverseOrder() — static (Java 8)
+                if ("reverseOrder".equals(name)
+                        && ("()" + CMP).equals(descriptor)
+                        && "java/util/Comparator".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "comparatorReverseOrder",
+                            "()" + CMP, false);
+                    modified = true;
+                    return;
+                }
+
+                // ── Objects helpers ───────────────────────────────────────────────────
+                // java.util.Objects exists in robovm-rt (Android 4.4-era) but is missing
+                // Java 8 (nonNull/isNull) and Java 9 (requireNonNullElse/requireNonNullElseGet)
+                // additions.  App-classpath stubs cannot override existing robovm-rt classes,
+                // so we rewrite the call sites here instead.
+
+                // Pattern 25: Objects.nonNull(obj) — static (Java 8)
+                if ("nonNull".equals(name)
+                        && ("(" + OBJ + ")Z").equals(descriptor)
+                        && "java/util/Objects".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "objectsNonNull",
+                            "(" + OBJ + ")Z", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 26: Objects.isNull(obj) — static (Java 8)
+                if ("isNull".equals(name)
+                        && ("(" + OBJ + ")Z").equals(descriptor)
+                        && "java/util/Objects".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "objectsIsNull",
+                            "(" + OBJ + ")Z", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 27: Objects.requireNonNullElse(obj, defaultObj) — static (Java 9)
+                if ("requireNonNullElse".equals(name)
+                        && ("(" + OBJ + OBJ + ")" + OBJ).equals(descriptor)
+                        && "java/util/Objects".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "objectsRequireNonNullElse",
+                            "(" + OBJ + OBJ + ")" + OBJ, false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 28: Objects.requireNonNullElseGet(obj, supplier) — static (Java 9)
+                if ("requireNonNullElseGet".equals(name)
+                        && ("(" + OBJ + SUP + ")" + OBJ).equals(descriptor)
+                        && "java/util/Objects".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "objectsRequireNonNullElseGet",
+                            "(" + OBJ + SUP + ")" + OBJ, false);
+                    modified = true;
+                    return;
+                }
+
                 super.visitMethodInsn(opcode, owner, name, descriptor, isInterface);
+            }
+
+            /**
+             * Intercepts INVOKEDYNAMIC instructions that create lambdas / method references
+             * backed by Java 8+ methods missing from robovm-rt's Objects class.
+             *
+             * <p>When source code contains {@code filter(Objects::nonNull)} or
+             * {@code removeIf(Objects::isNull)}, the compiler emits an INVOKEDYNAMIC
+             * instruction whose bootstrap arguments reference {@code Objects.nonNull} /
+             * {@code Objects.isNull} as the implementation method handle.  At RoboVM AOT
+             * compile time this generates a synthetic {@code $$Lambda$N} class whose
+             * {@code test()} method calls the missing method — causing
+             * {@link NoSuchMethodError} at runtime.
+             *
+             * <p>This override detects such instructions and replaces the entire
+             * INVOKEDYNAMIC with a direct {@code INVOKESTATIC} call to a
+             * {@code StreamUtil} factory method that returns an equivalent
+             * {@link java.util.function.Predicate}.  The stack effect is identical
+             * (no consumed stack slots, one pushed Predicate reference) so no
+             * additional adjustments are needed.
+             */
+            @Override
+            public void visitInvokeDynamicInsn(String name, String descriptor,
+                    Handle bootstrapMethodHandle, Object... bootstrapMethodArguments) {
+                // Only intercept LambdaMetafactory-generated lambdas where the
+                // implementation method is a static method on java.util.Objects.
+                if (bootstrapMethodArguments.length >= 2
+                        && bootstrapMethodArguments[1] instanceof Handle) {
+                    Handle implHandle = (Handle) bootstrapMethodArguments[1];
+                    if ("java/util/Objects".equals(implHandle.getOwner())
+                            && implHandle.getTag() == Opcodes.H_INVOKESTATIC
+                            && descriptor.startsWith("()")
+                            && descriptor.endsWith("L" + "java/util/function/Predicate;")) {
+                        // Objects::nonNull as Predicate (e.g. stream.filter(Objects::nonNull))
+                        if ("nonNull".equals(implHandle.getName())) {
+                            super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                                    "objectsNonNullPredicate", "()" + PRED, false);
+                            modified = true;
+                            return;
+                        }
+                        // Objects::isNull as Predicate (e.g. list.removeIf(Objects::isNull))
+                        if ("isNull".equals(implHandle.getName())) {
+                            super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                                    "objectsIsNullPredicate", "()" + PRED, false);
+                            modified = true;
+                            return;
+                        }
+                    }
+                }
+                super.visitInvokeDynamicInsn(name, descriptor,
+                        bootstrapMethodHandle, bootstrapMethodArguments);
             }
         }
     }

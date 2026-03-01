@@ -293,7 +293,7 @@ public class FDeckEditor extends TabPageScreen<FDeckEditor> {
                 pages.add(commanderPage);
             }
             pages.add(sideboardPage);
-            pages.removeIf(x -> x == null);
+            pages.removeIf(Objects::isNull);
 
             //Any extra pages.
             primarySections.stream()

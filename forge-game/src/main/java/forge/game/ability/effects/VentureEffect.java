@@ -3,6 +3,7 @@ package forge.game.ability.effects;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -66,9 +67,8 @@ public class VentureEffect extends SpellAbilityEffect {
         final Card host = sa.getHostCard();
         Card editionHost = sa.getOriginalHost();
 
-        String edition = (editionHost != null ? editionHost : host).getSetCode();
-        String tokenSet = StaticData.instance().getCardEdition(edition).getTokenSet(script);
-        edition = tokenSet != null ? tokenSet : edition;
+        String edition = Objects.requireNonNullElse(editionHost, host).getSetCode();
+        edition = Objects.requireNonNullElse(StaticData.instance().getCardEdition(edition).getTokenSet(script), edition);
 
         final Card dungeon = CardFactory.getCard(StaticData.instance().getAllTokens().getToken(script, edition), player, game);
         dungeon.setGamePieceType(GamePieceType.DUNGEON);

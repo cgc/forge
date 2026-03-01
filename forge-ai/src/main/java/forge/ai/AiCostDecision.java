@@ -583,7 +583,7 @@ public class AiCostDecision extends CostDecisionMakerBase {
     @Override
     public PaymentDecision visit(CostRemoveAnyCounter cost) {
         final int c = cost.getAbilityAmount(ability);
-        final Card originalHost = ability.getOriginalHost() != null ? ability.getOriginalHost() : source;
+        final Card originalHost = Objects.requireNonNullElse(ability.getOriginalHost(), source);
 
         if (c <= 0) {
             return null;

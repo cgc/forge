@@ -465,7 +465,7 @@ public class GameFormat implements Comparable<GameFormat> {
             super("Format collections", reader);
             naturallyOrdered = reader.naturallyOrdered;
             reverseDateOrdered = new ArrayList<>(naturallyOrdered);
-            Collections.sort(naturallyOrdered);
+            naturallyOrdered.sort(Comparator.naturalOrder());
             reverseDateOrdered.sort(new InverseDateComparator());
         }
 
