@@ -4,12 +4,14 @@
 # Builds a supplement jar containing the Java 8 APIs missing from MobiVM's robovm-rt
 # and installs it into forge-gui-ios/local-repo/ as:
 #
-#     forge:java-stubs:1.5
+#     forge:java-stubs:1.6
 #
 # MobiVM's runtime (robovm-rt) is based on Android's class library, which predates
-# Java 8 SE and is missing:
+# Java 8 SE and is missing or incomplete for:
 #
 #   java.util.function.*   – all 43 functional interfaces
+#   java.util.Objects      – isNull/nonNull (Java 8) and requireNonNullElse/checkIndex
+#                            (Java 9) absent from robovm-rt's Android 4.4-era Objects
 #   java.util.Optional     – Optional, OptionalInt, OptionalDouble, OptionalLong
 #   java.util.Spliterator  – Spliterator and its primitive specialisation inner interfaces
 #   java.util.stream.*     – Stream, IntStream, Collector, Collectors, StreamSupport
@@ -33,9 +35,17 @@
 # (e.g. commons-lang3's StopWatch) reference java.time.* directly and cannot be
 # changed without forking.
 #
-# The remaining 11 files (java.util.stream.* and java.nio.file.*) cannot be
-# downloaded from OpenJDK and must remain as custom stubs in
+# The remaining 12 files (java.util.Objects, java.util.stream.*, and java.nio.file.*)
+# cannot be downloaded from OpenJDK and must remain as custom stubs in
 # forge-gui-ios/src-java-stubs/.  The per-file reasons are:
+#
+# java.util
+#   Objects.java    – The real JDK 17 Objects.java imports jdk.internal.util.Preconditions
+#                     and jdk.internal.vm.annotation.ForceInline — both absent from the
+#                     compilation classpath.  Our stub re-implements all public methods
+#                     directly and adds the Java 8 (isNull/nonNull) and Java 9
+#                     (requireNonNullElse, checkIndex, …) additions that are absent from
+#                     robovm-rt's Android 4.4-era partial implementation.
 #
 # java.nio.file
 #   Path.java       – The real Path is an interface importing
@@ -86,7 +96,7 @@
 # ----------------
 # forge-gui-ios/local-repo/ is listed in .gitignore so the built jar is never
 # committed.  forge-gui-ios/pom.xml declares forge-local as a repository and
-# lists forge:java-stubs:1.5 as a compile dependency so that RoboVM's AOT
+# lists forge:java-stubs:1.6 as a compile dependency so that RoboVM's AOT
 # compiler includes these classes in the native binary.
 #
 # Usage:  bash scripts/build-java-stubs.sh
@@ -97,7 +107,7 @@ set -euo pipefail
 
 GROUP_ID="forge"
 ARTIFACT_ID="java-stubs"
-VERSION="1.5"
+VERSION="1.6"
 GROUP_PATH="forge/java-stubs"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
