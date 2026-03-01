@@ -58,12 +58,11 @@ import java.util.Arrays;
  *   <li>{@code Comparator.comparing (1-arg and 2-arg), comparingInt, naturalOrder, reverseOrder,
  *       reversed, thenComparing (both overloads), thenComparingInt →
  *       corresponding {@code StreamUtil.comparator*} helpers}</li>
- *   <li>{@code Objects.nonNull(x), Objects.isNull(x)} →
- *       {@code StreamUtil.objectsNonNull/objectsIsNull}</li>
- *   <li>{@code Objects::nonNull} / {@code Objects::isNull} as {@code Predicate} method references
- *       (INVOKEDYNAMIC) → {@code StreamUtil.objectsNonNullPredicate/objectsIsNullPredicate()}</li>
- *   <li>{@code Objects.requireNonNullElse(a,b)}, {@code requireNonNullElseGet(a,sup)} →
- *       {@code StreamUtil.objectsRequireNonNullElse/objectsRequireNonNullElseGet}</li>
+ *   <li>{@code Objects.nonNull, isNull} (direct calls AND method references via INVOKEDYNAMIC) /
+ *       {@code requireNonNullElse, requireNonNullElseGet} →
+ *       {@code StreamUtil.objects*} helpers</li>
+ *   <li>{@code map.forEach(BiConsumer)} → {@code StreamUtil.mapForEach(map, biConsumer)}</li>
+ *   <li>{@code Map.of(...)} (0–5 key-value pairs) → {@code StreamUtil.mapOf(...)}</li>
  * </ol>
  *
  * <p>The transformation is idempotent: files that have already been transformed are
@@ -89,6 +88,7 @@ public class StreamDesugar {
     private static final String PRED = "Ljava/util/function/Predicate;";
     private static final String FN   = "Ljava/util/function/Function;";
     private static final String BIFN = "Ljava/util/function/BiFunction;";
+    private static final String BICN = "Ljava/util/function/BiConsumer;";
     private static final String TIFN = "Ljava/util/function/ToIntFunction;";
     private static final String CMP  = "Ljava/util/Comparator;";
     private static final String SUP  = "Ljava/util/function/Supplier;";
@@ -523,6 +523,38 @@ public class StreamDesugar {
                         && opcode == Opcodes.INVOKESTATIC) {
                     super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "objectsRequireNonNullElseGet",
                             "(" + OBJ + SUP + ")" + OBJ, false);
+                    modified = true;
+                    return;
+                }
+
+                // ── Map iteration / factory helpers ───────────────────────────────────
+                // java.util.Map exists in robovm-rt but is missing Java 8/9 additions.
+                // App-classpath stubs cannot override existing robovm-rt classes, so we
+                // rewrite the call sites here instead.
+
+                // Pattern 29: map.forEach(biConsumer) → StreamUtil.mapForEach(map, biConsumer)
+                // Map.forEach(BiConsumer) is a Java 8 default method absent from robovm-rt.
+                // Restricted to java.* owners to avoid touching forge's own forEach overrides.
+                if ("forEach".equals(name)
+                        && ("(" + BICN + ")V").equals(descriptor)
+                        && owner.startsWith("java/")) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "mapForEach",
+                            "(" + MAP + BICN + ")V", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 30: Map.of(...) → StreamUtil.mapOf(...)
+                // Map.of() was added in Java 9 and is absent from robovm-rt.
+                // Matches all fixed-arity overloads (0–5 key-value pairs) by checking
+                // owner = java/util/Map, name = "of", INVOKESTATIC.  The descriptor is
+                // passed through unchanged so StreamUtil must provide matching signatures.
+                if ("of".equals(name)
+                        && "java/util/Map".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC
+                        && descriptor.endsWith("Ljava/util/Map;")) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "mapOf",
+                            descriptor, false);
                     modified = true;
                     return;
                 }

@@ -76,6 +76,8 @@
                   reversed, thenComparing, thenComparingInt
                 • Objects.nonNull, isNull (direct calls AND method references via INVOKEDYNAMIC)
                 • Objects.requireNonNullElse, requireNonNullElseGet
+                • map.forEach(BiConsumer)  — Java 8 default method
+                • Map.of(...)             — Java 9 static factory (0–5 key-value pairs)
 
               NOTE: java.util.Objects and java.util.Comparator both exist in robovm-rt's
               Android 4.4-era partial implementation.  Unlike missing classes (e.g.

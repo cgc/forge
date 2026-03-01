@@ -205,6 +205,88 @@ public class StreamUtil {
         return v;
     }
 
+    // ── Map iteration / factory helpers (Java 8/9 methods absent from robovm-rt) ─────
+
+    /**
+     * Equivalent to {@code map.forEach(action)} (Java 8 default method).
+     *
+     * <p>{@code Map.forEach(BiConsumer)} was added in Java 8 and is absent from MobiVM's
+     * robovm-rt.  The build-time bytecode transformer rewrites every {@code map.forEach(...)}
+     * call (where the argument is a {@link BiConsumer}) to call this method instead.
+     */
+    public static <K, V> void mapForEach(Map<K, V> map,
+            BiConsumer<? super K, ? super V> action) {
+        for (Map.Entry<K, V> entry : map.entrySet()) {
+            action.accept(entry.getKey(), entry.getValue());
+        }
+    }
+
+    /**
+     * Equivalent to {@code Map.of()} (Java 9 static factory).
+     *
+     * <p>{@code Map.of} was added in Java 9 and is absent from MobiVM's robovm-rt.
+     * The build-time bytecode transformer rewrites every {@code Map.of(...)} call to
+     * the corresponding {@code StreamUtil.mapOf(...)} overload.
+     */
+    public static <K, V> Map<K, V> mapOf() {
+        return Collections.emptyMap();
+    }
+
+    /** Equivalent to {@code Map.of(k1, v1)} (Java 9). */
+    @SuppressWarnings("unchecked")
+    public static <K, V> Map<K, V> mapOf(Object k1, Object v1) {
+        Map<K, V> m = new LinkedHashMap<>();
+        m.put((K) k1, (V) v1);
+        return Collections.unmodifiableMap(m);
+    }
+
+    /** Equivalent to {@code Map.of(k1, v1, k2, v2)} (Java 9). */
+    @SuppressWarnings("unchecked")
+    public static <K, V> Map<K, V> mapOf(Object k1, Object v1,
+            Object k2, Object v2) {
+        Map<K, V> m = new LinkedHashMap<>();
+        m.put((K) k1, (V) v1);
+        m.put((K) k2, (V) v2);
+        return Collections.unmodifiableMap(m);
+    }
+
+    /** Equivalent to {@code Map.of(k1, v1, k2, v2, k3, v3)} (Java 9). */
+    @SuppressWarnings("unchecked")
+    public static <K, V> Map<K, V> mapOf(Object k1, Object v1,
+            Object k2, Object v2, Object k3, Object v3) {
+        Map<K, V> m = new LinkedHashMap<>();
+        m.put((K) k1, (V) v1);
+        m.put((K) k2, (V) v2);
+        m.put((K) k3, (V) v3);
+        return Collections.unmodifiableMap(m);
+    }
+
+    /** Equivalent to {@code Map.of(k1, v1, k2, v2, k3, v3, k4, v4)} (Java 9). */
+    @SuppressWarnings("unchecked")
+    public static <K, V> Map<K, V> mapOf(Object k1, Object v1,
+            Object k2, Object v2, Object k3, Object v3, Object k4, Object v4) {
+        Map<K, V> m = new LinkedHashMap<>();
+        m.put((K) k1, (V) v1);
+        m.put((K) k2, (V) v2);
+        m.put((K) k3, (V) v3);
+        m.put((K) k4, (V) v4);
+        return Collections.unmodifiableMap(m);
+    }
+
+    /** Equivalent to {@code Map.of(k1, v1, k2, v2, k3, v3, k4, v4, k5, v5)} (Java 9). */
+    @SuppressWarnings("unchecked")
+    public static <K, V> Map<K, V> mapOf(Object k1, Object v1,
+            Object k2, Object v2, Object k3, Object v3,
+            Object k4, Object v4, Object k5, Object v5) {
+        Map<K, V> m = new LinkedHashMap<>();
+        m.put((K) k1, (V) v1);
+        m.put((K) k2, (V) v2);
+        m.put((K) k3, (V) v3);
+        m.put((K) k4, (V) v4);
+        m.put((K) k5, (V) v5);
+        return Collections.unmodifiableMap(m);
+    }
+
     // ── Collection helpers ────────────────────────────────────────────────────
 
     /** Equivalent to {@code collection.removeIf(filter)} (Java 8). */
