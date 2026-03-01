@@ -320,10 +320,12 @@ public class CardStorageReader {
             final int from = iPart * filesPerPart;
             final int till = iPart == maxParts - 1 ? totalFiles : from + filesPerPart;
             tasks.add(() -> {
-                final List<CardRules> res = loadCardsInRangeFromZip(entries, from, till);
-                cdl.countDown();
-                progressObserver.report(maxParts - (int)cdl.getCount(), maxParts);
-                return res;
+                try {
+                    return loadCardsInRangeFromZip(entries, from, till);
+                } finally {
+                    cdl.countDown();
+                    progressObserver.report(maxParts - (int)cdl.getCount(), maxParts);
+                }
             });
         }
         return tasks;
