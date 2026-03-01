@@ -31,7 +31,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 public class ChangeZoneEffect extends SpellAbilityEffect {
@@ -1297,7 +1296,7 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
             List<ZoneType> origin = HiddenOriginChoicesMap.get(player).origin;
             ZoneType destination = HiddenOriginChoicesMap.get(player).destination;
             CardCollection movedCards = new CardCollection();
-            Player decider = Objects.requireNonNullElse(chooser, player);
+            Player decider = chooser != null ? chooser : player;
 
             for (final Card c : chosenCards) {
                 Card movedCard;

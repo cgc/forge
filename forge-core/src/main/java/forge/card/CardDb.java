@@ -528,7 +528,7 @@ public final class CardDb implements ICardDatabase, IDeckGenPool {
         List<ICardFace> allFaces = paperCard.getAllFaces();
         Set<String> namesToAdd = new HashSet<>();
         allFaces.stream().map(ICardCharacteristics::getName).forEach(namesToAdd::add);
-        allFaces.stream().map(ICardFace::getFlavorName).filter(Objects::nonNull).forEach(namesToAdd::add);
+        allFaces.stream().map(ICardFace::getFlavorName).filter(x -> x != null).forEach(namesToAdd::add);
         namesToAdd.remove(mainName);
         for(String name : namesToAdd)
             allCardsByName.put(name, paperCard);
@@ -572,7 +572,7 @@ public final class CardDb implements ICardDatabase, IDeckGenPool {
 
     public CardRules getRules(String cardName) {
         CardRules result = rulesByName.get(cardName);
-        return Objects.requireNonNullElseGet(result, () -> CardRules.getUnsupportedCardNamed(cardName));
+        return result != null ? result : CardRules.getUnsupportedCardNamed(cardName);
     }
 
     public CardArtPreference getCardArtPreference(){ return this.defaultCardArtPreference; }

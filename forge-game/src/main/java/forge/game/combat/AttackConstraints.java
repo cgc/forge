@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -75,7 +74,7 @@ public class AttackConstraints {
      *         </ul>
      */
     public Pair<Map<Card, GameEntity>, Integer> getLegalAttackers() {
-        final int myMax = Math.min(Objects.requireNonNullElse(globalRestrictions.getMax(), Integer.MAX_VALUE), possibleAttackers.size());
+        final int myMax = Math.min(globalRestrictions.getMax() != null ? globalRestrictions.getMax() : Integer.MAX_VALUE, possibleAttackers.size());
         if (myMax == 0) {
             return Pair.of(Collections.emptyMap(), 0);
         }

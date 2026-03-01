@@ -5,15 +5,17 @@ import java.util.function.Supplier;
 /**
  * Stub for {@code java.util.Objects} that supplements MobiVM's robovm-rt.
  *
- * <p>robovm-rt ships the Android 4.4-era {@code Objects} class which is missing the
- * Java 8 additions ({@code isNull}/{@code nonNull}), the Java 9 additions
- * ({@code requireNonNullElse}, {@code requireNonNullElseGet}, {@code checkIndex},
- * {@code checkFromToIndex}, {@code checkFromIndexSize}), and the Java 11
- * {@code requireNonNull(T, Supplier&lt;String&gt;)} overload.
+ * <p><b>NOTE — this stub does NOT take effect at runtime on iOS.</b>
+ * {@code java.util.Objects} exists in robovm-rt (Android 4.4-era), and when a class
+ * already exists in robovm-rt the bootstrap classloader serves that version;
+ * app-classpath stubs cannot override it.  App-classpath stubs only work for classes
+ * that are <em>completely absent</em> from robovm-rt (e.g. {@code java.util.stream.*},
+ * {@code java.util.function.*}, {@code java.nio.file.*}).
  *
- * <p>Because RoboVM's app classpath takes precedence over robovm-rt for class
- * resolution, this stub replaces the runtime's partial implementation.  All Java 7
- * methods are therefore also re-implemented here so that nothing regresses.
+ * <p>This file is kept so that the code compiles cleanly against the stubs JAR.
+ * All call sites that would require the missing Java 8+ methods
+ * ({@code isNull}, {@code nonNull}, {@code requireNonNullElse}, etc.) have been
+ * replaced with equivalent Java 7-compatible inline expressions in the forge source.
  */
 public final class Objects {
 

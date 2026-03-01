@@ -1,7 +1,6 @@
 package forge.game.replacement;
 
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 
 import forge.game.ability.AbilityKey;
@@ -91,7 +90,7 @@ public class ReplaceAddCounter extends ReplacementEffect {
                 if (!e.getValue().containsKey(ct)) {
                     continue;
                 }
-                if (0 >= Objects.requireNonNullElse(e.getValue().get(ct), 0)) {
+                if (0 >= (e.getValue().get(ct) != null ? e.getValue().get(ct) : 0)) {
                     continue;
                 }
                 return true;

@@ -292,8 +292,10 @@ public class ReplacementHandler {
                 tailend = tailend.getSubAbility();
             } while(tailend != null);
 
-            effectSA.setLastStateBattlefield((CardCollectionView) Objects.requireNonNullElse(runParams.get(AbilityKey.LastStateBattlefield), game.getLastStateBattlefield()));
-            effectSA.setLastStateGraveyard((CardCollectionView) Objects.requireNonNullElse(runParams.get(AbilityKey.LastStateGraveyard), game.getLastStateGraveyard()));
+            Object lsb = runParams.get(AbilityKey.LastStateBattlefield);
+            effectSA.setLastStateBattlefield((CardCollectionView) (lsb != null ? lsb : game.getLastStateBattlefield()));
+            Object lsg = runParams.get(AbilityKey.LastStateGraveyard);
+            effectSA.setLastStateGraveyard((CardCollectionView) (lsg != null ? lsg : game.getLastStateGraveyard()));
             if (replacementEffect.isIntrinsic()) {
                 effectSA.setIntrinsic(true);
                 effectSA.changeText();
@@ -310,7 +312,8 @@ public class ReplacementHandler {
                         replacementEffect.getParam("OptionalDecider"), effectSA).get(0);
             }
 
-            String name = Objects.requireNonNullElse(host.getRenderForUI() ? host.getCardForUi() : null, host).getTranslatedName();
+            Card nameCard = host.getRenderForUI() ? host.getCardForUi() : null;
+            String name = (nameCard != null ? nameCard : host).getTranslatedName();
             String effectDesc = TextUtil.fastReplace(replacementEffect.getDescription(), "CARDNAME", name);
             final String question = runParams.containsKey(AbilityKey.Card)
                 ? Localizer.getInstance().getMessage("lblApplyCardReplacementEffectToCardConfirm", name, runParams.get(AbilityKey.Card).toString(), effectDesc)

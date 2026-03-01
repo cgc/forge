@@ -653,7 +653,7 @@ public class AbilityUtils {
                     count = (Integer) to;
                 }
 
-                val = doXMath(Objects.requireNonNullElse(count, 0), m, card, ability);
+                val = doXMath(count != null ? count : 0, m, card, ability);
             }
             else if (calcX[0].startsWith("ReplaceCount")) {
                 // ReplaceCount is similar to a regular Count, but just
@@ -663,7 +663,7 @@ public class AbilityUtils {
                 final String m = CardFactoryUtil.extractOperators(calcX[1]);
                 final Integer count = (Integer) root.getReplacingObject(AbilityKey.fromString(l[0]));
 
-                val = doXMath(Objects.requireNonNullElse(count, 0), m, card, ability);
+                val = doXMath(count != null ? count : 0, m, card, ability);
             } else { // these ones only for handling lists
                 Iterable<Card> list = null;
                 if (calcX[0].startsWith("Targeted")) {

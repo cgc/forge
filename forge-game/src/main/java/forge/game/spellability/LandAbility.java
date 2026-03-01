@@ -29,7 +29,6 @@ import forge.util.CardTranslation;
 import forge.util.Localizer;
 import org.apache.commons.lang3.StringUtils;
 
-import java.util.Objects;
 
 public class LandAbility extends AbilityStatic {
 
@@ -55,7 +54,8 @@ public class LandAbility extends AbilityStatic {
             return false;
         }
  
-        land = Objects.requireNonNullElse(getAlternateHost(land), land);
+        Card alt = getAlternateHost(land);
+        land = alt != null ? alt : land;
 
         return p.canPlayLand(land, false, this);
     }

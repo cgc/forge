@@ -95,7 +95,8 @@ public class PlayerView extends GameEntityView {
     }
 
     public FCollectionView<PlayerView> getOpponents() {
-        return Objects.requireNonNullElse(this.<FCollectionView<PlayerView>>get(TrackableProperty.Opponents), new FCollection<>());
+        FCollectionView<PlayerView> opponents = this.get(TrackableProperty.Opponents);
+        return opponents != null ? opponents : new FCollection<>();
     }
     void updateOpponents(Player p) {
         set(TrackableProperty.Opponents, PlayerView.getCollection(p.getOpponents()));

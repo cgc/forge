@@ -10,7 +10,6 @@ import forge.game.player.Player;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -27,7 +26,7 @@ public class TokenCreateTable extends ForwardingTable<Player, Card, Integer> {
     }
 
     public int add(Player p, Card c, int i) {
-        int old = Objects.requireNonNullElse(this.get(p, c), 0);
+        int old = this.get(p, c) != null ? this.get(p, c) : 0;
         int newValue = old + i;
         this.put(p, c, newValue);
         return newValue;

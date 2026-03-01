@@ -432,7 +432,7 @@ public class SoundSystem {
                 .map(File::new)
                 .filter(File::isDirectory)
                 .map((d) -> d.listFiles(nameFilter))
-                .filter(Objects::nonNull)
+                .filter(x -> x != null)
                 .flatMap(Arrays::stream)
                 .findFirst()
                 .orElse(null);

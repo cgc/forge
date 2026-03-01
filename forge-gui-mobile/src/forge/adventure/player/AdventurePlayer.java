@@ -1299,7 +1299,7 @@ public class AdventurePlayer implements Serializable, SaveFileContent {
     }
 
     public int countItem(String name) {
-        return (int) inventoryItems.stream().filter(Objects::nonNull).filter(i -> i.name.equals(name)).count();
+        return (int) inventoryItems.stream().filter(x -> x != null).filter(i -> i.name.equals(name)).count();
     }
 
     public boolean addItem(String name) {

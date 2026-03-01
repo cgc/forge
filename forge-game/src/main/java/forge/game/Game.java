@@ -277,7 +277,8 @@ public class Game {
         if (c == null) {
             return null;
         }
-        return Objects.requireNonNullElse(changeZoneLKIInfo.get(c.getId(), c.getGameTimestamp()), c);
+        Card lki = changeZoneLKIInfo.get(c.getId(), c.getGameTimestamp());
+        return lki != null ? lki : c;
     }
     public final void clearChangeZoneLKIInfo() {
         changeZoneLKIInfo.clear();

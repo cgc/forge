@@ -2488,7 +2488,9 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
     }
 
     public SpellAbility getOriginalAbility() {
-        return grantorOriginal == null ? null : Objects.requireNonNullElse(grantorOriginal.getOriginalAbility(), grantorOriginal);
+        if (grantorOriginal == null) return null;
+        SpellAbility original = grantorOriginal.getOriginalAbility();
+        return original != null ? original : grantorOriginal;
     }
     public void setOriginalAbility(final SpellAbility sa) {
         grantorOriginal = sa;
@@ -2655,7 +2657,8 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
 
     public int getOptionalKeywordAmount(KeywordInterface kw) {
         long staticId = kw.getStatic() == null ? 0 : kw.getStatic().getId();
-        return Objects.requireNonNullElse(this.optionalKeywordAmount.get(kw.getKeyword(), Pair.of(kw.getIdx(), staticId)), 0);
+        Integer amount = this.optionalKeywordAmount.get(kw.getKeyword(), Pair.of(kw.getIdx(), staticId));
+        return amount != null ? amount : 0;
     }
     public int getOptionalKeywordAmount(Keyword kw) {
         return this.optionalKeywordAmount.row(kw).values().stream().mapToInt(i->i).sum();

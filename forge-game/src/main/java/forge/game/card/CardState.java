@@ -56,7 +56,6 @@ import org.apache.commons.lang3.StringUtils;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -148,7 +147,7 @@ public class CardState implements GameObject, IHasSVars, ITranslatable {
     }
 
     public CardTypeView getTypeWithChanges() {
-        return Objects.requireNonNullElse(this.changedType, getType());
+        return this.changedType != null ? this.changedType : getType();
     }
 
     public void updateTypes() {

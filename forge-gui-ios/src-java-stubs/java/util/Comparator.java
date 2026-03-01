@@ -8,21 +8,18 @@ import java.util.function.ToLongFunction;
 /**
  * Stub for {@code java.util.Comparator} that supplements MobiVM's robovm-rt.
  *
- * <p>robovm-rt ships the Android 4.4-era {@code Comparator} interface which has only the
- * {@code compare(T,T)} and {@code equals(Object)} methods.  The Java 8 static factory methods
- * ({@code naturalOrder}, {@code reverseOrder}, {@code comparing}, {@code comparingInt},
- * {@code comparingLong}, {@code comparingDouble}) and default methods ({@code reversed},
- * {@code thenComparing}, {@code thenComparingInt}, {@code thenComparingLong},
- * {@code thenComparingDouble}) are all absent, causing {@code NoSuchMethodError} on iOS.
+ * <p><b>NOTE — this stub does NOT take effect at runtime on iOS.</b>
+ * {@code java.util.Comparator} exists in robovm-rt (Android 4.4-era), and when a class
+ * already exists in robovm-rt the bootstrap classloader serves that version;
+ * app-classpath stubs cannot override it.  App-classpath stubs only work for classes
+ * that are <em>completely absent</em> from robovm-rt (e.g. {@code java.util.stream.*},
+ * {@code java.util.function.*}, {@code java.nio.file.*}).
  *
- * <p>All method bodies use anonymous inner classes rather than lambda expressions.
- * Lambda bodies inside interface default/static methods in an app-classpath jar (not in
- * librobovm-rt.a) cause RoboVM's AOT compiler to emit {@code $$Lambda$N} synthetic classes
- * with unresolvable {@code [lookup]} symbols → linker error.  Anonymous classes do not have
- * this problem.
- *
- * <p>Because RoboVM resolves app-classpath classes before robovm-rt, this stub replaces the
- * runtime's partial implementation entirely.
+ * <p>This file is kept so that the code compiles cleanly against the stubs JAR.
+ * All call sites that would require the missing Java 8+ methods
+ * ({@code naturalOrder}, {@code reverseOrder}, {@code comparing}, etc.) have been
+ * replaced with equivalent Java 7-compatible expressions in the forge source,
+ * or use the workaround helpers in {@code forge.util.StreamUtil}.
  */
 @FunctionalInterface
 public interface Comparator<T> {

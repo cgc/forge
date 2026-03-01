@@ -286,7 +286,7 @@ public class BoosterDraft implements IBoosterDraft {
         // If this is metaset, edtion will be null
         if (edition != null) {
             // Auto choosing recommended pod size. If we've chosen the podsize it should be passed in via numPlayers
-            int newPodSize = Objects.requireNonNullElseGet(numPlayers, () -> edition.getDraftOptions().getRecommendedPodSize());
+            int newPodSize = numPlayers != null ? numPlayers : edition.getDraftOptions().getRecommendedPodSize();
             if (newPodSize != draft.getPodSize()) {
                 draft.setPodSize(edition.getDraftOptions().getRecommendedPodSize());
             }

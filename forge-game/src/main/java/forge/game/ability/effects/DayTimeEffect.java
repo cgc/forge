@@ -5,7 +5,6 @@ import forge.game.ability.SpellAbilityEffect;
 import forge.game.card.Card;
 import forge.game.spellability.SpellAbility;
 
-import java.util.Objects;
 
 public class DayTimeEffect extends SpellAbilityEffect {
 
@@ -31,7 +30,8 @@ public class DayTimeEffect extends SpellAbilityEffect {
             game.setDayTime(true);
         } else if (newValue.equals("Switch")) {
             // logic for the Celestus
-            game.setDayTime(!Objects.requireNonNullElse(game.getDayTime(), false));
+            Boolean dt = game.getDayTime();
+            game.setDayTime(dt == null || !dt);
         }
     }
 }

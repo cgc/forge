@@ -8,8 +8,8 @@ import forge.game.staticability.StaticAbilityMode;
 import forge.game.trigger.Trigger;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -26,34 +26,34 @@ public record CardTraitChanges(
      * @return the abilities
      */
     public Collection<SpellAbility> getAbilities() {
-        return Objects.requireNonNullElse(abilities, List.of());
+        return abilities != null ? abilities : Collections.emptyList();
     }
 
     /**
      * @return the abilities
      */
     public Collection<SpellAbility> getRemovedAbilities() {
-        return Objects.requireNonNullElse(removedAbilities, List.of());
+        return removedAbilities != null ? removedAbilities : Collections.emptyList();
     }
 
     /**
      * @return the triggers
      */
     public Collection<Trigger> getTriggers() {
-        return Objects.requireNonNullElse(triggers, List.of());
+        return triggers != null ? triggers : Collections.emptyList();
     }
     /**
      * @return the replacements
      */
     public Collection<ReplacementEffect> getReplacements() {
-        return Objects.requireNonNullElse(replacements, List.of());
+        return replacements != null ? replacements : Collections.emptyList();
     }
 
     /**
      * @return the staticAbilities
      */
     public Collection<StaticAbility> getStaticAbilities() {
-        return Objects.requireNonNullElse(staticAbilities, List.of());
+        return staticAbilities != null ? staticAbilities : Collections.emptyList();
     }
 
     /**

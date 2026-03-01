@@ -24,7 +24,6 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 public class TokenInfo {
     final String name;
@@ -287,8 +286,9 @@ public class TokenInfo {
         if (sa.getKeyword() != null && sa.getKeyword().getStatic() != null) {
             editionHost = sa.getKeyword().getStatic().getHostCard();
         }
-        String edition = Objects.requireNonNullElse(editionHost, host).getSetCode();
-        edition = Objects.requireNonNullElse(StaticData.instance().getCardEdition(edition).getTokenSet(script), edition);
+        String edition = (editionHost != null ? editionHost : host).getSetCode();
+        String tokenSet = StaticData.instance().getCardEdition(edition).getTokenSet(script);
+        edition = tokenSet != null ? tokenSet : edition;
         PaperToken token = StaticData.instance().getAllTokens().getToken(script, edition);
 
         if (token == null) {

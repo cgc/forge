@@ -184,6 +184,15 @@
              and runtime calls succeed on iOS.
              Built by: bash scripts/build-java-stubs.sh
 
+             IMPORTANT — stubs only work for classes ABSENT from robovm-rt.
+             java.util.Objects and java.util.Comparator exist in robovm-rt's
+             Android 4.4-era partial implementation; the bootstrap classloader
+             serves robovm-rt's version and app-classpath stubs cannot override
+             it.  Call sites that require missing Java 8+ methods on those classes
+             (Objects.nonNull, Objects.requireNonNullElse, Comparator.naturalOrder,
+             etc.) must be fixed directly in the forge source code — the stubs for
+             those two classes are kept only so the code compiles.
+
              Version 1.5 (previously 1.4): added java.time.* classes by
              downloading ThreeTen-Backport 1.7.0 sources and renaming the
              package from org.threeten.bp to java.time.  This fixes
@@ -223,16 +232,14 @@
              forge-local.  Version 1.7 has never been cached so Maven always
              resolves it fresh from forge-local.
 
-             Version 1.6 (previously 1.5): adds java.util.Objects stub covering the
-             Java 8 additions (isNull/nonNull) and Java 9 additions (requireNonNullElse,
-             requireNonNullElseGet, checkIndex, checkFromToIndex, checkFromIndexSize)
-             that are absent from robovm-rt's Android 4.4-era partial implementation.
+             Version 1.6 (previously 1.5): adds java.util.Objects stub (compile-only;
+             see note above about bootstrap classloader) and fixes all forge call sites
+             that used Objects.isNull/nonNull/requireNonNullElse with Java 7-compatible
+             inline equivalents so they no longer throw NoSuchMethodError on iOS.
 
-             Version 1.7 (previously 1.6): adds java.util.Comparator stub covering the
-             Java 8 static factory methods (naturalOrder, reverseOrder, comparing,
-             comparingInt, comparingLong, comparingDouble) and default methods (reversed,
-             thenComparing, thenComparingInt, thenComparingLong, thenComparingDouble)
-             that are absent from robovm-rt's Android 4.4-era partial implementation. -->
+             Version 1.7 (previously 1.6): adds java.util.Comparator stub (compile-only;
+             see note above) and fixes the Comparator.naturalOrder() call site in
+             GameFormat.java. -->
         <dependency>
             <groupId>forge</groupId>
             <artifactId>java-stubs</artifactId>
