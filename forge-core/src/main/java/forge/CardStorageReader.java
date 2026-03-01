@@ -304,9 +304,7 @@ public class CardStorageReader {
                     result.addAll(c.call());
                 }
             }
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
-        } catch (final Exception e) { // this clause comes from non-threaded branch
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
@@ -341,12 +339,8 @@ public class CardStorageReader {
             final int till = iPart == maxParts - 1 ? totalFiles : from + filesPerPart;
             tasks.add(() -> {
                 try {
-                    final List<CardRules> res = loadCardsInRange(allFiles, from, till);
-                    return res;
-                } catch (Exception ex) {
-                    throw ex;
+                    return loadCardsInRange(allFiles, from, till);
                 } finally {
-                    // make sure to continue loading when using multiple threads
                     cdl.countDown();
                     progressObserver.report(maxParts - (int)cdl.getCount(), maxParts);
                 }
