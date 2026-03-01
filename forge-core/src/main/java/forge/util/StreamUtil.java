@@ -17,6 +17,7 @@ import java.util.function.ToIntFunction;
 import java.util.function.ToLongFunction;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collector;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class StreamUtil {
@@ -551,6 +552,15 @@ public class StreamUtil {
     public static <T> Comparator<T> comparatorComparingLong(
             ToLongFunction<? super T> keyExtractor) {
         return (a, b) -> Long.compare(keyExtractor.applyAsLong(a), keyExtractor.applyAsLong(b));
+    }
+
+    /**
+     * Equivalent to {@code Collectors.toCollection(collectionFactory)} (Java 8).
+     * Absent from robovm-rt's Collectors; delegates to the standard implementation.
+     */
+    public static <T, C extends Collection<T>> Collector<T, ?, C> collectorsToCollection(
+            Supplier<C> collectionFactory) {
+        return Collectors.toCollection(collectionFactory);
     }
 
     // ── Map.Entry helpers (Java 8 static methods absent from robovm-rt) ──────

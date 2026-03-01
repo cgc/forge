@@ -122,6 +122,7 @@ public class StreamDesugar {
     private static final String CSEQ = "Ljava/lang/CharSequence;";
     private static final String STR  = "Ljava/lang/String;";
     private static final String ITER = "Ljava/lang/Iterable;";
+    private static final String CLTR = "Ljava/util/stream/Collector;";
 
     public static void main(String[] args) throws IOException {
         if (args.length == 0) {
@@ -794,6 +795,18 @@ public class StreamDesugar {
                         && opcode == Opcodes.INVOKESTATIC) {
                     super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
                             "comparatorComparingLong", "(" + TLFN + ")" + CMP, false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 48: Collectors.toCollection(supplier) — absent from robovm-rt.
+                // Rewrites to StreamUtil.collectorsToCollection(supplier).
+                if ("toCollection".equals(name)
+                        && ("(" + SUP + ")" + CLTR).equals(descriptor)
+                        && "java/util/stream/Collectors".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "collectorsToCollection", "(" + SUP + ")" + CLTR, false);
                     modified = true;
                     return;
                 }
