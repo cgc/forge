@@ -229,8 +229,20 @@ rm -rf "$WORK_DIR/threeten_stage" "$WORK_DIR/threetenbp-sources.jar"
 #   org.threeten.bp  → java.time  (package / import / string literal references)
 #   org/threeten/bp  → java/time  (classpath resource path strings, e.g. TZDB.dat)
 # We use two separate patterns because dots and slashes appear in different contexts.
+#
+# BSD sed (macOS) requires an explicit empty backup suffix for in-place editing:
+#   sed -i '' ...
+# GNU sed (Linux) accepts both "sed -i ''" and bare "sed -i", but some versions
+# treat the empty string as a filename argument if it appears as a separate word,
+# so we detect the variant once and use the correct form throughout.
+if sed --version 2>/dev/null | grep -q GNU; then
+    _sed_inplace() { sed -i "$@"; }
+else
+    _sed_inplace() { sed -i '' "$@"; }
+fi
+
 find "$WORK_DIR/src/java/time" -name "*.java" | while IFS= read -r f; do
-    sed -i \
+    _sed_inplace \
         -e 's|org\.threeten\.bp|java.time|g' \
         -e 's|org/threeten/bp|java/time|g' \
         "$f"
