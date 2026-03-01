@@ -73,6 +73,26 @@ public final class Collectors {
                 Function.identity());
     }
 
+    /**
+     * Returns a {@code Collector} that accumulates elements into a {@link Map} created by
+     * {@code mapFactory}, using the provided key/value mappers and merge function.
+     *
+     * <p>Mirrors the JDK 8 four-arg {@code Collectors.toMap} overload used by Guava's
+     * {@code CollectCollectors} when building map-backed collectors.
+     */
+    @SuppressWarnings("unchecked")
+    public static <T, K, V, M extends Map<K, V>> Collector<T, M, M> toMap(
+            Function<? super T, ? extends K> keyMapper,
+            Function<? super T, ? extends V> valueMapper,
+            BinaryOperator<V> mergeFunction,
+            Supplier<M> mapFactory) {
+        return Collector.of(
+                mapFactory,
+                (map, t) -> map.merge(keyMapper.apply(t), valueMapper.apply(t), mergeFunction),
+                (a, b) -> { b.forEach((k, v) -> a.merge(k, v, mergeFunction)); return a; },
+                Collector.Characteristics.IDENTITY_FINISH);
+    }
+
     public static <T> Collector<T, long[], Long> counting() {
         return Collector.of(() -> new long[1], (a, t) -> a[0]++, (a, b) -> { a[0] += b[0]; return a; }, a -> a[0]);
     }

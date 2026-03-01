@@ -19,6 +19,11 @@ final class ListStream<T> implements Stream<T> {
         for (T t : data) action.accept(t);
     }
 
+    @Override
+    public void forEachOrdered(Consumer<? super T> action) {
+        forEach(action);
+    }
+
     @Override public long count() { return data.size(); }
 
     @Override
