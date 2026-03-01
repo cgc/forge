@@ -256,6 +256,13 @@ public class StreamUtil {
                 .compareTo(keyExtractor.apply(b));
     }
 
+    /** Equivalent to {@code Comparator.comparing(keyExtractor, keyComparator)} (Java 8). */
+    public static <T, U> Comparator<T> comparatorComparingWithOrder(
+            Function<? super T, ? extends U> keyExtractor,
+            Comparator<? super U> keyComparator) {
+        return (a, b) -> keyComparator.compare(keyExtractor.apply(a), keyExtractor.apply(b));
+    }
+
     /** Equivalent to {@code Comparator.comparingInt(keyExtractor)} (Java 8). */
     public static <T> Comparator<T> comparatorComparingInt(
             ToIntFunction<? super T> keyExtractor) {

@@ -54,7 +54,7 @@ import java.util.Arrays;
  *   <li>Collection.removeIf(Predicate) → {@code StreamUtil.removeIf(Collection, Predicate)}</li>
  *   <li>Predicate.negate(), .and(), .or(), Predicate.not() →
  *       {@code StreamUtil.predicateNegate/And/Or/Not} helpers</li>
- *   <li>Comparator.comparing, comparingInt, reversed, thenComparing (both overloads),
+ *   <li>Comparator.comparing (1-arg and 2-arg), comparingInt, reversed, thenComparing (both overloads),
  *       thenComparingInt → corresponding {@code StreamUtil.comparator*} helpers</li>
  * </ol>
  *
@@ -372,13 +372,24 @@ public class StreamDesugar {
                 // Redirect to StreamUtil equivalents; if robovm-rt already has them, these stubs
                 // are equivalent and the transformation is safe (harmless but not strictly needed).
 
-                // Pattern 17: Comparator.comparing(keyExtractor) — static
+                // Pattern 17: Comparator.comparing(keyExtractor) — 1-arg static
                 if ("comparing".equals(name)
                         && ("(" + FN + ")" + CMP).equals(descriptor)
                         && "java/util/Comparator".equals(owner)
                         && opcode == Opcodes.INVOKESTATIC) {
                     super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "comparatorComparing",
                             "(" + FN + ")" + CMP, false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 17b: Comparator.comparing(keyExtractor, keyComparator) — 2-arg static
+                if ("comparing".equals(name)
+                        && ("(" + FN + CMP + ")" + CMP).equals(descriptor)
+                        && "java/util/Comparator".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "comparatorComparingWithOrder",
+                            "(" + FN + CMP + ")" + CMP, false);
                     modified = true;
                     return;
                 }

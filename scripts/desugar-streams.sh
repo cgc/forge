@@ -15,7 +15,7 @@
 #   • Collection.removeIf(Predicate)
 #   • Predicate.negate(), .and(), .or()  (stubs strip lambda bodies → UnsupportedOperationException)
 #   • Predicate.not(target)              (Java 11 static; stubs impl calls stripped negate())
-#   • Comparator.comparing, comparingInt, reversed, thenComparing, thenComparingInt
+#   • Comparator.comparing (1-arg and 2-arg), comparingInt, reversed, thenComparing, thenComparingInt
 #
 # Those methods cannot be patched via stub JARs because the pre-compiled
 # librobovm-rt.a has fixed dispatch tables.  Instead, this script rewrites the
