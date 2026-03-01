@@ -217,20 +217,26 @@
              interface is not in librobovm-rt.a → "Undefined symbols" linker
              error.
 
-             Using version 1.6 (not 1.5, 1.4, 1.3, 1.2, 1.1, or 1.0) is essential: Maven
+             Using version 1.7 (not 1.6, 1.5, 1.4, 1.3, 1.2, 1.1, or 1.0) is essential: Maven
              caches release artifacts permanently in ~/.m2 and will use a previously
              built stubs jar for every subsequent build, regardless of what is in
-             forge-local.  Version 1.6 has never been cached so Maven always
+             forge-local.  Version 1.7 has never been cached so Maven always
              resolves it fresh from forge-local.
 
              Version 1.6 (previously 1.5): adds java.util.Objects stub covering the
              Java 8 additions (isNull/nonNull) and Java 9 additions (requireNonNullElse,
              requireNonNullElseGet, checkIndex, checkFromToIndex, checkFromIndexSize)
+             that are absent from robovm-rt's Android 4.4-era partial implementation.
+
+             Version 1.7 (previously 1.6): adds java.util.Comparator stub covering the
+             Java 8 static factory methods (naturalOrder, reverseOrder, comparing,
+             comparingInt, comparingLong, comparingDouble) and default methods (reversed,
+             thenComparing, thenComparingInt, thenComparingLong, thenComparingDouble)
              that are absent from robovm-rt's Android 4.4-era partial implementation. -->
         <dependency>
             <groupId>forge</groupId>
             <artifactId>java-stubs</artifactId>
-            <version>1.6</version>
+            <version>1.7</version>
         </dependency>
     </dependencies>
 

@@ -4,12 +4,14 @@
 # Builds a supplement jar containing the Java 8 APIs missing from MobiVM's robovm-rt
 # and installs it into forge-gui-ios/local-repo/ as:
 #
-#     forge:java-stubs:1.6
+#     forge:java-stubs:1.7
 #
 # MobiVM's runtime (robovm-rt) is based on Android's class library, which predates
 # Java 8 SE and is missing or incomplete for:
 #
 #   java.util.function.*   – all 43 functional interfaces
+#   java.util.Comparator   – naturalOrder/reverseOrder/comparing/comparingInt (Java 8 statics)
+#                            and reversed/thenComparing (Java 8 defaults) absent from robovm-rt
 #   java.util.Objects      – isNull/nonNull (Java 8) and requireNonNullElse/checkIndex
 #                            (Java 9) absent from robovm-rt's Android 4.4-era Objects
 #   java.util.Optional     – Optional, OptionalInt, OptionalDouble, OptionalLong
@@ -35,11 +37,19 @@
 # (e.g. commons-lang3's StopWatch) reference java.time.* directly and cannot be
 # changed without forking.
 #
-# The remaining 12 files (java.util.Objects, java.util.stream.*, and java.nio.file.*)
-# cannot be downloaded from OpenJDK and must remain as custom stubs in
-# forge-gui-ios/src-java-stubs/.  The per-file reasons are:
+# The remaining 13 files (java.util.Comparator, java.util.Objects, java.util.stream.*,
+# and java.nio.file.*) cannot be downloaded from OpenJDK and must remain as custom stubs
+# in forge-gui-ios/src-java-stubs/.  The per-file reasons are:
 #
 # java.util
+#   Comparator.java – The real JDK 17 Comparator.java uses lambda bodies in its default
+#                     and static methods.  Lambda bodies in interface default/static methods
+#                     in an app-classpath jar produce $$Lambda$N synthetic classes with
+#                     unresolvable [lookup] symbols → RoboVM linker error (same issue as
+#                     Stream.java).  Our stub re-implements all public methods using
+#                     anonymous inner classes instead of lambdas and adds all Java 8
+#                     static (naturalOrder, reverseOrder, comparing, comparingInt, …) and
+#                     default (reversed, thenComparing, …) methods absent from robovm-rt.
 #   Objects.java    – The real JDK 17 Objects.java imports jdk.internal.util.Preconditions
 #                     and jdk.internal.vm.annotation.ForceInline — both absent from the
 #                     compilation classpath.  Our stub re-implements all public methods
@@ -96,7 +106,7 @@
 # ----------------
 # forge-gui-ios/local-repo/ is listed in .gitignore so the built jar is never
 # committed.  forge-gui-ios/pom.xml declares forge-local as a repository and
-# lists forge:java-stubs:1.6 as a compile dependency so that RoboVM's AOT
+# lists forge:java-stubs:1.7 as a compile dependency so that RoboVM's AOT
 # compiler includes these classes in the native binary.
 #
 # Usage:  bash scripts/build-java-stubs.sh
@@ -107,7 +117,7 @@ set -euo pipefail
 
 GROUP_ID="forge"
 ARTIFACT_ID="java-stubs"
-VERSION="1.6"
+VERSION="1.7"
 GROUP_PATH="forge/java-stubs"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
