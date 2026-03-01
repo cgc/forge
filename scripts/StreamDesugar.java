@@ -619,9 +619,13 @@ public class StreamDesugar {
                 // (inherited by Collection, List, Set, etc.).
                 // NOTE: "forEach" with BiConsumer is already captured by Pattern 29 (mapForEach);
                 // this pattern catches the Consumer overload.
+                // IMPORTANT: java.util.stream.Stream also has forEach(Consumer) but Stream is NOT
+                // an Iterable.  Exclude java/util/stream/* owners to avoid a ClassCastException
+                // when stream.forEach(...) would be passed to iterableForEach(Iterable, Consumer).
                 if ("forEach".equals(name)
                         && ("(" + CONS + ")V").equals(descriptor)
-                        && owner.startsWith("java/")) {
+                        && owner.startsWith("java/")
+                        && !owner.startsWith("java/util/stream/")) {
                     super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "iterableForEach",
                             "(" + ITER + CONS + ")V", false);
                     modified = true;
