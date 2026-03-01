@@ -63,6 +63,28 @@ import java.util.Arrays;
  *       {@code StreamUtil.objects*} helpers</li>
  *   <li>{@code map.forEach(BiConsumer)} → {@code StreamUtil.mapForEach(map, biConsumer)}</li>
  *   <li>{@code Map.of(...)} (0–5 key-value pairs) → {@code StreamUtil.mapOf(...)}</li>
+ *   <li>{@code Map.replace(key, oldVal, newVal)} → {@code StreamUtil.mapReplace(...)}</li>
+ *   <li>{@code Map.Entry.comparingByValue()} / {@code .comparingByValue(Comparator)} →
+ *       {@code StreamUtil.mapEntryComparingByValue(...)}</li>
+ *   <li>{@code iterable.forEach(Consumer)} (any {@code java.*} owner) →
+ *       {@code StreamUtil.iterableForEach(iterable, consumer)}</li>
+ *   <li>{@code list.sort(Comparator)} (any {@code java.*} owner) →
+ *       {@code StreamUtil.listSort(list, comparator)}</li>
+ *   <li>{@code List.of(...)} (0–5 elements + varargs) → {@code StreamUtil.listOf(...)}</li>
+ *   <li>{@code List.copyOf(Collection)} → {@code StreamUtil.listCopyOf(...)}</li>
+ *   <li>{@code list.replaceAll(UnaryOperator)} (any {@code java.*} owner) →
+ *       {@code StreamUtil.listReplaceAll(list, operator)}</li>
+ *   <li>{@code Set.of(...)} (0–5 elements + varargs) → {@code StreamUtil.setOf(...)}</li>
+ *   <li>{@code String.join(delimiter, array)} / {@code .join(delimiter, iterable)} →
+ *       {@code StreamUtil.stringJoin(...)}</li>
+ *   <li>{@code string.isBlank()} → {@code StreamUtil.stringIsBlank(string)}</li>
+ *   <li>{@code string.repeat(count)} → {@code StreamUtil.stringRepeat(string, count)}</li>
+ *   <li>{@code Math.floorMod(x, y)} → {@code StreamUtil.mathFloorMod(x, y)}</li>
+ *   <li>{@code Math.toIntExact(value)} → {@code StreamUtil.mathToIntExact(value)}</li>
+ *   <li>{@code Integer.max(a, b)} → {@code Math.max(a, b)} (already in Java 7)</li>
+ *   <li>{@code Integer.min(a, b)} → {@code Math.min(a, b)} (already in Java 7)</li>
+ *   <li>{@code Comparator.comparingLong(keyExtractor)} →
+ *       {@code StreamUtil.comparatorComparingLong(keyExtractor)}</li>
  * </ol>
  *
  * <p>The transformation is idempotent: files that have already been transformed are
@@ -85,13 +107,21 @@ public class StreamDesugar {
     private static final String OBJ  = "Ljava/lang/Object;";
     private static final String MAP  = "Ljava/util/Map;";
     private static final String COLL = "Ljava/util/Collection;";
+    private static final String LIST = "Ljava/util/List;";
+    private static final String SET  = "Ljava/util/Set;";
     private static final String PRED = "Ljava/util/function/Predicate;";
     private static final String FN   = "Ljava/util/function/Function;";
     private static final String BIFN = "Ljava/util/function/BiFunction;";
     private static final String BICN = "Ljava/util/function/BiConsumer;";
+    private static final String CONS = "Ljava/util/function/Consumer;";
     private static final String TIFN = "Ljava/util/function/ToIntFunction;";
+    private static final String TLFN = "Ljava/util/function/ToLongFunction;";
+    private static final String UNOP = "Ljava/util/function/UnaryOperator;";
     private static final String CMP  = "Ljava/util/Comparator;";
     private static final String SUP  = "Ljava/util/function/Supplier;";
+    private static final String CSEQ = "Ljava/lang/CharSequence;";
+    private static final String STR  = "Ljava/lang/String;";
+    private static final String ITER = "Ljava/lang/Iterable;";
 
     public static void main(String[] args) throws IOException {
         if (args.length == 0) {
@@ -555,6 +585,211 @@ public class StreamDesugar {
                         && descriptor.endsWith("Ljava/util/Map;")) {
                     super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "mapOf",
                             descriptor, false);
+                    modified = true;
+                    return;
+                }
+
+                // ── Map additional helpers ────────────────────────────────────────────
+
+                // Pattern 31: map.replace(key, oldValue, newValue) — Java 8 default method
+                if ("replace".equals(name)
+                        && ("(" + OBJ + OBJ + OBJ + ")Z").equals(descriptor)
+                        && owner.startsWith("java/")) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "mapReplace",
+                            "(" + MAP + OBJ + OBJ + OBJ + ")Z", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 32: Map.Entry.comparingByValue() / comparingByValue(Comparator)
+                // — Java 8 static methods absent from robovm-rt.
+                // Both overloads are dispatched by passing the descriptor through.
+                if ("comparingByValue".equals(name)
+                        && "java/util/Map$Entry".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "mapEntryComparingByValue", descriptor, false);
+                    modified = true;
+                    return;
+                }
+
+                // ── Iterable / List helpers ───────────────────────────────────────────
+
+                // Pattern 33: iterable.forEach(consumer) — Java 8 default method on Iterable
+                // (inherited by Collection, List, Set, etc.).
+                // NOTE: "forEach" with BiConsumer is already captured by Pattern 29 (mapForEach);
+                // this pattern catches the Consumer overload.
+                if ("forEach".equals(name)
+                        && ("(" + CONS + ")V").equals(descriptor)
+                        && owner.startsWith("java/")) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "iterableForEach",
+                            "(" + ITER + CONS + ")V", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 34: list.sort(comparator) — Java 8 default method on List.
+                // Absent from robovm-rt; delegates to Collections.sort() inside StreamUtil.
+                if ("sort".equals(name)
+                        && ("(" + CMP + ")V").equals(descriptor)
+                        && owner.startsWith("java/")) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "listSort",
+                            "(" + LIST + CMP + ")V", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 35: List.of(...) — Java 9 static factory (0–5 elements + varargs).
+                // Descriptor is passed through; StreamUtil provides matching overloads.
+                if ("of".equals(name)
+                        && "java/util/List".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC
+                        && descriptor.endsWith(LIST)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "listOf",
+                            descriptor, false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 36: List.copyOf(collection) — Java 10 static factory.
+                if ("copyOf".equals(name)
+                        && ("(" + COLL + ")" + LIST).equals(descriptor)
+                        && "java/util/List".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "listCopyOf",
+                            "(" + COLL + ")" + LIST, false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 37: list.replaceAll(operator) — Java 8 default method on List.
+                if ("replaceAll".equals(name)
+                        && ("(" + UNOP + ")V").equals(descriptor)
+                        && owner.startsWith("java/")) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "listReplaceAll",
+                            "(" + LIST + UNOP + ")V", false);
+                    modified = true;
+                    return;
+                }
+
+                // ── Set helpers ───────────────────────────────────────────────────────
+
+                // Pattern 38: Set.of(...) — Java 9 static factory (0–5 elements + varargs).
+                // Descriptor is passed through; StreamUtil provides matching overloads.
+                if ("of".equals(name)
+                        && "java/util/Set".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC
+                        && descriptor.endsWith(SET)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "setOf",
+                            descriptor, false);
+                    modified = true;
+                    return;
+                }
+
+                // ── String helpers ────────────────────────────────────────────────────
+
+                // Pattern 39: String.join(delimiter, elements[]) — Java 8 static, array overload.
+                if ("join".equals(name)
+                        && ("(" + CSEQ + "[" + CSEQ + ")" + STR).equals(descriptor)
+                        && "java/lang/String".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "stringJoin",
+                            "(" + CSEQ + "[" + CSEQ + ")" + STR, false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 40: String.join(delimiter, iterable) — Java 8 static, Iterable overload.
+                if ("join".equals(name)
+                        && ("(" + CSEQ + ITER + ")" + STR).equals(descriptor)
+                        && "java/lang/String".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "stringJoin",
+                            "(" + CSEQ + ITER + ")" + STR, false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 41: string.isBlank() — Java 11 instance method.
+                // Receiver String becomes the first argument of the static helper.
+                if ("isBlank".equals(name)
+                        && "()Z".equals(descriptor)
+                        && "java/lang/String".equals(owner)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "stringIsBlank",
+                            "(" + STR + ")Z", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 42: string.repeat(count) — Java 11 instance method.
+                // Receiver String becomes the first argument of the static helper.
+                if ("repeat".equals(name)
+                        && ("(I)" + STR).equals(descriptor)
+                        && "java/lang/String".equals(owner)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "stringRepeat",
+                            "(" + STR + "I)" + STR, false);
+                    modified = true;
+                    return;
+                }
+
+                // ── Math helpers ──────────────────────────────────────────────────────
+
+                // Pattern 43: Math.floorMod(x, y) — Java 8 static.
+                if ("floorMod".equals(name)
+                        && "(II)I".equals(descriptor)
+                        && "java/lang/Math".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "mathFloorMod",
+                            "(II)I", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 44: Math.toIntExact(value) — Java 8 static.
+                if ("toIntExact".equals(name)
+                        && "(J)I".equals(descriptor)
+                        && "java/lang/Math".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "mathToIntExact",
+                            "(J)I", false);
+                    modified = true;
+                    return;
+                }
+
+                // ── Integer helpers ───────────────────────────────────────────────────
+
+                // Pattern 45: Integer.max(a, b) — Java 8 static; equivalent to Math.max(a,b)
+                // which is available in Java 7.
+                if ("max".equals(name)
+                        && "(II)I".equals(descriptor)
+                        && "java/lang/Integer".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Math", "max",
+                            "(II)I", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 46: Integer.min(a, b) — Java 8 static; equivalent to Math.min(a,b).
+                if ("min".equals(name)
+                        && "(II)I".equals(descriptor)
+                        && "java/lang/Integer".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Math", "min",
+                            "(II)I", false);
+                    modified = true;
+                    return;
+                }
+
+                // ── Comparator additional helpers ─────────────────────────────────────
+
+                // Pattern 47: Comparator.comparingLong(keyExtractor) — Java 8 static.
+                if ("comparingLong".equals(name)
+                        && ("(" + TLFN + ")" + CMP).equals(descriptor)
+                        && "java/util/Comparator".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "comparatorComparingLong", "(" + TLFN + ")" + CMP, false);
                     modified = true;
                     return;
                 }

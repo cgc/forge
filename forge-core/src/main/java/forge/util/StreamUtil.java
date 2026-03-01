@@ -14,6 +14,8 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.function.ToIntFunction;
+import java.util.function.ToLongFunction;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collector;
 import java.util.stream.Stream;
 
@@ -285,6 +287,314 @@ public class StreamUtil {
         m.put((K) k4, (V) v4);
         m.put((K) k5, (V) v5);
         return Collections.unmodifiableMap(m);
+    }
+
+    // ── Iterable helpers (Java 8 default method absent from robovm-rt) ───────
+
+    /**
+     * Equivalent to {@code iterable.forEach(action)} (Java 8 default method on
+     * {@link Iterable}, inherited by {@link Collection}, {@link List}, {@link Set}, etc.).
+     *
+     * <p>The build-time bytecode transformer rewrites {@code iterable.forEach(consumer)}
+     * calls (any {@code java.*} owner) to this method.
+     */
+    public static <T> void iterableForEach(Iterable<T> iterable,
+            Consumer<? super T> action) {
+        for (T t : iterable) {
+            action.accept(t);
+        }
+    }
+
+    // ── List helpers (Java 8/9/10 methods absent from robovm-rt) ─────────────
+
+    /**
+     * Equivalent to {@code list.sort(comparator)} (Java 8 default method).
+     *
+     * <p>Delegates to {@link Collections#sort(List, Comparator)}, which is available
+     * since Java 1.2 and handles a {@code null} comparator by sorting in natural order.
+     * The raw-type cast is required because {@code Collections.sort(List<T>, Comparator<? super T>)}
+     * cannot be called with a wildcard-typed list at compile time.
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public static <T> void listSort(List<T> list, Comparator<? super T> comparator) {
+        Collections.sort((List) list, comparator);
+    }
+
+    /**
+     * Equivalent to {@code List.of()} (Java 9 static factory, 0 elements).
+     */
+    public static <E> List<E> listOf() {
+        return Collections.emptyList();
+    }
+
+    /** Equivalent to {@code List.of(e1)} (Java 9). */
+    @SuppressWarnings("unchecked")
+    public static <E> List<E> listOf(Object e1) {
+        return Collections.singletonList((E) e1);
+    }
+
+    /** Equivalent to {@code List.of(e1, e2)} (Java 9). */
+    @SuppressWarnings("unchecked")
+    public static <E> List<E> listOf(Object e1, Object e2) {
+        List<E> m = new ArrayList<>(2);
+        m.add((E) e1);
+        m.add((E) e2);
+        return Collections.unmodifiableList(m);
+    }
+
+    /** Equivalent to {@code List.of(e1, e2, e3)} (Java 9). */
+    @SuppressWarnings("unchecked")
+    public static <E> List<E> listOf(Object e1, Object e2, Object e3) {
+        List<E> m = new ArrayList<>(3);
+        m.add((E) e1);
+        m.add((E) e2);
+        m.add((E) e3);
+        return Collections.unmodifiableList(m);
+    }
+
+    /** Equivalent to {@code List.of(e1, e2, e3, e4)} (Java 9). */
+    @SuppressWarnings("unchecked")
+    public static <E> List<E> listOf(Object e1, Object e2, Object e3, Object e4) {
+        List<E> m = new ArrayList<>(4);
+        m.add((E) e1);
+        m.add((E) e2);
+        m.add((E) e3);
+        m.add((E) e4);
+        return Collections.unmodifiableList(m);
+    }
+
+    /** Equivalent to {@code List.of(e1, e2, e3, e4, e5)} (Java 9). */
+    @SuppressWarnings("unchecked")
+    public static <E> List<E> listOf(Object e1, Object e2, Object e3, Object e4, Object e5) {
+        List<E> m = new ArrayList<>(5);
+        m.add((E) e1);
+        m.add((E) e2);
+        m.add((E) e3);
+        m.add((E) e4);
+        m.add((E) e5);
+        return Collections.unmodifiableList(m);
+    }
+
+    /**
+     * Equivalent to {@code List.of(elements)} (Java 9, varargs overload).
+     *
+     * <p>The cast {@code (E[])} is safe here because this method is only called from
+     * StreamDesugar-rewritten bytecode that replaces {@code List.of(Object[])} call sites;
+     * the array contents are already of the correct element type at the call site.
+     */
+    @SuppressWarnings("unchecked")
+    public static <E> List<E> listOf(Object[] elements) {
+        return Collections.unmodifiableList(Arrays.asList((E[]) elements));
+    }
+
+    /**
+     * Equivalent to {@code List.copyOf(collection)} (Java 10 static factory).
+     */
+    public static <E> List<E> listCopyOf(Collection<? extends E> coll) {
+        return Collections.unmodifiableList(new ArrayList<>(coll));
+    }
+
+    /**
+     * Equivalent to {@code list.replaceAll(operator)} (Java 8 default method).
+     */
+    public static <E> void listReplaceAll(List<E> list, UnaryOperator<E> operator) {
+        ListIterator<E> it = list.listIterator();
+        while (it.hasNext()) {
+            it.set(operator.apply(it.next()));
+        }
+    }
+
+    // ── Set helpers (Java 9 static factory methods absent from robovm-rt) ────
+
+    /** Equivalent to {@code Set.of()} (Java 9 static factory, 0 elements). */
+    public static <E> Set<E> setOf() {
+        return Collections.emptySet();
+    }
+
+    /** Equivalent to {@code Set.of(e1)} (Java 9). */
+    @SuppressWarnings("unchecked")
+    public static <E> Set<E> setOf(Object e1) {
+        return Collections.singleton((E) e1);
+    }
+
+    /** Equivalent to {@code Set.of(e1, e2)} (Java 9). */
+    @SuppressWarnings("unchecked")
+    public static <E> Set<E> setOf(Object e1, Object e2) {
+        Set<E> s = new LinkedHashSet<>(4);
+        s.add((E) e1);
+        s.add((E) e2);
+        return Collections.unmodifiableSet(s);
+    }
+
+    /** Equivalent to {@code Set.of(e1, e2, e3)} (Java 9). */
+    @SuppressWarnings("unchecked")
+    public static <E> Set<E> setOf(Object e1, Object e2, Object e3) {
+        Set<E> s = new LinkedHashSet<>(6);
+        s.add((E) e1);
+        s.add((E) e2);
+        s.add((E) e3);
+        return Collections.unmodifiableSet(s);
+    }
+
+    /** Equivalent to {@code Set.of(e1, e2, e3, e4)} (Java 9). */
+    @SuppressWarnings("unchecked")
+    public static <E> Set<E> setOf(Object e1, Object e2, Object e3, Object e4) {
+        Set<E> s = new LinkedHashSet<>(8);
+        s.add((E) e1);
+        s.add((E) e2);
+        s.add((E) e3);
+        s.add((E) e4);
+        return Collections.unmodifiableSet(s);
+    }
+
+    /** Equivalent to {@code Set.of(e1, e2, e3, e4, e5)} (Java 9). */
+    @SuppressWarnings("unchecked")
+    public static <E> Set<E> setOf(Object e1, Object e2, Object e3, Object e4, Object e5) {
+        Set<E> s = new LinkedHashSet<>(10);
+        s.add((E) e1);
+        s.add((E) e2);
+        s.add((E) e3);
+        s.add((E) e4);
+        s.add((E) e5);
+        return Collections.unmodifiableSet(s);
+    }
+
+    /**
+     * Equivalent to {@code Set.of(elements)} (Java 9, varargs overload).
+     *
+     * <p>See {@link #listOf(Object[])} for a note on the {@code (E[])} cast assumption.
+     */
+    @SuppressWarnings("unchecked")
+    public static <E> Set<E> setOf(Object[] elements) {
+        return Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList((E[]) elements)));
+    }
+
+    // ── String helpers (Java 8/11 static/instance methods absent from robovm-rt) ─────
+
+    /**
+     * Equivalent to {@code String.join(delimiter, elements)} (Java 8 static, array overload).
+     *
+     * <p>Joins the elements with the given delimiter, treating {@code null} elements as
+     * the string {@code "null"}, matching the behaviour of {@link String#join}.
+     */
+    public static String stringJoin(CharSequence delimiter, CharSequence[] elements) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < elements.length; i++) {
+            if (i > 0) sb.append(delimiter);
+            sb.append(elements[i]);
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Equivalent to {@code String.join(delimiter, elements)} (Java 8 static, Iterable overload).
+     */
+    public static String stringJoin(CharSequence delimiter,
+            Iterable<? extends CharSequence> elements) {
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for (CharSequence e : elements) {
+            if (!first) sb.append(delimiter);
+            sb.append(e);
+            first = false;
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Equivalent to {@code s.isBlank()} (Java 11 instance method).
+     *
+     * <p>Returns {@code true} if the string is empty or contains only whitespace.
+     */
+    public static boolean stringIsBlank(String s) {
+        return s.trim().isEmpty();
+    }
+
+    /**
+     * Equivalent to {@code s.repeat(count)} (Java 11 instance method).
+     */
+    public static String stringRepeat(String s, int count) {
+        if (count < 0) throw new IllegalArgumentException("count is negative: " + count);
+        if (count == 0 || s.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder(s.length() * count);
+        for (int i = 0; i < count; i++) sb.append(s);
+        return sb.toString();
+    }
+
+    // ── Math helpers (Java 8 static methods absent from robovm-rt) ───────────
+
+    /**
+     * Equivalent to {@code Math.floorMod(x, y)} (Java 8).
+     *
+     * <p>Returns the floor modulus of the integer arguments (result has the same sign as y).
+     */
+    public static int mathFloorMod(int x, int y) {
+        int result = x % y;
+        return (result != 0 && (result ^ y) < 0) ? result + y : result;
+    }
+
+    /**
+     * Equivalent to {@code Math.toIntExact(value)} (Java 8).
+     *
+     * @throws ArithmeticException if the value overflows an int
+     */
+    public static int mathToIntExact(long value) {
+        if ((int) value != value) throw new ArithmeticException("integer overflow");
+        return (int) value;
+    }
+
+    // ── Comparator additional helpers (Java 8 static methods absent from robovm-rt) ──
+
+    /**
+     * Equivalent to {@code Comparator.comparingLong(keyExtractor)} (Java 8).
+     */
+    public static <T> Comparator<T> comparatorComparingLong(
+            ToLongFunction<? super T> keyExtractor) {
+        return (a, b) -> Long.compare(keyExtractor.applyAsLong(a), keyExtractor.applyAsLong(b));
+    }
+
+    // ── Map.Entry helpers (Java 8 static methods absent from robovm-rt) ──────
+
+    /**
+     * Equivalent to {@code Map.Entry.comparingByValue()} (Java 8).
+     *
+     * <p>Returns a comparator that compares {@link Map.Entry} instances by their values
+     * using the values' natural ordering.
+     *
+     * <p>Raw types are intentional: the return type erases to {@code Ljava/util/Comparator;}
+     * at the bytecode level, matching the descriptor that StreamDesugar passes through.
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static Comparator<Map.Entry<?, ?>> mapEntryComparingByValue() {
+        return (e1, e2) -> ((Comparable<Object>) e1.getValue()).compareTo(e2.getValue());
+    }
+
+    /**
+     * Equivalent to {@code Map.Entry.comparingByValue(comparator)} (Java 8).
+     *
+     * <p>Returns a comparator that compares {@link Map.Entry} instances by their values
+     * using the given comparator.
+     */
+    public static <K, V> Comparator<Map.Entry<K, V>> mapEntryComparingByValue(
+            Comparator<? super V> comparator) {
+        return (e1, e2) -> comparator.compare(e1.getValue(), e2.getValue());
+    }
+
+    // ── Map additional helpers (Java 8 default methods absent from robovm-rt) ─
+
+    /**
+     * Equivalent to {@code map.replace(key, oldValue, newValue)} (Java 8 default method).
+     *
+     * <p>Replaces the entry for the given key only if it is currently mapped to the
+     * specified old value.  Returns {@code true} if the replacement was made.
+     */
+    public static <K, V> boolean mapReplace(Map<K, V> map, K key, V oldValue, V newValue) {
+        Object cur = map.get(key);
+        if (!Objects.equals(cur, oldValue) || (cur == null && !map.containsKey(key))) {
+            return false;
+        }
+        map.put(key, newValue);
+        return true;
     }
 
     // ── Collection helpers ────────────────────────────────────────────────────
