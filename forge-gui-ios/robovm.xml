@@ -49,6 +49,7 @@
       compiled and registered automatically without force-linking.
     -->
     <pattern>com.badlogic.gdx.scenes.scene2d.ui.*</pattern>
+    <pattern>com.badlogic.gdx.controllers.IosControllerManager</pattern>
     <pattern>com.android.okhttp.HttpsHandler</pattern>
   </forceLinkClasses>
   <frameworks>
