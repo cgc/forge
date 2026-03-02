@@ -433,7 +433,7 @@ public class SoundSystem {
                 .filter(File::isDirectory)
                 .map((d) -> d.listFiles(nameFilter))
                 .filter(Objects::nonNull)
-                .flatMap(Arrays::stream)
+                .flatMap(files -> Arrays.asList(files).stream())
                 .findFirst()
                 .orElse(null);
         if(out != null)
@@ -472,7 +472,7 @@ public class SoundSystem {
         for(String path : SOUND_RESOURCE_PATHS) {
             File[] files = new File(path + subPath).listFiles(File::isDirectory);
             if(files != null)
-                Arrays.stream(files).map(File::getName).forEach(foundSets::add);
+                Arrays.asList(files).stream().map(File::getName).forEach(foundSets::add);
         }
         foundSets.remove("Default");
         List<String> availableSets = new ArrayList<>(foundSets);
