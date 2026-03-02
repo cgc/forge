@@ -97,6 +97,9 @@ import java.util.Arrays;
  *       {@code StreamUtil.integerToUnsignedString(int)} — absent from Android API 24</li>
  *   <li>{@code Long.compareUnsigned(long, long)} →
  *       {@code StreamUtil.longCompareUnsigned(long, long)} — absent from Android API 24</li>
+ *   <li>INVOKEDYNAMIC backed by {@code Arrays::stream} as {@code Function<T[],Stream<T>>}
+ *       (e.g. {@code stream.flatMap(Arrays::stream)}) →
+ *       {@code INVOKESTATIC StreamUtil.arrayStreamFunction()}</li>
  * </ol>
  *
  * <p>The transformation is idempotent: files that have already been transformed are
@@ -904,31 +907,30 @@ public class StreamDesugar {
 
             /**
              * Intercepts INVOKEDYNAMIC instructions that create lambdas / method references
-             * backed by Java 8+ methods missing from robovm-rt's Objects class.
+             * backed by Java 8+ methods missing from robovm-rt.
              *
-             * <p>When source code contains {@code filter(Objects::nonNull)} or
-             * {@code removeIf(Objects::isNull)}, the compiler emits an INVOKEDYNAMIC
-             * instruction whose bootstrap arguments reference {@code Objects.nonNull} /
-             * {@code Objects.isNull} as the implementation method handle.  At RoboVM AOT
-             * compile time this generates a synthetic {@code $$Lambda$N} class whose
-             * {@code test()} method calls the missing method — causing
-             * {@link NoSuchMethodError} at runtime.
+             * <p>When source code contains {@code filter(Objects::nonNull)},
+             * {@code removeIf(Objects::isNull)}, or {@code flatMap(Arrays::stream)},
+             * the compiler emits an INVOKEDYNAMIC instruction whose bootstrap arguments
+             * reference the missing method as the implementation method handle.  At RoboVM
+             * AOT compile time this generates a synthetic {@code $$Lambda$N} class whose
+             * method calls the missing method — causing {@link NoSuchMethodError} at runtime.
              *
              * <p>This override detects such instructions and replaces the entire
              * INVOKEDYNAMIC with a direct {@code INVOKESTATIC} call to a
-             * {@code StreamUtil} factory method that returns an equivalent
-             * {@link java.util.function.Predicate}.  The stack effect is identical
-             * (no consumed stack slots, one pushed Predicate reference) so no
-             * additional adjustments are needed.
+             * {@code StreamUtil} factory method that returns an equivalent functional
+             * interface value.  The stack effect is identical (no consumed stack slots,
+             * one pushed functional-interface reference) so no additional adjustments
+             * are needed.
              */
             @Override
             public void visitInvokeDynamicInsn(String name, String descriptor,
                     Handle bootstrapMethodHandle, Object... bootstrapMethodArguments) {
-                // Only intercept LambdaMetafactory-generated lambdas where the
-                // implementation method is a static method on java.util.Objects.
                 if (bootstrapMethodArguments.length >= 2
                         && bootstrapMethodArguments[1] instanceof Handle) {
                     Handle implHandle = (Handle) bootstrapMethodArguments[1];
+
+                    // Objects::nonNull / Objects::isNull as Predicate
                     if ("java/util/Objects".equals(implHandle.getOwner())
                             && implHandle.getTag() == Opcodes.H_INVOKESTATIC
                             && descriptor.startsWith("()")
@@ -947,6 +949,30 @@ public class StreamDesugar {
                             modified = true;
                             return;
                         }
+                    }
+
+                    // Arrays::stream as Function (e.g. stream.flatMap(Arrays::stream))
+                    // Arrays.stream(T[]) is a Java 8 static method absent from robovm-rt.
+                    // The compiler emits an INVOKEDYNAMIC whose impl handle points to
+                    // Arrays.stream([Ljava/lang/Object;)Ljava/util/stream/Stream; and whose
+                    // factory descriptor produces a Function.  Replace the whole instruction
+                    // with StreamUtil.arrayStreamFunction() which returns an equivalent
+                    // Function backed by Stream.of() — present in the iOS stubs.
+                    // Note: primitive-array overloads (Arrays.stream(int[]) etc.) return
+                    // IntStream/LongStream/DoubleStream, so their descriptors never end with
+                    // "Ljava/util/stream/Stream;" and are correctly excluded by this pattern.
+                    // The startsWith("([L") guard additionally confirms a reference-type array.
+                    if ("java/util/Arrays".equals(implHandle.getOwner())
+                            && "stream".equals(implHandle.getName())
+                            && implHandle.getTag() == Opcodes.H_INVOKESTATIC
+                            && implHandle.getDesc().startsWith("([L")
+                            && implHandle.getDesc().endsWith("Ljava/util/stream/Stream;")
+                            && descriptor.startsWith("()")
+                            && descriptor.endsWith("Ljava/util/function/Function;")) {
+                        super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                                "arrayStreamFunction", "()" + FN, false);
+                        modified = true;
+                        return;
                     }
                 }
                 super.visitInvokeDynamicInsn(name, descriptor,
