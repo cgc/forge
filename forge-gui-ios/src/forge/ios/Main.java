@@ -228,7 +228,11 @@ public class Main extends IOSApplication.Delegate {
 
         @Override
         public void convertToJPEG(InputStream input, OutputStream output) throws IOException {
-
+            byte[] buffer = new byte[8192];
+            int len;
+            while ((len = input.read(buffer)) != -1) {
+                output.write(buffer, 0, len);
+            }
         }
 
         @Override
