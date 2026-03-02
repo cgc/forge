@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import forge.util.*;
-import org.apache.commons.lang3.StringUtils;
+import forge.util.TextUtil;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
@@ -345,7 +345,7 @@ public class PumpEffect extends SpellAbilityEffect {
                 }
                 for (int i = 0; i < keywords.size(); i++) {
                     String s = keywords.get(i);
-                    s = s.replaceAll("ChosenColor", StringUtils.capitalize(host.getChosenColor()));
+                    s = s.replaceAll("ChosenColor", TextUtil.capitalize(host.getChosenColor()));
                     s = s.replaceAll("chosenColor", host.getChosenColor().toLowerCase());
                     keywords.set(i, s);
                 }

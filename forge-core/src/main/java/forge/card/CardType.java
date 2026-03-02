@@ -24,6 +24,7 @@ import forge.util.Localizer;
 import forge.util.Settable;
 import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.StringUtils;
+import forge.util.TextUtil;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -352,7 +353,7 @@ public final class CardType implements Comparable<CardType>, CardTypeView {
             return true;
         }
 
-        t = StringUtils.capitalize(t);
+        t = TextUtil.capitalize(t);
         final CoreType type = CoreType.getEnum(t);
         if (type != null) {
             return hasType(type);
@@ -415,7 +416,7 @@ public final class CardType implements Comparable<CardType>, CardTypeView {
             if (i != 0) {
                 sb.append("-");
             }
-            sb.append(StringUtils.capitalize(types[i]));
+            sb.append(TextUtil.capitalize(types[i]));
         }
         return sb.toString();
     }

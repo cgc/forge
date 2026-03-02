@@ -488,7 +488,7 @@ public class CardFactoryUtil {
                     for (byte col : MagicColor.WUBRG) {
                         final String colString = MagicColor.toLongString(col);
                         final String protString = "Protection from " + colString;
-                        if (k.equals(protString) || k.contains(StringUtils.capitalize(colString) + ":" + colString)) {
+                        if (k.equals(protString) || k.contains(TextUtil.capitalize(colString) + ":" + colString)) {
                             protectionColorkw.add(protString);
                         }
                     }
@@ -4076,7 +4076,7 @@ public class CardFactoryUtil {
             String valid = k[1];
             String desc = k[k.length > 2 ? 2 : 1].toLowerCase(Locale.ROOT);
             String effect = "Mode$ CantBlockBy | ValidAttacker$ Creature.Self | ValidDefender$ Player.controls" + valid +
-                    " | Description$ " + StringUtils.capitalize(desc) + "walk (" + inst.getReminderText() + ")";
+                    " | Description$ " + TextUtil.capitalize(desc) + "walk (" + inst.getReminderText() + ")";
             inst.addStaticAbility(StaticAbility.create(effect, state.getCard(), state, intrinsic));
         } else if (keyword.equals("Living metal")) {
             String effect = "Mode$ Continuous | Affected$ Card.Self | AddType$ Creature | Condition$ PlayerTurn | Secondary$ True";

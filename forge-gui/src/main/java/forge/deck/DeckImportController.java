@@ -17,6 +17,7 @@ import forge.util.ItemPool;
 import forge.util.Localizer;
 import forge.util.StreamUtil;
 import org.apache.commons.lang3.StringUtils;
+import forge.util.TextUtil;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.text.DateFormatSymbols;
@@ -716,7 +717,7 @@ public class DeckImportController {
         return switch (token.getType()) {
             case LIMITED_CARD -> String.format("%s: %s", localizer.getMessage("lblWarningMsgPrefix"),
                     localizer.getMessage("lblWarnLimitedCard",
-                            StringUtils.capitalize(token.getLimitedCardType().name()), getGameFormatLabel()));
+                            TextUtil.capitalize(token.getLimitedCardType().name()), getGameFormatLabel()));
             case CARD_FROM_NOT_ALLOWED_SET ->
                     localizer.getMessage("lblErrNotAllowedCard", getGameFormatLabel());
             case CARD_FROM_INVALID_SET -> localizer.getMessage("lblErrCardEditionDate");
