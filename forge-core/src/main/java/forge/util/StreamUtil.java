@@ -65,6 +65,24 @@ public class StreamUtil {
     }
 
     /**
+     * Returns a {@link Function} that converts an array to a {@link Stream},
+     * equivalent to the {@code Arrays::stream} method reference.
+     *
+     * <p>{@code Arrays.stream()} was added in Java 8 and is absent from MobiVM's runtime.
+     * When source code uses {@code Arrays::stream} as a method reference (e.g. inside
+     * {@code stream.flatMap(Arrays::stream)}), the compiler generates an INVOKEDYNAMIC
+     * instruction backed by {@code Arrays.stream}.  At RoboVM AOT time this synthetic
+     * lambda calls the missing method, causing {@link NoSuchMethodError} at runtime.
+     * The build-time bytecode transformer ({@code StreamDesugar}) rewrites such
+     * INVOKEDYNAMIC instructions to call this factory instead.
+     *
+     * @return a Function equivalent to {@code Arrays::stream}.
+     */
+    public static <T> Function<T[], Stream<T>> arrayStreamFunction() {
+        return arr -> Stream.of(arr);
+    }
+
+    /**
      * Returns a {@link Spliterator} over the elements of {@code iterable}.
      *
      * <p>{@code Iterable.spliterator()} is a Java-8 default method absent from MobiVM's
