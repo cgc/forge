@@ -4,11 +4,12 @@
 # Builds a supplement jar containing the Java 8 APIs missing from MobiVM's robovm-rt
 # and installs it into forge-gui-ios/local-repo/ as:
 #
-#     forge:java-stubs:1.7
+#     forge:java-stubs:2.0
 #
 # MobiVM's runtime (robovm-rt) is based on Android's class library, which predates
 # Java 8 SE and is missing or incomplete for:
 #
+#   java.lang.Record       – abstract base class for Java 16 record classes
 #   java.util.function.*   – all 43 functional interfaces
 #   java.util.Comparator   – naturalOrder/reverseOrder/comparing/comparingInt (Java 8 statics)
 #                            and reversed/thenComparing (Java 8 defaults) absent from robovm-rt
@@ -16,18 +17,43 @@
 #                            (Java 9) absent from robovm-rt's Android 4.4-era Objects
 #   java.util.Optional     – Optional, OptionalInt, OptionalDouble, OptionalLong
 #   java.util.Spliterator  – Spliterator and its primitive specialisation inner interfaces
+#   java.util.StringJoiner – absent from robovm-rt's Android 4.4-era class library
 #   java.util.stream.*     – Stream, IntStream, Collector, Collectors, StreamSupport
-#   java.nio.file.*        – Paths, Files, Path, OpenOption
+#   java.nio.file.*        – Paths, Files, Path, OpenOption, CopyOption, LinkOption,
+#                            StandardCopyOption
 #   java.time.*            – Instant, Duration, LocalDate, LocalDateTime, LocalTime,
 #                            ZonedDateTime, OffsetDateTime, ZoneId, DateTimeFormatter, …
 #
 # HOW THE JAR IS BUILT
 # --------------------
-# java.util.function.*, java.util.Optional*, and java.util.Spliterator* are
-# downloaded directly from a pinned OpenJDK 17 source release on GitHub and
-# compiled from source.  This avoids any dependency on the locally-installed JDK
-# version, keeps the process transparent and reproducible, and requires only
-# curl + javac (any JDK 9+).
+# The standard approach used wherever possible is to download source files directly
+# from a pinned OpenJDK 17 release on GitHub and compile them with
+# --patch-module java.base.  This avoids any dependency on the locally-installed JDK
+# version and keeps the build transparent and reproducible.
+#
+# Classes downloaded from OpenJDK:
+#   • java.lang.Record                    – trivial abstract class, no internal deps
+#   • java.util.function.*               – 43 functional interfaces
+#   • java.util.Optional*                – Optional, OptionalDouble, OptionalInt, OptionalLong
+#   • java.util.Spliterator              – Spliterator
+#   • java.util.StringJoiner             – pure utility class, no jdk.internal.* imports
+#   • java.nio.file.OpenOption           – empty marker interface
+#   • java.nio.file.CopyOption           – empty marker interface
+#   • java.nio.file.LinkOption           – simple enum implementing OpenOption + CopyOption
+#   • java.nio.file.StandardCopyOption   – simple enum implementing CopyOption
+#
+# WHY ANDROID DOESN'T NEED THIS
+# ------------------------------
+# The Android build targets minimum SDK 26 (Android 8.0 / Oreo).  Android 8.0's
+# ART runtime includes native support for all Java 8 SE APIs (java.util.stream.*,
+# java.util.function.*, java.time.*, etc.).  D8 compiles class files to DEX with
+# --min-sdk-version=26, which tells it that the target runtime already provides these
+# APIs, so no desugaring or backport stubs are needed.
+#
+# MobiVM's robovm-rt is based on the Android 4.4-era (API 19) class library — the
+# equivalent of JDK 7 — and lacks all Java 8+ additions.  Stubs are needed because
+# RoboVM AOT-compiles the app (including any libraries it links against) to native
+# ARM64 code, so all referenced classes must be present at compile time.
 #
 # java.time.* is provided by downloading ThreeTen-Backport (a Java 6/7-compatible
 # backport of the java.time API, https://www.threeten.org/threetenbp/) and
@@ -37,9 +63,9 @@
 # (e.g. commons-lang3's StopWatch) reference java.time.* directly and cannot be
 # changed without forking.
 #
-# The remaining 13 files (java.util.Comparator, java.util.Objects, java.util.stream.*,
-# and java.nio.file.*) cannot be downloaded from OpenJDK and must remain as custom stubs
-# in forge-gui-ios/src-java-stubs/.  The per-file reasons are:
+# The remaining 12 files (java.util.Comparator, java.util.Objects, java.util.stream.*,
+# and java.nio.file: Path, Paths, Files) cannot be downloaded from OpenJDK and must
+# remain as custom stubs in forge-gui-ios/src-java-stubs/.  The per-file reasons are:
 #
 # java.util
 #   Comparator.java – The real JDK 17 Comparator.java uses lambda bodies in its default
@@ -68,14 +94,9 @@
 #                     FileSystemProvider infrastructure absent on iOS.
 #                     Our stub constructs the custom Path class directly.
 #   Files.java      – The real Files.java is ~3 000 lines routed through
-#                     FileSystemProvider.  Our stub exposes only the three
-#                     methods forge uses (exists/newInputStream/newOutputStream)
-#                     backed by java.io.File/FileInputStream/FileOutputStream.
-#   OpenOption.java – The real version is also an empty marker interface and
-#                     could in principle be downloaded, but it references
-#                     StandardOpenOption in its Javadoc which would pull in
-#                     more dependencies.  As a 4-line file the maintenance
-#                     burden of keeping it as a stub is negligible.
+#                     FileSystemProvider.  Our stub exposes only the methods
+#                     forge uses (exists/newInputStream/newOutputStream/walk/copy/
+#                     createDirectories) backed by java.io.File.
 #
 # java.util.stream
 #   Stream.java     – The real Stream<T> extends BaseStream<T,Stream<T>> and
@@ -106,7 +127,7 @@
 # ----------------
 # forge-gui-ios/local-repo/ is listed in .gitignore so the built jar is never
 # committed.  forge-gui-ios/pom.xml declares forge-local as a repository and
-# lists forge:java-stubs:1.7 as a compile dependency so that RoboVM's AOT
+# lists forge:java-stubs:2.0 as a compile dependency so that RoboVM's AOT
 # compiler includes these classes in the native binary.
 #
 # Usage:  bash scripts/build-java-stubs.sh
@@ -117,7 +138,7 @@ set -euo pipefail
 
 GROUP_ID="forge"
 ARTIFACT_ID="java-stubs"
-VERSION="1.9"
+VERSION="2.0"
 GROUP_PATH="forge/java-stubs"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -153,20 +174,19 @@ fi
 
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
-mkdir -p "$WORK_DIR/src/java/util/function" \
+mkdir -p "$WORK_DIR/src/java/lang" \
+         "$WORK_DIR/src/java/nio/file" \
+         "$WORK_DIR/src/java/util/function" \
          "$WORK_DIR/src/java/util" \
          "$WORK_DIR/classes"
 
 # ---------------------------------------------------------------------------
-# Step 1 – Download java.util.function.*, java.util.Optional*, and
-#          java.util.Spliterator* directly from a pinned OpenJDK 17 source
-#          release on GitHub.
+# Step 1 – Download classes directly from a pinned OpenJDK 17 source release.
 #
-# These 48 source files (43 java.util.function interfaces + Optional/OptionalDouble/
-# OptionalInt/OptionalLong/Spliterator) are pure interfaces / value types with no
-# jdk.internal.* dependencies.  Downloading from source avoids any dependency
-# on the locally-installed JDK version and keeps the build transparent and
-# reproducible from any machine that has curl + JDK 9+.
+# All classes in this step are pure types with no jdk.internal.* dependencies.
+# Downloading from source avoids any dependency on the locally-installed JDK
+# version, keeps the process transparent and reproducible, and requires only
+# curl + javac (any JDK 9+).
 #
 # Pinned tag: jdk-17+35  (JDK 17 GA, https://github.com/openjdk/jdk/releases/tag/jdk-17%2B35)
 # ---------------------------------------------------------------------------
@@ -174,7 +194,7 @@ OPENJDK_TAG="jdk-17+35"
 OPENJDK_TAG_URL="jdk-17%2B35"   # URL-encoded form of OPENJDK_TAG for use in curl
 OPENJDK_BASE="https://raw.githubusercontent.com/openjdk/jdk/${OPENJDK_TAG_URL}/src/java.base/share/classes"
 
-echo "[build-java-stubs] Downloading OpenJDK ${OPENJDK_TAG} source (function/Optional/Spliterator) ..."
+echo "[build-java-stubs] Downloading OpenJDK ${OPENJDK_TAG} source ..."
 
 FUNCTION_CLASSES=(
   BiConsumer BiFunction BiPredicate BinaryOperator BooleanSupplier Consumer
@@ -201,6 +221,34 @@ for cls in Optional OptionalDouble OptionalInt OptionalLong Spliterator; do
         -o "$WORK_DIR/src/java/util/${cls}.java"
 done
 echo "[build-java-stubs]   downloaded Optional/Spliterator classes"
+
+# java.util.StringJoiner: the JDK 17 source uses jdk.internal.access.* for
+# optimization, so we download from the JDK 11 GA tag instead.  The public API
+# is identical across JDK 8–17 and the JDK 11 version has no jdk.internal deps.
+OPENJDK11_TAG_URL="jdk-11%2B28"
+OPENJDK11_BASE="https://raw.githubusercontent.com/openjdk/jdk/${OPENJDK11_TAG_URL}/src/java.base/share/classes"
+curl -fsSL "$OPENJDK11_BASE/java/util/StringJoiner.java" \
+    -o "$WORK_DIR/src/java/util/StringJoiner.java"
+echo "[build-java-stubs]   downloaded StringJoiner (from JDK 11 GA tag)"
+
+# java.lang.Record (Java 16): a trivial abstract class that every record implicitly extends.
+# No jdk.internal.* imports — safe to download directly from OpenJDK.
+curl -fsSL "$OPENJDK_BASE/java/lang/Record.java" \
+    -o "$WORK_DIR/src/java/lang/Record.java"
+echo "[build-java-stubs]   downloaded java.lang.Record"
+
+# java.nio.file marker interfaces and simple enums: OpenOption, CopyOption,
+# LinkOption, StandardCopyOption.  These are tiny (empty interfaces / one-line
+# enums) with no jdk.internal.* imports.  They are downloaded here so the
+# canonical OpenJDK definitions are used rather than hand-written stubs.
+# Path, Paths, and Files cannot be downloaded (they depend on
+# FileSystemProvider / WatchService / NIO2 infrastructure absent from
+# robovm-rt) and remain as custom stubs in src-java-stubs/.
+for cls in OpenOption CopyOption LinkOption StandardCopyOption; do
+    curl -fsSL "$OPENJDK_BASE/java/nio/file/${cls}.java" \
+        -o "$WORK_DIR/src/java/nio/file/${cls}.java"
+done
+echo "[build-java-stubs]   downloaded java.nio.file marker types (OpenOption, CopyOption, LinkOption, StandardCopyOption)"
 
 # ---------------------------------------------------------------------------
 # Step 1b – ThreeTen-Backport as java.time.* sources.
@@ -366,16 +414,18 @@ echo "[build-java-stubs]   default-method lambda stripping complete"
 # ---------------------------------------------------------------------------
 # Step 2 – Compile all sources together: downloaded OpenJDK sources, the
 #          renamed ThreeTen-Backport (java.time.*), and the custom stubs for
-#          java.util.stream.* and java.nio.file.* from forge-gui-ios/src-java-stubs/.
+#          java.util.stream.*, java.nio.file: Path/Paths/Files,
+#          java.util.Comparator, and java.util.Objects from
+#          forge-gui-ios/src-java-stubs/.
 #
-# java.util.stream.* and java.nio.file.* cannot be taken from the JVM because
-# their implementations reference jdk.internal.* absent from robovm-rt, so we
-# compile minimal working implementations from forge-gui-ios/src-java-stubs/.
+# The custom stubs are only those that cannot be taken from OpenJDK because
+# their implementations reference jdk.internal.* or complex NIO2 infrastructure
+# absent from robovm-rt.  Everything else is compiled from downloaded sources.
 #
 # --patch-module java.base=<src1>:<src2> is required for javac to accept
 # source files in java.* packages without "package exists in another module".
 # ---------------------------------------------------------------------------
-echo "[build-java-stubs] Compiling all sources (downloaded + ThreeTen-Backport + stream/nio stubs) ..."
+echo "[build-java-stubs] Compiling all sources (downloaded + ThreeTen-Backport + remaining custom stubs) ..."
 # shellcheck disable=SC2046
 javac \
     --patch-module java.base="$WORK_DIR/src:$STUBS_SRC" \
