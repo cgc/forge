@@ -90,7 +90,7 @@ public class AssetsDownloader {
                     URL url = new URL(snapsURL + "build.txt");
                     snapsTimestamp = format.parse(FileUtil.readFileToString(url));
                     snapsBuildDate = snapsTimestamp.toString();
-                    if (!GuiBase.isAndroid()) {
+                    if (!GuiBase.isAndroid() && !GuiBase.isIOS()) {
                         buildDate = BuildInfo.getTimestamp().toString();
                         verifyUpdatable = BuildInfo.verifyTimestamp(snapsTimestamp);
                     } else {

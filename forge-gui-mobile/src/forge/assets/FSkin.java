@@ -369,7 +369,7 @@ public class FSkin {
 
             //load images
             for (FSkinImage image : FSkinImage.values()) {
-                if (GuiBase.isAndroid()) {
+                if (GuiBase.isAndroid() || GuiBase.isIOS()) {
                     if (Forge.allowCardBG)
                         image.load(preferredIcons);
                     else if (image.toString().equals("HDMULTI"))

@@ -283,7 +283,7 @@ public class Forge implements ApplicationListener {
     }
 
     public static boolean hasKeyboard() {
-        return !GuiBase.isAndroid();
+        return !GuiBase.isAndroid() && !GuiBase.isIOS();
     }
 
     public static InputProcessor getInputProcessor() {
@@ -356,7 +356,7 @@ public class Forge implements ApplicationListener {
         }
         //pixl cursor for adventure
         setCursor(null, "0");
-        if (!GuiBase.isAndroid() || !getDeviceAdapter().getGamepads().isEmpty())
+        if ((!GuiBase.isAndroid() && !GuiBase.isIOS()) || !getDeviceAdapter().getGamepads().isEmpty())
             enableControllerListener();
         loadAdventureResources(true);
     }
@@ -375,7 +375,7 @@ public class Forge implements ApplicationListener {
         }
     }
     protected void afterDbLoaded() {
-        if (GuiBase.isAndroid() && autoCache)
+        if ((GuiBase.isAndroid() || GuiBase.isIOS()) && autoCache)
             getSplashScreen().getProgressBar().setDescription(getLocalizer().getMessage("lblFinishingStartup") + "\nDetected RAM: " + totalDeviceRAM + "MB. Cache size: " + cacheSize);
         else
             getSplashScreen().getProgressBar().setDescription(getLocalizer().getMessage("lblFinishingStartup"));
@@ -441,7 +441,7 @@ public class Forge implements ApplicationListener {
     }
 
     public static void setCursor(TextureRegion textureRegion, String name) {
-        if (GuiBase.isAndroid())
+        if (GuiBase.isAndroid() || GuiBase.isIOS())
             return;
         if (isMobileAdventureMode) {
             if (cursorA0 != null && Objects.equals(name, "0")) {
@@ -1456,7 +1456,7 @@ public class Forge implements ApplicationListener {
             mouseMovedY = screenY;
             hasGamepad = false; //prevent drawing some panels
             //todo: mouse listener for android?
-            if (GuiBase.isAndroid())
+            if (GuiBase.isAndroid() || GuiBase.isIOS())
                 return true;
             hoveredCount = 0;
             //reset

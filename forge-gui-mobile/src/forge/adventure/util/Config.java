@@ -60,7 +60,7 @@ public class Config {
         String path = resPath();
         FilenameFilter planesFilter = (file, s) -> (!s.contains(".") && !s.equals(commonDirectoryName));
 
-        adventures = new File(GuiBase.isAndroid() ? ForgeConstants.ADVENTURE_DIR : path + "/res/adventure").list(planesFilter);
+        adventures = new File((GuiBase.isAndroid() || GuiBase.isIOS()) ? ForgeConstants.ADVENTURE_DIR : path + "/res/adventure").list(planesFilter);
         try {
             settingsData = new Json().fromJson(SettingData.class, new FileHandle(ForgeConstants.USER_ADVENTURE_DIR + "settings.json"));
 

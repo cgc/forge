@@ -124,7 +124,7 @@ public class SettingsScene extends UIScene {
         //addLabel(Forge.getLocalizer().getMessage("lblCreate") + Forge.getLocalizer().getMessage("lblWorld"));
         settingGroup.add(newPlane).align(Align.right).pad(2);
 
-        if (!GuiBase.isAndroid()) {
+        if (!GuiBase.isAndroid() && !GuiBase.isIOS()) {
             SelectBox<String> videomode = Controls.newComboBox(ForgeConstants.VIDEO_MODES, Config.instance().getSettingData().videomode, o -> {
                 String mode = (String) o;
                 if (mode == null)
@@ -186,7 +186,7 @@ public class SettingsScene extends UIScene {
             addLabel("Reward/Shop Card Tooltip Ratio");
             settingGroup.add(tooltipAdj).align(Align.right).pad(2);
         }
-        if (!GuiBase.isAndroid()) {
+        if (!GuiBase.isAndroid() && !GuiBase.isIOS()) {
             addSettingField(Forge.getLocalizer().getMessage("lblFullScreen"), Config.instance().getSettingData().fullScreen, new ChangeListener() {
                 @Override
                 public void changed(ChangeEvent event, Actor actor) {
@@ -267,7 +267,7 @@ public class SettingsScene extends UIScene {
         addCheckBox(Forge.getLocalizer().getMessage("cbImageFetcher"), ForgePreferences.FPref.UI_ENABLE_ONLINE_IMAGE_FETCHER);
 
 
-        if (!GuiBase.isAndroid()) {
+        if (!GuiBase.isAndroid() && !GuiBase.isIOS()) {
             addCheckBox(Forge.getLocalizer().getMessage("lblBattlefieldTextureFiltering"), ForgePreferences.FPref.UI_LIBGDX_TEXTURE_FILTERING);
             //addCheckBox(Forge.getLocalizer().getMessage("lblAltZoneTabs"), ForgePreferences.FPref.UI_ALT_PLAYERZONETABS);
         } else {
@@ -284,7 +284,7 @@ public class SettingsScene extends UIScene {
         }
 
         addCheckBox(Forge.getLocalizer().getMessage("lblAnimatedCardTapUntap"), ForgePreferences.FPref.UI_ANIMATED_CARD_TAPUNTAP);
-        if (!GuiBase.isAndroid()) {
+        if (!GuiBase.isAndroid() && !GuiBase.isIOS()) {
             final String[] item = {FModel.getPreferences().getPref(ForgePreferences.FPref.UI_ENABLE_BORDER_MASKING)};
             SelectBox<String> borderMask = Controls.newComboBox(new String[]{"Off", "Crop", "Full", "Art"}, item[0], o -> {
                 String mode = (String) o;
