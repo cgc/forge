@@ -77,7 +77,8 @@ public class Main extends IOSApplication.Delegate {
         // the app before any diagnostic output appears.  Re-enable once the app
         // launches successfully.
         config.useAudio = false;
-        final ApplicationListener app = Forge.getApp(null, new IOSClipboard(), new IOSAdapter(), assetsDir, false, false, 0, false, 0);
+        boolean isLandscape = false;
+        final ApplicationListener app = Forge.getApp(null, new IOSClipboard(), new IOSAdapter(), assetsDir, false, !isLandscape, 0, false, 0);
         // Override createInput() so that setupAccelerometer() and setupCompass()
         // are unconditional no-ops.  DefaultIOSInput guards them behind the config
         // flags, but those guards are evaluated at runtime; overriding here
