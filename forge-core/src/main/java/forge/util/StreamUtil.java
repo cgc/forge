@@ -376,6 +376,33 @@ public class StreamUtil {
         return Collections.unmodifiableList(m);
     }
 
+    /** Equivalent to {@code List.of(e1, e2, e3, e4, e5, e6)} (Java 9). */
+    @SuppressWarnings("unchecked")
+    public static <E> List<E> listOf(Object e1, Object e2, Object e3, Object e4, Object e5, Object e6) {
+        List<E> m = new ArrayList<>(6);
+        m.add((E) e1);
+        m.add((E) e2);
+        m.add((E) e3);
+        m.add((E) e4);
+        m.add((E) e5);
+        m.add((E) e6);
+        return Collections.unmodifiableList(m);
+    }
+
+    /** Equivalent to {@code List.of(e1, e2, e3, e4, e5, e6, e7)} (Java 9). */
+    @SuppressWarnings("unchecked")
+    public static <E> List<E> listOf(Object e1, Object e2, Object e3, Object e4, Object e5, Object e6, Object e7) {
+        List<E> m = new ArrayList<>(7);
+        m.add((E) e1);
+        m.add((E) e2);
+        m.add((E) e3);
+        m.add((E) e4);
+        m.add((E) e5);
+        m.add((E) e6);
+        m.add((E) e7);
+        return Collections.unmodifiableList(m);
+    }
+
     /**
      * Equivalent to {@code List.of(elements)} (Java 9, varargs overload).
      *

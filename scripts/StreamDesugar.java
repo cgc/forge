@@ -70,7 +70,7 @@ import java.util.Arrays;
  *       {@code StreamUtil.iterableForEach(iterable, consumer)}</li>
  *   <li>{@code list.sort(Comparator)} (any {@code java.*} owner) →
  *       {@code StreamUtil.listSort(list, comparator)}</li>
- *   <li>{@code List.of(...)} (0–5 elements + varargs) → {@code StreamUtil.listOf(...)}</li>
+ *   <li>{@code List.of(...)} (0–7 elements + varargs) → {@code StreamUtil.listOf(...)}</li>
  *   <li>{@code List.copyOf(Collection)} → {@code StreamUtil.listCopyOf(...)}</li>
  *   <li>{@code list.replaceAll(UnaryOperator)} (any {@code java.*} owner) →
  *       {@code StreamUtil.listReplaceAll(list, operator)}</li>
@@ -657,7 +657,7 @@ public class StreamDesugar {
                     return;
                 }
 
-                // Pattern 35: List.of(...) — Java 9 static factory (0–5 elements + varargs).
+                // Pattern 35: List.of(...) — Java 9 static factory (0–7 elements + varargs).
                 // Descriptor is passed through; StreamUtil provides matching overloads.
                 if ("of".equals(name)
                         && "java/util/List".equals(owner)
