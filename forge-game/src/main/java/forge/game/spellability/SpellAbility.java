@@ -28,7 +28,6 @@ import forge.game.cost.CostSacrifice;
 import forge.game.staticability.StaticAbilityCantBeCopied;
 import forge.util.*;
 import org.apache.commons.lang3.StringUtils;
-import forge.util.TextUtil;
 import org.apache.commons.lang3.tuple.Pair;
 
 import forge.GameCommand;
@@ -1073,7 +1072,7 @@ public abstract class SpellAbility extends CardTraitBase implements ISpellAbilit
                 }
                 sb.append(payCosts.toString());
                 sb.append(" or ").append(altOnlyMana ? alternateCost.toString() :
-                        TextUtil.uncapitalize(alternateCost.toString()));
+                        StringUtils.uncapitalize(alternateCost.toString()));
                 sb.append(equip && !altOnlyMana ? "." : "");
             } else {
                 sb.append(payCosts.toString());

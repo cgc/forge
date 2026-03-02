@@ -27,7 +27,7 @@ import forge.game.staticability.StaticAbility;
 import forge.game.zone.ZoneType;
 import forge.util.CardTranslation;
 import forge.util.Localizer;
-import forge.util.TextUtil;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.Objects;
 
@@ -78,7 +78,7 @@ public class LandAbility extends AbilityStatic {
     @Override
     public String toUnsuppressedString() {
         Localizer localizer = Localizer.getInstance();
-        StringBuilder sb = new StringBuilder(TextUtil.capitalize(localizer.getMessage("lblPlayLand")));
+        StringBuilder sb = new StringBuilder(StringUtils.capitalize(localizer.getMessage("lblPlayLand")));
 
         if (getHostCard().isModal()) {
             sb.append(" (").append(CardTranslation.getTranslatedName(getCardState().getName())).append(")");

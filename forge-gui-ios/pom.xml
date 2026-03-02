@@ -189,6 +189,25 @@
             <version>1.13.5</version>
             <classifier>natives-ios</classifier>
         </dependency>
+        <!-- commons-lang3 3.12+ rewrote StringUtils.capitalize/uncapitalize to use
+             String.codePoints(), a Java 8 method absent from MobiVM's robovm-rt.
+             Calling either method at runtime throws:
+               NoSuchMethodError: java.lang.String.codePoints()
+             String is a class PRESENT in robovm-rt, so stubs cannot patch it;
+             the bootstrap classloader always serves robovm-rt's version.  Instead,
+             scripts/patch-commons-lang3.sh downloads the upstream JAR, applies the
+             StreamDesugar bytecode transformation (which rewrites String.codePoints()
+             call sites to StreamUtil.codePoints()), and installs the result into
+             local-repo/ as commons-lang3:3.18.0-ios.  Declaring that version here
+             (depth 1) causes Maven's "nearest-wins" mediation to prefer it over the
+             transitive 3.18.0 that the forge-* modules bring in, so RoboVM
+             AOT-compiles the desugared bytecode.
+             Built by: bash scripts/patch-commons-lang3.sh -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.18.0-ios</version>
+        </dependency>
         <!-- Java 8 API stubs: MobiVM's robovm-rt lacks java.util.function.*,
              java.util.stream.*, java.util.Optional, java.util.Spliterator,
              java.nio.file.*, and java.time.*.  These stubs provide working

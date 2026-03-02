@@ -38,7 +38,6 @@ import forge.util.collect.FCollectionView;
 import io.sentry.Breadcrumb;
 import io.sentry.Sentry;
 import org.apache.commons.lang3.StringUtils;
-import forge.util.TextUtil;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.*;
@@ -3008,7 +3007,7 @@ public class AbilityUtils {
             if (key.equals("Any")) {
                 for (final byte c : MagicColor.WUBRG) {
                     final String colorLowerCase = MagicColor.toLongString(c).toLowerCase(),
-                            colorCaptCase = TextUtil.capitalize(MagicColor.toLongString(c));
+                            colorCaptCase = StringUtils.capitalize(MagicColor.toLongString(c));
                     // Color should not replace itself.
                     if (e.getValue().equalsIgnoreCase(colorLowerCase)) {
                         continue;

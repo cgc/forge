@@ -217,13 +217,9 @@ public class TextUtil {
     }
 
     public static String capitalize(final String s) {
-        if (s == null || s.isEmpty()) { return s; }
-        return s.substring(0, 1).toUpperCase() + s.substring(1);
-    }
+        return s.substring(0, 1).toUpperCase()
+                + s.substring(1);
 
-    public static String uncapitalize(final String s) {
-        if (s == null || s.isEmpty()) { return s; }
-        return s.substring(0, 1).toLowerCase() + s.substring(1);
     }
 
     //concatenate with spaces

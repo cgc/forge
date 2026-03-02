@@ -4,7 +4,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-import forge.util.TextUtil;
+import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.collect.Lists;
 
@@ -107,7 +107,7 @@ public class DebuffEffect extends SpellAbilityEffect {
                     if (!kw.endsWith(colString)) {
                         continue;
                     }
-                    final String wardString = TextUtil.capitalize(colString) + ":" + colString;
+                    final String wardString = StringUtils.capitalize(colString) + ":" + colString;
                     for (final KeywordInterface inst : gameCard.getKeywords(Keyword.PROTECTION)) {
                         // special for the Ward Auras Protection:Card.<Color>:<color>:*
                         String keyword = inst.getOriginal();
@@ -141,7 +141,7 @@ public class DebuffEffect extends SpellAbilityEffect {
                     for (byte col : MagicColor.WUBRG) {
                         final String colString = MagicColor.toLongString(col);
                         if (!kws.contains("Protection from " + colString)) {
-                            allColorsProtect.add("Protection:Card." + TextUtil.capitalize(colString) + ":" + colString + ":Aura");
+                            allColorsProtect.add("Protection:Card." + StringUtils.capitalize(colString) + ":" + colString + ":Aura");
                         }
                     }
                     addedKW.addAll(allColorsProtect);

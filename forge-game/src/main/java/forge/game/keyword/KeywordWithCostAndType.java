@@ -2,7 +2,7 @@ package forge.game.keyword;
 
 import java.util.Arrays;
 
-import forge.util.TextUtil;
+import org.apache.commons.lang3.StringUtils;
 
 import forge.game.cost.Cost;
 import forge.util.Lang;
@@ -42,7 +42,7 @@ public class KeywordWithCostAndType extends KeywordInstance<KeywordWithCostAndTy
         if (getKeyword().equals(Keyword.SPLICE)) {
             return "Splice onto " + descType;
         }
-        return TextUtil.capitalize(descType) + "cycling";
+        return StringUtils.capitalize(descType) + "cycling";
     }
 
     @Override

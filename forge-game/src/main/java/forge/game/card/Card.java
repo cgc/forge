@@ -61,7 +61,6 @@ import forge.util.collect.FCollectionView;
 import io.sentry.Breadcrumb;
 import io.sentry.Sentry;
 import org.apache.commons.lang3.StringUtils;
-import forge.util.TextUtil;
 import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
@@ -2540,7 +2539,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
                         if (cost.isOnlyManaCost()) {
                             sbLong.append(" pay ");
                         }
-                        sbLong.append(TextUtil.uncapitalize(cost.toSimpleString()));
+                        sbLong.append(StringUtils.uncapitalize(cost.toSimpleString()));
                         sbLong.append(n + 1 == costs.length ? ".\r\n\r\n" : n + 2 == costs.length && costs.length > 2
                                 ? ", or " : n + 2 == costs.length ? " or " : ", ");
                     }
@@ -2668,7 +2667,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
                     for (KeywordInterface keyw : keywords) {
                         String kw = keyw.getOriginal();
                         if (kw.equals(keyword)) {
-                            descStr.append(times == 0 ? "" : ", " + TextUtil.uncapitalize(keyword));
+                            descStr.append(times == 0 ? "" : ", " + StringUtils.uncapitalize(keyword));
                             times++;
                         }
                     }
@@ -2757,7 +2756,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
                         keyword = keyword.replace("Strike", "strike");
                     }
                     sb.append(i !=0 && sb.length() !=0 ? ", " : "");
-                    sb.append(i > 0 && sb.length() !=0 ? TextUtil.uncapitalize(keyword) : keyword);
+                    sb.append(i > 0 && sb.length() !=0 ? StringUtils.uncapitalize(keyword) : keyword);
                 }
                 if (sbLong.length() > 0) {
                     sbLong.append("\r\n");
@@ -3238,7 +3237,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
                         if (cost.isOnlyManaCost()) {
                             sbBefore.append(" pay ");
                         }
-                        sbBefore.append(TextUtil.uncapitalize(cost.toSimpleString()));
+                        sbBefore.append(StringUtils.uncapitalize(cost.toSimpleString()));
                         sbBefore.append(n + 1 == costs.length ? ".\r\n\r\n" : n + 2 == costs.length && costs.length > 2
                                 ? ", or " : n + 2 == costs.length ? " or " : ", ");
                     }
@@ -5459,7 +5458,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
         if (MagicColor.fromName(newWord) == 0) {
             throw new RuntimeException("Not a color: " + newWord);
         }
-        changedTextColors.add(timestamp, staticId, TextUtil.capitalize(originalWord), TextUtil.capitalize(newWord));
+        changedTextColors.add(timestamp, staticId, StringUtils.capitalize(originalWord), StringUtils.capitalize(newWord));
 
         updateChangedText();
     }

@@ -1,6 +1,6 @@
 package forge.util;
 
-import forge.util.TextUtil;
+import org.apache.commons.lang3.StringUtils;
 
 import forge.game.GameObject;
 import forge.game.player.Player;
@@ -32,7 +32,7 @@ public class MessageUtil {
         if (sa == null || sa.getApi() == null || sa.getHostCard() == null) {
             return String.valueOf(value);
         }
-        String choser = TextUtil.capitalize(mayBeYou(player, target));
+        String choser = StringUtils.capitalize(mayBeYou(player, target));
         switch(sa.getApi()) {
             case ChoosePlayer:
             case ChooseDirection:
@@ -59,7 +59,7 @@ public class MessageUtil {
                         ? Localizer.getInstance().getMessage("lblRandomTypeChosen", value)
                         : Localizer.getInstance().getMessage("lblPlayerPickedChosen", choser, value);
             case FlipACoin:
-                String flipper = TextUtil.capitalize(mayBeYou(player, target));
+                String flipper = StringUtils.capitalize(mayBeYou(player, target));
                 return sa.hasParam("NoCall")
                         ? Localizer.getInstance().getMessage("lblPlayerFlipComesUpValue", Lang.getInstance().getPossesive(flipper), value)
                         : Localizer.getInstance().getMessage("lblPlayerActionFlip", flipper, Lang.joinVerb(flipper, value));
@@ -78,7 +78,7 @@ public class MessageUtil {
                 if (sa.hasParam("Secretly")) {
                     return value;
                 } else {
-                    String chooser = TextUtil.capitalize(mayBeYou(player, target));
+                    String chooser = StringUtils.capitalize(mayBeYou(player, target));
                     return Localizer.getInstance().getMessage("lblPlayerVoteValue", chooser, value);
                 }
             default:

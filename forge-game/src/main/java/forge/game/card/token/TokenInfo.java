@@ -21,7 +21,6 @@ import forge.game.player.Player;
 import forge.game.spellability.SpellAbility;
 import forge.item.PaperToken;
 import org.apache.commons.lang3.StringUtils;
-import forge.util.TextUtil;
 
 import java.util.List;
 import java.util.Map;
@@ -242,19 +241,19 @@ public class TokenInfo {
             // replace color words
             for (final Map.Entry<String, String> e : colorMap.entrySet()) {
                 final String vName = e.getValue();
-                final String vCaps = TextUtil.capitalize(vName);
+                final String vCaps = StringUtils.capitalize(vName);
                 final String vLow = vName.toLowerCase();
                 if ("Any".equals(e.getKey())) {
                     for (final byte c : MagicColor.WUBRG) {
                         final String cName = MagicColor.toLongString(c);
-                        final String cNameCaps = TextUtil.capitalize(cName);
+                        final String cNameCaps = StringUtils.capitalize(cName);
                         final String cNameLow = cName.toLowerCase();
                         r = r.replaceAll(cNameCaps, vCaps);
                         r = r.replaceAll(cNameLow, vLow);
                     }
                 } else {
                     final String cName = e.getKey();
-                    final String cNameCaps = TextUtil.capitalize(cName);
+                    final String cNameCaps = StringUtils.capitalize(cName);
                     final String cNameLow = cName.toLowerCase();
                     r = r.replaceAll(cNameCaps, vCaps);
                     r = r.replaceAll(cNameLow, vLow);

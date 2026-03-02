@@ -27,7 +27,7 @@ import forge.toolbox.FEvent.FEventHandler;
 import forge.toolbox.FOptionPane;
 import forge.toolbox.FTextField;
 import forge.util.MessageUtil;
-import forge.util.TextUtil;
+import org.apache.commons.lang3.StringUtils;
 
 public class GameEntityPicker extends TabPageScreen<GameEntityPicker> {
     private final FOptionPane optionPane;
@@ -67,7 +67,7 @@ public class GameEntityPicker extends TabPageScreen<GameEntityPicker> {
         tabs.add(new PickerTab(choiceList, Forge.getLocalizer().getMessage("lblChoices"), Forge.hdbuttons ? FSkinImage.HDCHOICE : FSkinImage.DECKLIST, 1));
         for (ZoneType zone : delayedReveal.getZone()) {
             final Collection<CardView> revealList = delayedReveal.getCards().stream().filter(c -> c.getZone() == zone).collect(Collectors.toList());
-            final String revealListCaption = TextUtil.capitalize(MessageUtil.formatMessage("{player's} " + zone.getTranslatedName(), delayedReveal.getOwner(), delayedReveal.getOwner()));
+            final String revealListCaption = StringUtils.capitalize(MessageUtil.formatMessage("{player's} " + zone.getTranslatedName(), delayedReveal.getOwner(), delayedReveal.getOwner()));
             final FImage revealListImage = VPlayerPanel.iconFromZone(zone);
             tabs.add(new PickerTab(revealList, revealListCaption, revealListImage, 1));
         }

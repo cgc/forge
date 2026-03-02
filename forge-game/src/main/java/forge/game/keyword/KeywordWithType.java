@@ -2,7 +2,7 @@ package forge.game.keyword;
 
 import java.util.Arrays;
 
-import forge.util.TextUtil;
+import org.apache.commons.lang3.StringUtils;
 
 import forge.card.MagicColor;
 import forge.util.Lang;
@@ -46,7 +46,7 @@ public class KeywordWithType extends KeywordInstance<KeywordWithType> implements
         } else {
             MagicColor.Color color = MagicColor.Color.fromName(details);
             if (color != MagicColor.Color.COLORLESS) {
-                type = "Card." + TextUtil.capitalize(color.getName());
+                type = "Card." + StringUtils.capitalize(color.getName());
                 descType = color.getName();
             } else {
                 descType = type = details;

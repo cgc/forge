@@ -27,7 +27,7 @@ import forge.game.trigger.TriggerType;
 import forge.game.zone.ZoneType;
 import forge.util.*;
 import forge.util.collect.FCollection;
-import forge.util.TextUtil;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
 
@@ -121,7 +121,7 @@ public abstract class SpellAbilityEffect {
             if (condDesc != null) {
                 sb.append(condDesc).append(" ");
             }
-            sb.append(condDesc != null && condDesc.endsWith(",") ? TextUtil.uncapitalize(baseDesc) : baseDesc);
+            sb.append(condDesc != null && condDesc.endsWith(",") ? StringUtils.uncapitalize(baseDesc) : baseDesc);
             if (afterDesc != null) {
                 sb.append(" ").append(afterDesc);
             }

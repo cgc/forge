@@ -820,7 +820,7 @@ public class Cost implements Serializable {
                 cost.append(" and ");
             }
             if (bFlag) {
-                cost.append(TextUtil.uncapitalize(part.toString()));
+                cost.append(StringUtils.uncapitalize(part.toString()));
             } else {
                 cost.append(part.toString());
             }

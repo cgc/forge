@@ -22,7 +22,7 @@ import forge.game.zone.ZoneType;
 import forge.util.Lang;
 import forge.util.Localizer;
 
-import forge.util.TextUtil;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -81,8 +81,8 @@ public class DiscoverEffect extends SpellAbilityEffect {
                         found.getTranslatedName());
                 final Zone origin = found.getZone();
                 List<String> options =
-                        Arrays.asList(TextUtil.capitalize(Localizer.getInstance().getMessage("lblCast")),
-                                TextUtil.capitalize(Localizer.getInstance().getMessage("lblHandZone")));
+                        Arrays.asList(StringUtils.capitalize(Localizer.getInstance().getMessage("lblCast")),
+                                StringUtils.capitalize(Localizer.getInstance().getMessage("lblHandZone")));
                 final boolean play = p.getController().confirmAction(sa, null, prompt, options, found, params);
                 boolean cancel = false;
 

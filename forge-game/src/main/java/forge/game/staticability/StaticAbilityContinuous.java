@@ -41,6 +41,7 @@ import forge.game.spellability.SpellAbility;
 import forge.game.trigger.Trigger;
 import forge.game.zone.ZoneType;
 import forge.util.TextUtil;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -196,7 +197,7 @@ public final class StaticAbilityContinuous {
                     if (input.contains("AllColors") || input.contains("allColors")) {
                         for (byte color : MagicColor.WUBRG) {
                             final String colorWord = MagicColor.toLongString(color);
-                            String y = input.replaceAll("AllColors", TextUtil.capitalize(colorWord));
+                            String y = input.replaceAll("AllColors", StringUtils.capitalize(colorWord));
                             y = y.replaceAll("allColors", colorWord);
                             newKeywords.add(y);
                         }
@@ -219,7 +220,7 @@ public final class StaticAbilityContinuous {
                     // two variants for Red vs. red in keyword
                     if (input.contains("ColorsYouCtrl") || input.contains("colorsYouCtrl")) {
                         for (MagicColor.Color color : CardUtil.getColorsFromCards(controller.getCardsIn(ZoneType.Battlefield))) {
-                            String y = input.replaceAll("ColorsYouCtrl", TextUtil.capitalize(color.getName()));
+                            String y = input.replaceAll("ColorsYouCtrl", StringUtils.capitalize(color.getName()));
                             y = y.replaceAll("colorsYouCtrl", color.getName());
                             newKeywords.add(y);
                         }
@@ -259,7 +260,7 @@ public final class StaticAbilityContinuous {
 
                 addKeywords = addKeywords.stream().map(input -> {
                     if (hostCard.hasChosenColor()) {
-                        input = input.replaceAll("ChosenColor", TextUtil.capitalize(hostCard.getChosenColor()));
+                        input = input.replaceAll("ChosenColor", StringUtils.capitalize(hostCard.getChosenColor()));
                         input = input.replaceAll("chosenColor", hostCard.getChosenColor().toLowerCase());
                     }
                     if (hostCard.hasChosenType()) {
@@ -713,7 +714,7 @@ public final class StaticAbilityContinuous {
                         if (input.contains("CardColors") || input.contains("cardColors")) {
                             for (MagicColor.Color color : affectedCard.getColor()) {
                                 extraKeywords.add(
-                                    input.replaceAll("CardColors", TextUtil.capitalize(color.getName()))
+                                    input.replaceAll("CardColors", StringUtils.capitalize(color.getName()))
                                         .replaceAll("cardColors", color.getName())
                                     );
                             }
