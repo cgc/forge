@@ -727,7 +727,11 @@ public class Forge implements ApplicationListener {
     }
 
     public static boolean isLandscapeMode() {
-        return !isPortraitMode;
+        if (GuiBase.isAndroid()) {
+            return !isPortraitMode;
+        }
+        // For iOS and desktop, use actual screen dimensions so portrait mode works correctly
+        return screenWidth > screenHeight;
     }
 
     public static boolean isLoadingaMatch() {
@@ -988,6 +992,11 @@ public class Forge implements ApplicationListener {
 
     @Override
     public void resize(int width, int height) {
+        if (!GuiBase.isAndroid()) {
+            // For iOS and desktop, update screen dimensions on resize so orientation changes are tracked
+            screenWidth = width;
+            screenHeight = height;
+        }
         try {
             if (currentScreen != null) {
                 currentScreen.setSize(width, height);
