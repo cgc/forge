@@ -306,7 +306,6 @@ public final class ForgeConstants {
             USER_DIR,
             CACHE_DIR,
             CACHE_CARD_PICS_DIR,
-            CACHE_SKINS_DIR,
             USER_PREFS_DIR,
             GAUNTLET_DIR.userPrefLoc,
             DB_DIR,
