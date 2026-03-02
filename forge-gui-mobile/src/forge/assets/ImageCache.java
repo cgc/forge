@@ -91,7 +91,7 @@ public class ImageCache {
         //init syncQ for threadsafe use
         syncQ = Queues.synchronizedQueue(q);
         //cap
-        int cl = (GuiBase.isAndroid() || GuiBase.isIOS()) ? maxCardCapacity + (capacity / 3) : 400;
+        int cl = GuiBase.isAndroid() ? maxCardCapacity + (capacity / 3) : 400;
         cardsLoaded = new HashSet<>(cl);
     }
 

@@ -174,10 +174,12 @@ public class Forge implements ApplicationListener {
         if (OperatingSystem.isWindows())
             getDeviceAdapter().closeSplashScreen();
 
-        GuiBase.setIsAndroid(Gdx.app.getType() == Application.ApplicationType.Android);
+        GuiBase.setIsAndroid(Gdx.app.getType() == Application.ApplicationType.Android
+                || Gdx.app.getType() == Application.ApplicationType.iOS);
         GuiBase.setIsIOS(Gdx.app.getType() == Application.ApplicationType.iOS);
 
-        if (!GuiBase.isAndroid() || (androidVersion > 25 && totalDeviceRAM > 3400)) {
+        // isIOS() guard: iOS sets isAndroid()=true but androidVersion=0; iOS is modern and should allow card backgrounds
+        if (!GuiBase.isAndroid() || GuiBase.isIOS() || (androidVersion > 25 && totalDeviceRAM > 3400)) {
             allowCardBG = true;
         }
         assets = new Assets();
@@ -283,7 +285,7 @@ public class Forge implements ApplicationListener {
     }
 
     public static boolean hasKeyboard() {
-        return !GuiBase.isAndroid() && !GuiBase.isIOS();
+        return !GuiBase.isAndroid();
     }
 
     public static InputProcessor getInputProcessor() {
@@ -356,7 +358,7 @@ public class Forge implements ApplicationListener {
         }
         //pixl cursor for adventure
         setCursor(null, "0");
-        if ((!GuiBase.isAndroid() && !GuiBase.isIOS()) || !getDeviceAdapter().getGamepads().isEmpty())
+        if (!GuiBase.isAndroid() || !getDeviceAdapter().getGamepads().isEmpty())
             enableControllerListener();
         loadAdventureResources(true);
     }
@@ -375,7 +377,7 @@ public class Forge implements ApplicationListener {
         }
     }
     protected void afterDbLoaded() {
-        if ((GuiBase.isAndroid() || GuiBase.isIOS()) && autoCache)
+        if (GuiBase.isAndroid() && autoCache)
             getSplashScreen().getProgressBar().setDescription(getLocalizer().getMessage("lblFinishingStartup") + "\nDetected RAM: " + totalDeviceRAM + "MB. Cache size: " + cacheSize);
         else
             getSplashScreen().getProgressBar().setDescription(getLocalizer().getMessage("lblFinishingStartup"));
@@ -441,7 +443,7 @@ public class Forge implements ApplicationListener {
     }
 
     public static void setCursor(TextureRegion textureRegion, String name) {
-        if (GuiBase.isAndroid() || GuiBase.isIOS())
+        if (GuiBase.isAndroid())
             return;
         if (isMobileAdventureMode) {
             if (cursorA0 != null && Objects.equals(name, "0")) {
@@ -1456,7 +1458,7 @@ public class Forge implements ApplicationListener {
             mouseMovedY = screenY;
             hasGamepad = false; //prevent drawing some panels
             //todo: mouse listener for android?
-            if (GuiBase.isAndroid() || GuiBase.isIOS())
+            if (GuiBase.isAndroid())
                 return true;
             hoveredCount = 0;
             //reset

@@ -38,6 +38,10 @@ public class AssetsDownloader {
     public static void checkForUpdates(boolean exited, Runnable runnable) {
         if (exited)
             return;
+        if (GuiBase.isIOS()) { //iOS resources are bundled in the IPA; no separate update/download needed
+            run(runnable);
+            return;
+        }
         final String versionString = Forge.getDeviceAdapter().getVersionString();
         Forge.getSplashScreen().getProgressBar().setDescription("Checking for updates...");
         if (versionString.contains("GIT")) {
@@ -90,7 +94,7 @@ public class AssetsDownloader {
                     URL url = new URL(snapsURL + "build.txt");
                     snapsTimestamp = format.parse(FileUtil.readFileToString(url));
                     snapsBuildDate = snapsTimestamp.toString();
-                    if (!GuiBase.isAndroid() && !GuiBase.isIOS()) {
+                    if (!GuiBase.isAndroid()) {
                         buildDate = BuildInfo.getTimestamp().toString();
                         verifyUpdatable = BuildInfo.verifyTimestamp(snapsTimestamp);
                     } else {
