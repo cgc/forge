@@ -232,7 +232,7 @@
              SDK 26 (Android 8.0 / Oreo).  Android 8.0's ART runtime natively
              supports all Java 8 SE APIs (java.util.stream.*, java.util.function.*,
              java.time.*, etc.).  D8 compiles class files to DEX with
-             --min-sdk-version=26, which tells it that the target runtime already
+             min-sdk-version=26, which tells it that the target runtime already
              provides these APIs, so no desugaring or backport stubs are needed.
              MobiVM's robovm-rt is based on the Android 4.4-era (API 19) class
              library — the equivalent of JDK 7 — and therefore lacks all Java 8+
