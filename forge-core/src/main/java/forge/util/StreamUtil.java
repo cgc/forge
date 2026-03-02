@@ -17,6 +17,7 @@ import java.util.function.ToIntFunction;
 import java.util.function.ToLongFunction;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collector;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class StreamUtil {
@@ -595,6 +596,19 @@ public class StreamUtil {
         return (e1, e2) -> comparator.compare(e1.getValue(), e2.getValue());
     }
 
+    // ── Map.Entry static factory (Java 9, absent from Android 7 / robovm-rt) ───
+
+    /**
+     * Equivalent to {@code Map.entry(key, value)} (Java 9 static factory).
+     *
+     * <p>Returns an unmodifiable {@link Map.Entry} containing the given key and value.
+     * Neither key nor value may be null.
+     */
+    public static <K, V> Map.Entry<K, V> mapEntry(K key, V value) {
+        if (key == null || value == null) throw new NullPointerException("key and value must not be null");
+        return new AbstractMap.SimpleImmutableEntry<>(key, value);
+    }
+
     // ── Map additional helpers (Java 8 default methods absent from robovm-rt) ─
 
     /**
@@ -796,6 +810,64 @@ public class StreamUtil {
         T val = supplier.get();
         if (val == null) throw new NullPointerException("supplier.get()");
         return val;
+    }
+
+    // ── String / CharSequence helpers (Java 8 methods absent from robovm-rt) ────
+
+    /**
+     * Equivalent to {@code s.codePoints()} (Java 8 method on CharSequence/String).
+     *
+     * <p>Returns an {@link IntStream} of Unicode code points in the given character sequence.
+     * Surrogate pairs are combined into a single code point; lone surrogates are passed
+     * through as-is.
+     */
+    public static IntStream codePoints(CharSequence s) {
+        int len = s.length();
+        // Allocate worst-case (all BMP, 1 char per code point); trim with copyOf at the end.
+        // Using a plain int[] avoids boxing and is correct even with surrogate pairs because
+        // Character.codePointAt handles them and charCount advances by 2.
+        int[] buf = new int[len];
+        int count = 0;
+        for (int i = 0; i < len; ) {
+            int cp = Character.codePointAt(s, i);
+            buf[count++] = cp;
+            i += Character.charCount(cp);
+        }
+        return IntStream.of(count == len ? buf : Arrays.copyOf(buf, count));
+    }
+
+    // ── Optional helpers (Java 11 methods absent from Android 7 / robovm-rt) ──
+
+    /**
+     * Equivalent to {@code optional.isEmpty()} (Java 11 instance method).
+     *
+     * <p>Returns {@code true} if the optional does not contain a value.
+     */
+    public static boolean optionalIsEmpty(Optional<?> optional) {
+        return !optional.isPresent();
+    }
+
+    // ── Integer / Long helpers (Java 8 methods absent from Android 7 API 24) ──
+
+    /**
+     * Equivalent to {@code Integer.toUnsignedString(i)} (Java 8 static, absent from
+     * Android API 24 / robovm-rt).
+     *
+     * <p>Returns the unsigned decimal string representation of the given int value,
+     * treating the bit pattern as an unsigned 32-bit integer.
+     */
+    public static String integerToUnsignedString(int i) {
+        return Long.toString(i & 0xFFFFFFFFL);
+    }
+
+    /**
+     * Equivalent to {@code Long.compareUnsigned(x, y)} (Java 8 static, absent from
+     * Android API 24 / robovm-rt).
+     *
+     * <p>Compares two {@code long} values as unsigned 64-bit integers.
+     */
+    public static int longCompareUnsigned(long x, long y) {
+        return Long.compare(x + Long.MIN_VALUE, y + Long.MIN_VALUE);
     }
 
     /**

@@ -87,6 +87,16 @@ import java.util.Arrays;
  *       {@code StreamUtil.comparatorComparingLong(keyExtractor)}</li>
  *   <li>{@code BreakIterator.getLineInstance(Locale)} →
  *       {@code forge.ios.IosUtil.getLineBreakIterator(Locale)} — ICU data absent on iOS</li>
+ *   <li>{@code string.codePoints()} / {@code charseq.codePoints()} →
+ *       {@code StreamUtil.codePoints(charseq)} — Java 8 method absent from robovm-rt</li>
+ *   <li>{@code optional.isEmpty()} → {@code StreamUtil.optionalIsEmpty(optional)} —
+ *       Java 11 method absent from Android 7 / robovm-rt</li>
+ *   <li>{@code Map.entry(key, value)} → {@code StreamUtil.mapEntry(key, value)} —
+ *       Java 9 static factory absent from Android 7 / robovm-rt</li>
+ *   <li>{@code Integer.toUnsignedString(int)} →
+ *       {@code StreamUtil.integerToUnsignedString(int)} — absent from Android API 24</li>
+ *   <li>{@code Long.compareUnsigned(long, long)} →
+ *       {@code StreamUtil.longCompareUnsigned(long, long)} — absent from Android API 24</li>
  * </ol>
  *
  * <p>The transformation is idempotent: files that have already been transformed are
@@ -825,6 +835,66 @@ public class StreamDesugar {
                     super.visitMethodInsn(Opcodes.INVOKESTATIC, IOS_UTIL,
                             "getLineBreakIterator",
                             "(Ljava/util/Locale;)Ljava/text/BreakIterator;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 50: charseq.codePoints() — Java 8 instance method, absent from
+                // robovm-rt for both java.lang.String (INVOKEVIRTUAL) and
+                // java.lang.CharSequence (INVOKEINTERFACE).  Rewrites to
+                // StreamUtil.codePoints(charseq) which builds an IntStream from code points.
+                if ("codePoints".equals(name)
+                        && "()Ljava/util/stream/IntStream;".equals(descriptor)
+                        && owner.startsWith("java/lang/")) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "codePoints",
+                            "(Ljava/lang/CharSequence;)Ljava/util/stream/IntStream;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 51: optional.isEmpty() — Java 11 instance method, absent from
+                // Android 7 / robovm-rt.  Rewrites to StreamUtil.optionalIsEmpty(optional).
+                if ("isEmpty".equals(name)
+                        && "()Z".equals(descriptor)
+                        && "java/util/Optional".equals(owner)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "optionalIsEmpty",
+                            "(Ljava/util/Optional;)Z", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 52: Map.entry(key, value) — Java 9 static factory, absent from
+                // Android 7 / robovm-rt.  Rewrites to StreamUtil.mapEntry(key, value).
+                if ("entry".equals(name)
+                        && ("(" + OBJ + OBJ + ")Ljava/util/Map$Entry;").equals(descriptor)
+                        && "java/util/Map".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "mapEntry",
+                            "(" + OBJ + OBJ + ")Ljava/util/Map$Entry;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 53: Integer.toUnsignedString(int) — Java 8 static, absent from
+                // Android API 24 / robovm-rt.  Rewrites to StreamUtil.integerToUnsignedString(i).
+                if ("toUnsignedString".equals(name)
+                        && "(I)Ljava/lang/String;".equals(descriptor)
+                        && "java/lang/Integer".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "integerToUnsignedString",
+                            "(I)Ljava/lang/String;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 54: Long.compareUnsigned(x, y) — Java 8 static, absent from
+                // Android API 24 / robovm-rt.  Rewrites to StreamUtil.longCompareUnsigned(x, y).
+                if ("compareUnsigned".equals(name)
+                        && "(JJ)I".equals(descriptor)
+                        && "java/lang/Long".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "longCompareUnsigned",
+                            "(JJ)I", false);
                     modified = true;
                     return;
                 }
