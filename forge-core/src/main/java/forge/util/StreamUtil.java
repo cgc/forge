@@ -17,7 +17,6 @@ import java.util.function.ToIntFunction;
 import java.util.function.ToLongFunction;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collector;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class StreamUtil {
@@ -556,11 +555,17 @@ public class StreamUtil {
 
     /**
      * Equivalent to {@code Collectors.toCollection(collectionFactory)} (Java 8).
-     * Absent from robovm-rt's Collectors; delegates to the standard implementation.
+     * Absent from robovm-rt's Collectors; implemented directly to avoid infinite
+     * recursion (the desugar tool rewrites {@code Collectors.toCollection} calls —
+     * including any call inside this very class — back to this method).
      */
     public static <T, C extends Collection<T>> Collector<T, ?, C> collectorsToCollection(
             Supplier<C> collectionFactory) {
-        return Collectors.toCollection(collectionFactory);
+        return Collector.of(
+                collectionFactory,
+                (c, t) -> { c.add(t); },
+                (left, right) -> { left.addAll(right); return left; },
+                Collector.Characteristics.IDENTITY_FINISH);
     }
 
     // ── Map.Entry helpers (Java 8 static methods absent from robovm-rt) ──────
