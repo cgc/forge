@@ -1,7 +1,6 @@
 package forge.assets;
 
 import java.text.BreakIterator;
-import java.text.CharacterIterator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -34,7 +33,7 @@ public class TextRenderer {
     private boolean wrap, needClip;
     private List<Piece> pieces = new ArrayList<>();
     private List<Float> lineWidths = new ArrayList<>();
-    private BreakIterator boundary = createLineBreakIterator();
+    private BreakIterator boundary = BreakIterator.getLineInstance(new Locale(Forge.locale));
 
     public TextRenderer() {
         this(false);
@@ -629,82 +628,6 @@ public class TextRenderer {
             if (inReminderText) {
                 g.resetAlphaComposite();
             }
-        }
-    }
-
-    private static BreakIterator createLineBreakIterator() {
-        try {
-            return BreakIterator.getLineInstance(new Locale(Forge.locale));
-        } catch (RuntimeException e) {
-            return new SimpleLineBreakIterator();
-        }
-    }
-
-    private static final class SimpleLineBreakIterator extends BreakIterator {
-        private String text = "";
-        private int pos = 0;
-
-        @Override public int first() { pos = 0; return 0; }
-        @Override public int last()  { pos = text.length(); return pos; }
-        @Override public int current() { return pos; }
-
-        @Override
-        public int next(int n) {
-            if (n == 0) return pos;
-            for (int i = 0; i < Math.abs(n); i++) {
-                int r = n > 0 ? next() : previous();
-                if (r == DONE) return DONE;
-            }
-            return pos;
-        }
-
-        @Override
-        public int next() {
-            if (pos >= text.length()) return DONE;
-            while (pos < text.length()) {
-                char c = text.charAt(pos++);
-                if (c == ' ' || c == '\t' || c == '\n' || c == '\r') return pos;
-            }
-            return pos; // end of text is a valid break
-        }
-
-        @Override
-        public int previous() {
-            if (pos <= 0) return DONE;
-            pos--;
-            while (pos > 0 && text.charAt(pos - 1) != ' ' && text.charAt(pos - 1) != '\t'
-                    && text.charAt(pos - 1) != '\n' && text.charAt(pos - 1) != '\r') {
-                pos--;
-            }
-            return pos;
-        }
-
-        @Override
-        public int following(int offset) {
-            if (offset >= text.length()) return DONE;
-            pos = offset;
-            return next();
-        }
-
-        @Override
-        public CharacterIterator getText() {
-            return new java.text.StringCharacterIterator(text);
-        }
-
-        @Override
-        public void setText(CharacterIterator newText) {
-            StringBuilder sb = new StringBuilder();
-            for (char c = newText.first(); c != CharacterIterator.DONE; c = newText.next()) {
-                sb.append(c);
-            }
-            text = sb.toString();
-            pos = 0;
-        }
-
-        @Override
-        public void setText(String newText) {
-            text = newText != null ? newText : "";
-            pos = 0;
         }
     }
 }

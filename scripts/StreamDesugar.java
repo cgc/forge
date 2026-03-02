@@ -85,6 +85,8 @@ import java.util.Arrays;
  *   <li>{@code Integer.min(a, b)} → {@code Math.min(a, b)} (already in Java 7)</li>
  *   <li>{@code Comparator.comparingLong(keyExtractor)} →
  *       {@code StreamUtil.comparatorComparingLong(keyExtractor)}</li>
+ *   <li>{@code BreakIterator.getLineInstance(Locale)} →
+ *       {@code forge.ios.IosUtil.getLineBreakIterator(Locale)} — ICU data absent on iOS</li>
  * </ol>
  *
  * <p>The transformation is idempotent: files that have already been transformed are
@@ -95,6 +97,7 @@ import java.util.Arrays;
 public class StreamDesugar {
 
     private static final String STREAM_UTIL        = "forge/util/StreamUtil";
+    private static final String IOS_UTIL           = "forge/ios/IosUtil";
     private static final String STREAM_DESC        = "()Ljava/util/stream/Stream;";
     private static final String SPLITERATOR_DESC   = "()Ljava/util/Spliterator;";
     private static final String TO_PATH_DESC       = "()Ljava/nio/file/Path;";
@@ -207,8 +210,8 @@ public class StreamDesugar {
             @Override
             public void visitMethodInsn(int opcode, String owner, String name,
                                         String descriptor, boolean isInterface) {
-                // Already targeting StreamUtil – skip (idempotency guard).
-                if (STREAM_UTIL.equals(owner)) {
+                // Already targeting StreamUtil or IosUtil – skip (idempotency guard).
+                if (STREAM_UTIL.equals(owner) || IOS_UTIL.equals(owner)) {
                     super.visitMethodInsn(opcode, owner, name, descriptor, isInterface);
                     return;
                 }
@@ -807,6 +810,21 @@ public class StreamDesugar {
                         && opcode == Opcodes.INVOKESTATIC) {
                     super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
                             "collectorsToCollection", "(" + SUP + ")" + CLTR, false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 49: BreakIterator.getLineInstance(Locale) — ICU data files are not
+                // bundled with iOS apps (they live at Android-specific paths absent on iOS),
+                // so ubrk_open() always fails with U_MISSING_RESOURCE_ERROR.  Rewrites to
+                // IosUtil.getLineBreakIterator(Locale) which returns a pure-Java fallback.
+                if ("getLineInstance".equals(name)
+                        && "(Ljava/util/Locale;)Ljava/text/BreakIterator;".equals(descriptor)
+                        && "java/text/BreakIterator".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, IOS_UTIL,
+                            "getLineBreakIterator",
+                            "(Ljava/util/Locale;)Ljava/text/BreakIterator;", false);
                     modified = true;
                     return;
                 }
