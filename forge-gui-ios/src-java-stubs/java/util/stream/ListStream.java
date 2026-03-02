@@ -24,6 +24,8 @@ final class ListStream<T> implements Stream<T> {
         forEach(action);
     }
 
+    @Override public Iterator<T> iterator() { return data.iterator(); }
+
     @Override public long count() { return data.size(); }
 
     @Override

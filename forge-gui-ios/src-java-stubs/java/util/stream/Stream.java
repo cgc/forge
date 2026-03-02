@@ -11,6 +11,13 @@ public interface Stream<T> extends AutoCloseable {
 
     // ── Terminal operations ────────────────────────────────────────────────
 
+    /**
+     * Returns an iterator for the elements of this stream.
+     * Required by {@code IterableUtil.filter()}, which wraps a filtered stream as an
+     * {@link Iterable} whose {@code iterator()} method calls this.
+     */
+    Iterator<T> iterator();
+
     void forEach(Consumer<? super T> action);
 
     /**

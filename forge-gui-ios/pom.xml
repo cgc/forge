@@ -241,10 +241,10 @@
              interface is not in librobovm-rt.a → "Undefined symbols" linker
              error.
 
-             Using version 1.7 (not 1.6, 1.5, 1.4, 1.3, 1.2, 1.1, or 1.0) is essential: Maven
+             Using version 1.8 (not 1.7, 1.6, 1.5, 1.4, 1.3, 1.2, 1.1, or 1.0) is essential: Maven
              caches release artifacts permanently in ~/.m2 and will use a previously
              built stubs jar for every subsequent build, regardless of what is in
-             forge-local.  Version 1.7 has never been cached so Maven always
+             forge-local.  Version 1.8 has never been cached so Maven always
              resolves it fresh from forge-local.
 
              Version 1.6 (previously 1.5): added java.util.Objects stub for
@@ -256,11 +256,16 @@
              Version 1.7 (previously 1.6): added java.util.Comparator stub for
              compilation; the bytecode transformer now rewrites Comparator.naturalOrder/
              reverseOrder call sites (and already rewrote comparing/reversed/etc.)
-             to StreamUtil helpers at build time. -->
+             to StreamUtil helpers at build time.
+
+             Version 1.8 (previously 1.7): added Stream.iterator() to the Stream stub
+             and ListStream.  Without it, IterableUtil.filter() lambdas that call
+             stream.filter(...).iterator() throw NoSuchMethodError: Stream.iterator()
+             at runtime. -->
         <dependency>
             <groupId>forge</groupId>
             <artifactId>java-stubs</artifactId>
-            <version>1.7</version>
+            <version>1.8</version>
         </dependency>
     </dependencies>
 
