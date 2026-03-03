@@ -26,6 +26,7 @@ import com.badlogic.gdx.backends.iosrobovm.IOSFiles;
 import com.badlogic.gdx.backends.iosrobovm.IOSInput;
 
 import forge.Forge;
+import forge.gui.GuiBase;
 import forge.interfaces.IDeviceAdapter;
 
 public class Main extends IOSApplication.Delegate {
@@ -77,6 +78,13 @@ public class Main extends IOSApplication.Delegate {
         config.useAudio = true;
         boolean isLandscape = false;
         final ApplicationListener app = Forge.getApp(null, new IOSClipboard(), new IOSAdapter(), assetsDir, false, !isLandscape, 0, false, 0);
+        // The generic isUsingAppDirectory check in Forge.getApp() matches the Android
+        // package name ("forge.app") in the OBB path, but the iOS bundle is named
+        // "forge.ios.Main.app" which does not match that substring.  Override it here
+        // so that iOS always behaves as an app-directory build: profile file is not read
+        // from the read-only bundle, and the Settings UI hides the path-configuration
+        // options that only make sense on Android/desktop.
+        GuiBase.setUsingAppDirectory(true);
         // Override createInput() so that setupAccelerometer() and setupCompass()
         // are unconditional no-ops.  DefaultIOSInput guards them behind the config
         // flags, but those guards are evaluated at runtime; overriding here
