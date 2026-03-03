@@ -1,5 +1,6 @@
 package forge.ios;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -259,6 +260,18 @@ public class Main extends IOSApplication.Delegate {
         @Override
         public void requestFileAcces() {
 
+        }
+
+        @Override
+        public boolean isSupportedAudioFormat(File file) {
+            // Audio is disabled on iOS (config.useAudio = false).  The default
+            // implementation uses Set.of() which is Java 9+ and unavailable in
+            // RoboVM's Java-7-era runtime; calling it leaves LWJGL_SUPPORTED_AUDIO_TYPES
+            // null and causes a NullPointerException inside StreamUtil.stream().
+            // Return false here so that the sound-resource lookup (PLAYABLE_AUDIO
+            // FilenameFilter) never matches any file, keeping the sound system silent
+            // without crashing.
+            return false;
         }
     }
 }
