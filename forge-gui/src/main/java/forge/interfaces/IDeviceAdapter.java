@@ -32,13 +32,9 @@ public interface IDeviceAdapter {
     boolean needFileAccess();
     void requestFileAcces();
 
+    Set<String> LWJGL_SUPPORTED_AUDIO_TYPES = Set.of(".wav", ".mp3", ".ogg");
     default boolean isSupportedAudioFormat(File file) {
-        // Set.of() and .stream() are desugared at build time by StreamDesugar
-        // (Pattern 38 → StreamUtil.setOf, Pattern 1 → StreamUtil.stream).
-        // The set is created inline here rather than in a static interface field to
-        // avoid relying on the interface <clinit>, which RoboVM may not execute
-        // reliably for non-constant static fields.
         String path = file.getPath().toLowerCase();
-        return Set.of(".wav", ".mp3", ".ogg").stream().anyMatch(path::endsWith);
+        return LWJGL_SUPPORTED_AUDIO_TYPES.stream().anyMatch(path::endsWith);
     }
 }

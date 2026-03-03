@@ -12,7 +12,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Build-time bytecode transformer: desugars Java-8+ Collection / Iterable / Map / Predicate /
@@ -100,6 +104,12 @@ import java.util.Arrays;
  *   <li>INVOKEDYNAMIC backed by {@code Arrays::stream} as {@code Function<T[],Stream<T>>}
  *       (e.g. {@code stream.flatMap(Arrays::stream)}) →
  *       {@code INVOKESTATIC StreamUtil.arrayStreamFunction()}</li>
+ *   <li>{@code GETSTATIC InterfaceName.Field} where {@code Field} is a {@code Set<>}-typed
+ *       interface constant initialized by {@code Set.of(...)} in the interface's
+ *       {@code <clinit>} → inline {@code INVOKESTATIC StreamUtil.setOf(...)} with the same
+ *       arguments, avoiding reliance on interface {@code <clinit>} execution (RoboVM /
+ *       MobiVM does not reliably execute interface {@code <clinit>} for non-constant
+ *       fields).</li>
  * </ol>
  *
  * <p>The transformation is idempotent: files that have already been transformed are
@@ -191,19 +201,156 @@ public class StreamDesugar {
                 return "java/lang/Object";
             }
         };
-        Visitor visitor = new Visitor(writer);
+        // For interface class files, pre-scan <clinit> to collect Set.of(...) field
+        // initializations.  RoboVM (MobiVM) does not reliably execute interface <clinit>
+        // for non-constant fields, so those fields remain null at runtime.  The pre-scan
+        // result is used by MethodTransformer to inline the initialization at each
+        // GETSTATIC site instead of relying on <clinit> execution.
+        Map<String, FieldInitRecord> ifaceFieldInits = null;
+        if ((reader.getAccess() & Opcodes.ACC_INTERFACE) != 0) {
+            ifaceFieldInits = collectInterfaceSetOfInits(classBytes);
+        }
+        Visitor visitor = new Visitor(writer, ifaceFieldInits);
         // SKIP_FRAMES: we throw away existing frames anyway since COMPUTE_FRAMES rebuilds them.
         reader.accept(visitor, ClassReader.SKIP_FRAMES);
         return visitor.modified ? writer.toByteArray() : classBytes;
+    }
+
+    // ── Interface static-field pre-scan ──────────────────────────────────
+
+    /**
+     * Holds the data needed to inline a {@code Set.of(...)} interface field initialization.
+     * {@link #descriptor} is the {@code Set.of} method descriptor;
+     * {@link #args} are the LDC constant arguments (all {@link String} for the current usage).
+     */
+    static final class FieldInitRecord {
+        final String descriptor;
+        final Object[] args;
+        FieldInitRecord(String descriptor, Object[] args) {
+            this.descriptor = descriptor;
+            this.args       = args;
+        }
+    }
+
+    /**
+     * Counts the number of formal parameters encoded in a JVM method descriptor.
+     * Handles reference types ({@code L...;}), arrays ({@code [}), and primitives.
+     */
+    private static int countDescriptorParams(String descriptor) {
+        int count = 0;
+        int i = 1; // skip the opening '('
+        while (descriptor.charAt(i) != ')') {
+            char c = descriptor.charAt(i);
+            if (c == 'L') {
+                int semi = descriptor.indexOf(';', i);
+                if (semi < 0) break; // malformed descriptor — stop counting
+                i = semi + 1;
+                count++;
+            } else if (c == '[') {
+                i++; // skip array dimension; the element type is handled in the next iteration,
+                     // incrementing 'count' exactly once for the whole array parameter
+            } else {
+                i++; // primitive (B, C, D, F, I, J, S, Z): one slot, one parameter
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Pre-scans an interface class file and returns a map of field names to their
+     * {@link FieldInitRecord} for any fields initialized by {@code Set.of(...)} in
+     * the interface's {@code <clinit>}.
+     *
+     * <p>Only fields whose entire initialization consists of consecutive {@code LDC}
+     * instructions followed by {@code INVOKESTATIC java/util/Set.of} followed immediately
+     * by {@code PUTSTATIC} are recorded.  Any other instruction between those resets the
+     * pending state and the field is not recorded (left to normal {@code <clinit>} handling).
+     */
+    private static Map<String, FieldInitRecord> collectInterfaceSetOfInits(byte[] classBytes) {
+        final Map<String, FieldInitRecord> result = new HashMap<>();
+        final String[] ownerRef = {null};
+        new ClassReader(classBytes).accept(new ClassVisitor(Opcodes.ASM9) {
+            @Override
+            public void visit(int version, int access, String name, String signature,
+                              String superName, String[] interfaces) {
+                ownerRef[0] = name;
+            }
+            @Override
+            public MethodVisitor visitMethod(int access, String name, String descriptor,
+                                             String signature, String[] exceptions) {
+                if (!"<clinit>".equals(name)) return null;
+                return new MethodVisitor(Opcodes.ASM9) {
+                    final List<Object> pendingLdcs   = new ArrayList<>();
+                    String             pendingSetDesc = null; // non-null once Set.of is matched
+
+                    private void reset() {
+                        pendingLdcs.clear();
+                        pendingSetDesc = null;
+                    }
+
+                    @Override public void visitLdcInsn(Object cst) {
+                        // Only accumulate LDC constants while no Set.of is pending yet.
+                        if (pendingSetDesc == null) pendingLdcs.add(cst);
+                        else reset();
+                    }
+
+                    @Override public void visitMethodInsn(int opcode, String mOwner,
+                                                          String mName, String mDesc,
+                                                          boolean isIface) {
+                        if ("of".equals(mName) && "java/util/Set".equals(mOwner)
+                                && opcode == Opcodes.INVOKESTATIC
+                                && mDesc.endsWith("Ljava/util/Set;")
+                                && countDescriptorParams(mDesc) == pendingLdcs.size()) {
+                            pendingSetDesc = mDesc;
+                        } else {
+                            reset();
+                        }
+                    }
+
+                    @Override public void visitFieldInsn(int opcode, String fOwner,
+                                                         String fName, String fDesc) {
+                        if (opcode == Opcodes.PUTSTATIC && ownerRef[0].equals(fOwner)
+                                && pendingSetDesc != null) {
+                            result.put(fName, new FieldInitRecord(pendingSetDesc,
+                                    pendingLdcs.toArray()));
+                        }
+                        reset();
+                    }
+
+                    // Any instruction that is not LDC, the matched INVOKESTATIC, or
+                    // PUTSTATIC invalidates the pending sequence.
+                    @Override public void visitInsn(int opcode)             { reset(); }
+                    @Override public void visitVarInsn(int op, int var)     { reset(); }
+                    @Override public void visitIntInsn(int op, int operand) { reset(); }
+                    @Override public void visitTypeInsn(int op, String type){ reset(); }
+                    @Override public void visitIincInsn(int var, int inc)   { reset(); }
+                    @Override public void visitInvokeDynamicInsn(String n,
+                            String d, Handle bsm, Object... args)           { reset(); }
+                };
+            }
+        }, ClassReader.SKIP_FRAMES);
+        return result;
     }
 
     // ── Class visitor ─────────────────────────────────────────────────────
 
     static final class Visitor extends ClassVisitor {
         boolean modified = false;
+        /** Non-null only when processing an interface; maps field name → init record. */
+        final Map<String, FieldInitRecord> ifaceFieldInits;
+        String className;
 
-        Visitor(ClassWriter cw) {
+        Visitor(ClassWriter cw, Map<String, FieldInitRecord> ifaceFieldInits) {
             super(Opcodes.ASM9, cw);
+            this.ifaceFieldInits = ifaceFieldInits;
+        }
+
+        @Override
+        public void visit(int version, int access, String name, String signature,
+                          String superName, String[] interfaces) {
+            this.className = name;
+            super.visit(version, access, name, signature, superName, interfaces);
         }
 
         @Override
@@ -218,6 +365,40 @@ public class StreamDesugar {
         final class MethodTransformer extends MethodVisitor {
             MethodTransformer(MethodVisitor mv) {
                 super(Opcodes.ASM9, mv);
+            }
+
+            /**
+             * New rule: GETSTATIC of an interface static field that is initialized by
+             * {@code Set.of(...)} in the interface's {@code <clinit>}.
+             *
+             * <p>RoboVM (MobiVM) does not reliably execute interface {@code <clinit>} for
+             * non-constant static fields; such fields remain {@code null} at runtime, causing
+             * a {@link NullPointerException} when the field is subsequently streamed.
+             *
+             * <p>When the pre-scan has identified that the current class is an interface and
+             * that {@code owner.fieldName} was initialized by {@code Set.of(args...)} in
+             * {@code <clinit>}, we replace the {@code GETSTATIC} with an inline
+             * {@code INVOKESTATIC StreamUtil.setOf(args...)} so the value is computed
+             * directly at the call site, with no dependence on {@code <clinit>} execution.
+             */
+            @Override
+            public void visitFieldInsn(int opcode, String owner, String name,
+                                       String descriptor) {
+                if (opcode == Opcodes.GETSTATIC
+                        && ifaceFieldInits != null
+                        && owner.equals(className)) {
+                    FieldInitRecord rec = ifaceFieldInits.get(name);
+                    if (rec != null) {
+                        for (Object arg : rec.args) {
+                            super.visitLdcInsn(arg);
+                        }
+                        super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "setOf",
+                                rec.descriptor, false);
+                        modified = true;
+                        return;
+                    }
+                }
+                super.visitFieldInsn(opcode, owner, name, descriptor);
             }
 
             @Override
