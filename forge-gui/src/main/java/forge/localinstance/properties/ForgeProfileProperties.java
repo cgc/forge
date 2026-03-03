@@ -50,24 +50,41 @@ public class ForgeProfileProperties {
     private static final String CARD_PICS_SUB_DIRS_KEY = "cardPicsSubDirs";
     private static final String DECKS_DIR_KEY      = "decksDir";
     private static final String DECKS_CONSTRUCTED_DIR_KEY = "decksConstructedDir";
+    private static final String PROFILE_FILENAME   = "forge.profile.properties";
 
 
     private ForgeProfileProperties() {
         //prevent initializing static class
     }
 
+    /**
+     * Returns the path of the forge profile properties file.
+     * On iOS the app bundle is read-only, so the profile is stored in the writable
+     * user directory instead of the ASSETS_DIR bundle path used on other platforms.
+     *
+     * @param defaultUserDir the default user directory (from {@link #getDefaultDirs()})
+     * @param isUsingAppDirectory true when running from an iOS .app bundle
+     */
+    private static String getProfileFilePath(String defaultUserDir, boolean isUsingAppDirectory) {
+        return isUsingAppDirectory
+                ? defaultUserDir + PROFILE_FILENAME
+                : ForgeConstants.PROFILE_FILE;
+    }
+
     public static void load(boolean isUsingAppDirectory) {
         final Properties props = new Properties();
-        final File propFile = new File(ForgeConstants.PROFILE_FILE);
+        // Compute defaults first so we can derive the writable profile file path for iOS.
+        // On iOS the app bundle (ASSETS_DIR / PROFILE_FILE) is read-only; store and read
+        // the profile from the writable user directory instead.
+        final Pair<String, String> defaults = getDefaultDirs();
+        final File propFile = new File(getProfileFilePath(defaults.getLeft(), isUsingAppDirectory));
         try {
-            if (propFile.canRead() && !isUsingAppDirectory) {
+            if (propFile.canRead()) {
                 props.load(Files.newInputStream(propFile.toPath()));
             }
         } catch (final IOException e) {
             System.err.println("error while reading from profile properties file");
         }
-
-        final Pair<String, String> defaults = getDefaultDirs();
         userDir     = getDir(props, USER_DIR_KEY,      defaults.getLeft());
         cacheDir    = getDir(props, CACHE_DIR_KEY,     defaults.getRight());
         cardPicsDir = getDir(props, CARD_PICS_DIR_KEY, cacheDir + "pics" + File.separator + "cards" + File.separator);
@@ -247,11 +264,13 @@ public class ForgeProfileProperties {
             sb.append("\n");
         }
         if (sb.length() > 0) {
-            FileUtil.writeFile(ForgeConstants.PROFILE_FILE, sb.toString());
+            // On iOS (isUsingAppDirectory) the bundle is read-only; write to the
+            // writable user directory so that settings actually persist.
+            FileUtil.writeFile(getProfileFilePath(userDir, GuiBase.isUsingAppDirectory()), sb.toString());
         }
         else { //delete file if empty
             try {
-                final File file = new File(ForgeConstants.PROFILE_FILE);
+                final File file = new File(getProfileFilePath(userDir, GuiBase.isUsingAppDirectory()));
                 if (file.exists()) {
                     file.delete();
                 }

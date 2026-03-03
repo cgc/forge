@@ -133,8 +133,9 @@ public class Forge implements ApplicationListener {
             if (GuiBase.getInterface() == null) {
                 clipboard = clipboard0;
                 deviceAdapter = deviceAdapter0;
-                //obb directory on android uses the package name as entrypoint
-                GuiBase.setUsingAppDirectory(assetDir0.contains("forge.app"));
+                //obb directory on android uses the package name as entrypoint;
+                //on iOS the bundle path ends with ".app/" regardless of app name
+                GuiBase.setUsingAppDirectory(assetDir0.contains("forge.app") || assetDir0.endsWith(".app/"));
                 GuiBase.setInterface(new GuiMobile(assetDir0));
                 GuiBase.enablePropertyConfig(propertyConfig);
                 isPortraitMode = androidOrientation;

@@ -70,13 +70,11 @@ public class Main extends IOSApplication.Delegate {
         final IOSApplicationConfiguration config = new IOSApplicationConfiguration();
         config.useAccelerometer = false;
         config.useCompass = false;
-        // Disable audio until OAL/OpenAL is confirmed working on the target device.
-        // OALSimpleAudio.sharedInstance() can return null on some configurations;
-        // with audio enabled that logs an error but otherwise continues.  If the
-        // underlying OpenAL context creation fails it can throw, silently killing
-        // the app before any diagnostic output appears.  Re-enable once the app
-        // launches successfully.
-        config.useAudio = false;
+        // Audio is enabled; OpenAL, AudioToolbox, and AVFoundation are all listed as
+        // frameworks in robovm.xml.  AudioClip and AudioMusic null-check the result
+        // of Gdx.audio.newSound/newMusic, so a missing sound file or transient OpenAL
+        // init failure is handled gracefully without crashing the app.
+        config.useAudio = true;
         boolean isLandscape = false;
         final ApplicationListener app = Forge.getApp(null, new IOSClipboard(), new IOSAdapter(), assetsDir, false, !isLandscape, 0, false, 0);
         // Override createInput() so that setupAccelerometer() and setupCompass()
