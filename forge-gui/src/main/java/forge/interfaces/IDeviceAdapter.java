@@ -1,5 +1,7 @@
 package forge.interfaces;
 
+import forge.util.StreamUtil;
+
 import org.apache.commons.lang3.tuple.Pair;
 import org.jupnp.UpnpServiceConfiguration;
 
@@ -32,9 +34,9 @@ public interface IDeviceAdapter {
     boolean needFileAccess();
     void requestFileAcces();
 
-    Set<String> LWJGL_SUPPORTED_AUDIO_TYPES = Set.of(".wav", ".mp3", ".ogg");
+    Set<String> LWJGL_SUPPORTED_AUDIO_TYPES = StreamUtil.setOf(".wav", ".mp3", ".ogg");
     default boolean isSupportedAudioFormat(File file) {
         String path = file.getPath().toLowerCase();
-        return LWJGL_SUPPORTED_AUDIO_TYPES.stream().anyMatch(path::endsWith);
+        return StreamUtil.stream(LWJGL_SUPPORTED_AUDIO_TYPES).anyMatch(path::endsWith);
     }
 }
