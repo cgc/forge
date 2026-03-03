@@ -63,25 +63,35 @@
 # (e.g. commons-lang3's StopWatch) reference java.time.* directly and cannot be
 # changed without forking.
 #
-# The remaining 12 files (java.util.Comparator, java.util.Objects, java.util.stream.*,
-# and java.nio.file: Path, Paths, Files) cannot be downloaded from OpenJDK and must
-# remain as custom stubs in forge-gui-ios/src-java-stubs/.  The per-file reasons are:
+# The remaining 13 files (java.util.Comparator, java.util.Objects,
+# java.util.Spliterators, java.util.stream.*, and java.nio.file: Path, Paths,
+# Files) cannot be downloaded from OpenJDK and must remain as custom stubs in
+# forge-gui-ios/src-java-stubs/.  The per-file reasons are:
 #
 # java.util
-#   Comparator.java – The real JDK 17 Comparator.java uses lambda bodies in its default
-#                     and static methods.  Lambda bodies in interface default/static methods
-#                     in an app-classpath jar produce $$Lambda$N synthetic classes with
-#                     unresolvable [lookup] symbols → RoboVM linker error (same issue as
-#                     Stream.java).  Our stub re-implements all public methods using
-#                     anonymous inner classes instead of lambdas and adds all Java 8
-#                     static (naturalOrder, reverseOrder, comparing, comparingInt, …) and
-#                     default (reversed, thenComparing, …) methods absent from robovm-rt.
-#   Objects.java    – The real JDK 17 Objects.java imports jdk.internal.util.Preconditions
-#                     and jdk.internal.vm.annotation.ForceInline — both absent from the
-#                     compilation classpath.  Our stub re-implements all public methods
-#                     directly and adds the Java 8 (isNull/nonNull) and Java 9
-#                     (requireNonNullElse, checkIndex, …) additions that are absent from
-#                     robovm-rt's Android 4.4-era partial implementation.
+#   Comparator.java  – The real JDK 17 Comparator.java uses lambda bodies in its default
+#                      and static methods.  Lambda bodies in interface default/static methods
+#                      in an app-classpath jar produce $$Lambda$N synthetic classes with
+#                      unresolvable [lookup] symbols → RoboVM linker error (same issue as
+#                      Stream.java).  Our stub re-implements all public methods using
+#                      anonymous inner classes instead of lambdas and adds all Java 8
+#                      static (naturalOrder, reverseOrder, comparing, comparingInt, …) and
+#                      default (reversed, thenComparing, …) methods absent from robovm-rt.
+#   Objects.java     – The real JDK 17 Objects.java imports jdk.internal.util.Preconditions
+#                      and jdk.internal.vm.annotation.ForceInline — both absent from the
+#                      compilation classpath.  Our stub re-implements all public methods
+#                      directly and adds the Java 8 (isNull/nonNull) and Java 9
+#                      (requireNonNullElse, checkIndex, …) additions that are absent from
+#                      robovm-rt's Android 4.4-era partial implementation.
+#   Spliterators.java – The real JDK 17 Spliterators.java contains many concrete inner
+#                      implementation classes (ArraySpliterator, IteratorSpliterator,
+#                      RangeIntSpliterator, …) and references internal stream pipeline
+#                      types absent from robovm-rt.  Our stub supplies only the subset
+#                      needed by forge on iOS: spliteratorUnknownSize(Iterator, int) used
+#                      by org.apache.commons.lang3.stream.Streams.of(Iterator) (called from
+#                      StringUtils.join), spliterator(Collection, int) for robustness, and
+#                      the AbstractSpliterator<T> inner class that
+#                      Streams.EnumerationSpliterator extends.
 #
 # java.nio.file
 #   Path.java       – The real Path is an interface importing
