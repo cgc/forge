@@ -1039,7 +1039,7 @@ public class Forge implements ApplicationListener {
         Dscreens.clear();
         graphics.dispose();
         SoundSystem.instance.dispose();
-        MapStage.getInstance().disposeWorld();
+        MapStage.disposeIfExists();
         try {
             ExceptionHandler.unregisterErrorHandling();
             lastPreview.dispose();

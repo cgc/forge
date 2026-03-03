@@ -125,6 +125,10 @@ public class MapStage extends GameStage {
         return instance == null ? instance = new MapStage() : instance;
     }
 
+    public static void disposeIfExists() {
+        if (instance != null) instance.disposeWorld();
+    }
+
     public void disposeWorld() {
         if (gdxWorld != null) {
             try {
