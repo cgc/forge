@@ -66,7 +66,7 @@ import java.util.Arrays;
  *   <li>{@code Map.replace(key, oldVal, newVal)} → {@code StreamUtil.mapReplace(...)}</li>
  *   <li>{@code Map.Entry.comparingByValue()} / {@code .comparingByValue(Comparator)} →
  *       {@code StreamUtil.mapEntryComparingByValue(...)}</li>
- *   <li>{@code iterable.forEach(Consumer)} (any {@code java.*} owner) →
+ *   <li>{@code iterable.forEach(Consumer)} (any {@code java.*} or {@code forge.*} owner) →
  *       {@code StreamUtil.iterableForEach(iterable, consumer)}</li>
  *   <li>{@code list.sort(Comparator)} (any {@code java.*} owner) →
  *       {@code StreamUtil.listSort(list, comparator)}</li>
@@ -639,9 +639,13 @@ public class StreamDesugar {
                 // IMPORTANT: java.util.stream.Stream also has forEach(Consumer) but Stream is NOT
                 // an Iterable.  Exclude java/util/stream/* owners to avoid a ClassCastException
                 // when stream.forEach(...) would be passed to iterableForEach(Iterable, Consumer).
+                // Also covers forge/* owners (e.g. forge.game.card.CardCollection) because javac
+                // can emit the concrete type as the INVOKEINTERFACE owner even though the method
+                // is a Java-8 default method inherited from java.lang.Iterable, which is absent
+                // from MobiVM's robovm-rt.
                 if ("forEach".equals(name)
                         && ("(" + CONS + ")V").equals(descriptor)
-                        && owner.startsWith("java/")
+                        && (owner.startsWith("java/") || owner.startsWith("forge/"))
                         && !owner.startsWith("java/util/stream/")) {
                     super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "iterableForEach",
                             "(" + ITER + CONS + ")V", false);

@@ -44,7 +44,7 @@ public class StaticEffects {
     public final void clearStaticEffects(final Set<Card> affectedCards, Map<StaticAbilityLayer, Set<Card>> affectedPerLayer) {
         // remove all static effects
         for (final StaticEffect se : staticEffects.values()) {
-            affectedCards.addAll(se.remove(affectedPerLayer));
+            se.remove(affectedPerLayer).forEach(affectedCards::add);
         }
         this.staticEffects.clear();
         updateCaches(affectedPerLayer);
@@ -99,8 +99,6 @@ public class StaticEffects {
         if (affectedPerLayer.containsKey(StaticAbilityLayer.ABILITIES)) {
             affectedKeywordsBefore.addAll(affectedPerLayer.get(StaticAbilityLayer.ABILITIES));
         }
-        for (final Card c : affectedKeywordsBefore) {
-            c.updateKeywordsCache();
-        }
+        affectedKeywordsBefore.forEach(Card::updateKeywordsCache);
     }
 }
