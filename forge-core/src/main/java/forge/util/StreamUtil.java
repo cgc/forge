@@ -614,6 +614,54 @@ public class StreamUtil {
                 Collector.Characteristics.IDENTITY_FINISH);
     }
 
+    /**
+     * Equivalent to {@code Collectors.groupingBy(classifier, mapFactory, downstream)} (Java 8).
+     * Absent from robovm-rt's Collectors; implemented directly to avoid infinite
+     * recursion (the desugar tool rewrites {@code Collectors.groupingBy} calls —
+     * including any call inside this very class — back to this method).
+     *
+     * <p>Uses a {@link LinkedHashMap} as the intermediate accumulator so that entries are
+     * transferred to the result map in encounter order.  When {@code mapFactory} produces an
+     * ordered map (e.g. {@code LinkedHashMap::new}), the result preserves encounter order;
+     * when it produces an unordered map (e.g. {@code HashMap::new}), ordering is irrelevant.
+     */
+    @SuppressWarnings("unchecked")
+    public static <T, K, D, A, M extends Map<K, D>> Collector<T, ?, M> collectorsGroupingBy(
+            Function<? super T, ? extends K> classifier,
+            Supplier<M> mapFactory,
+            Collector<? super T, A, D> downstream) {
+        Collector<T, A, D> ds = (Collector<T, A, D>) downstream;
+        Supplier<A> dsSupplier = ds.supplier();
+        BiConsumer<A, T> dsAccumulator = ds.accumulator();
+        BinaryOperator<A> dsCombiner = ds.combiner();
+        Function<A, D> dsFinisher = ds.finisher();
+        return (Collector<T, ?, M>) Collector.of(
+                () -> new LinkedHashMap<K, A>(),
+                (LinkedHashMap<K, A> acc, T t) -> {
+                    K key = classifier.apply(t);
+                    A a = acc.get(key);
+                    if (a == null) {
+                        a = dsSupplier.get();
+                        acc.put(key, a);
+                    }
+                    dsAccumulator.accept(a, t);
+                },
+                (LinkedHashMap<K, A> acc1, LinkedHashMap<K, A> acc2) -> {
+                    for (Map.Entry<K, A> e : acc2.entrySet()) {
+                        A old = acc1.get(e.getKey());
+                        acc1.put(e.getKey(), old == null ? e.getValue() : dsCombiner.apply(old, e.getValue()));
+                    }
+                    return acc1;
+                },
+                (LinkedHashMap<K, A> acc) -> {
+                    M result = mapFactory.get();
+                    for (Map.Entry<K, A> e : acc.entrySet()) {
+                        result.put(e.getKey(), dsFinisher.apply(e.getValue()));
+                    }
+                    return result;
+                });
+    }
+
     // ── Map.Entry helpers (Java 8 static methods absent from robovm-rt) ──────
 
     /**

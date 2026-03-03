@@ -97,6 +97,8 @@ import java.util.Arrays;
  *       {@code StreamUtil.integerToUnsignedString(int)} — absent from Android API 24</li>
  *   <li>{@code Long.compareUnsigned(long, long)} →
  *       {@code StreamUtil.longCompareUnsigned(long, long)} — absent from Android API 24</li>
+ *   <li>{@code Collectors.groupingBy(classifier, mapFactory, downstream)} — 3-arg overload →
+ *       {@code StreamUtil.collectorsGroupingBy(...)} — absent from robovm-rt's Collectors stub</li>
  *   <li>INVOKEDYNAMIC backed by {@code Arrays::stream} as {@code Function<T[],Stream<T>>}
  *       (e.g. {@code stream.flatMap(Arrays::stream)}) →
  *       {@code INVOKESTATIC StreamUtil.arrayStreamFunction()}</li>
@@ -902,6 +904,19 @@ public class StreamDesugar {
                         && opcode == Opcodes.INVOKESTATIC) {
                     super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "longCompareUnsigned",
                             "(JJ)I", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 55: Collectors.groupingBy(classifier, mapFactory, downstream) — the
+                // 3-arg overload is absent from robovm-rt's Collectors stub.
+                // Rewrites to StreamUtil.collectorsGroupingBy(classifier, mapFactory, downstream).
+                if ("groupingBy".equals(name)
+                        && ("(" + FN + SUP + CLTR + ")" + CLTR).equals(descriptor)
+                        && "java/util/stream/Collectors".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "collectorsGroupingBy", "(" + FN + SUP + CLTR + ")" + CLTR, false);
                     modified = true;
                     return;
                 }
