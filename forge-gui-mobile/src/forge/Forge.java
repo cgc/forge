@@ -179,6 +179,18 @@ public class Forge implements ApplicationListener {
                 || Gdx.app.getType() == Application.ApplicationType.iOS);
         GuiBase.setIsIOS(Gdx.app.getType() == Application.ApplicationType.iOS);
 
+        // Log GL info on iOS so we can distinguish simulator (software renderer) from
+        // a real device (Metal-backed GL) and confirm the driver is what we expect.
+        if (GuiBase.isIOS()) {
+            String glVendor   = Gdx.gl.glGetString(GL20.GL_VENDOR);
+            String glRenderer = Gdx.gl.glGetString(GL20.GL_RENDERER);
+            String glVersion  = Gdx.gl.glGetString(GL20.GL_VERSION);
+            System.err.println("[Forge] GL_VENDOR="   + glVendor);
+            System.err.println("[Forge] GL_RENDERER=" + glRenderer);
+            System.err.println("[Forge] GL_VERSION="  + glVersion);
+            System.err.println("[Forge] screen="      + Gdx.graphics.getWidth() + "x" + Gdx.graphics.getHeight());
+        }
+
         // isIOS() guard: iOS sets isAndroid()=true but androidVersion=0; iOS is modern and should allow card backgrounds
         if (!GuiBase.isAndroid() || GuiBase.isIOS() || (androidVersion > 25 && totalDeviceRAM > 3400)) {
             allowCardBG = true;
