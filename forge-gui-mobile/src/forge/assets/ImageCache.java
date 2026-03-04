@@ -357,11 +357,11 @@ public class ImageCache {
                 String cardTextureStr = cardTexture.toString();
                 boolean isFullBorder = cardTextureStr.contains(".fullborder.") || cardTextureStr.contains("tokens");
                 try {
-                    updateImageRecord(cardTextureStr, isCloserToWhite(getpixelColor(cardTexture)), radius, isFullBorder);
+                    updateImageRecord(cardTextureStr, isCloserToWhite(getpixelColor(fileName)), radius, isFullBorder);
                 } catch (Exception e) {
-                    // getpixelColor() can fail if the texture's CPU-side pixmap was already
-                    // consumed (e.g. with MipMap filtering on some OpenGL ES drivers).  Use
-                    // a default dark border so the texture is still returned and rendered.
+                    // getpixelColor() can fail if the file can't be re-read (e.g. on some
+                    // iOS sandboxed paths).  Use a default dark border so the texture is
+                    // still returned and rendered.
                     System.err.println("[ImageCache] getpixelColor failed for " + fileName + ": " + e.getMessage());
                     updateImageRecord(cardTextureStr, Pair.of(Color.valueOf("#171717").toString(), false), radius, isFullBorder);
                 }
@@ -532,6 +532,39 @@ public class ImageCache {
         return borderColor(t);
     }
 
+    /**
+     * Samples the border pixel of a card texture by loading an independent Pixmap
+     * directly from the file, instead of calling {@code consumePixmap()} on the
+     * texture's own {@code TextureData}.
+     *
+     * <p>On some iOS/Metal GL-emulation layers the TextureData pixmap shares backing
+     * memory with the live GPU texture; calling {@code consumePixmap()} and then
+     * {@code pixmap.dispose()} on that shared buffer corrupts the uploaded texture,
+     * causing cards to render as solid black.  Creating a completely separate Pixmap
+     * from the original file avoids this entirely (the same approach used by
+     * Shattered Pixel Dungeon's {@code SmartTexture}).
+     */
+    public String getpixelColor(String filePath) {
+        Pixmap pixmap = new Pixmap(Gdx.files.absolute(filePath));
+        try {
+            boolean isFullBorder = filePath.contains(".fullborder.");
+            int px = 1, py = 1;
+            if (isFullBorder) {
+                float rscale = 0.96f;
+                int rw = Math.round(pixmap.getWidth() * rscale);
+                int rh = Math.round(pixmap.getHeight() * rscale);
+                px = Math.round((pixmap.getWidth() - rw) / 2f) + 1;
+                py = Math.round((pixmap.getHeight() - rh) / 2f) - 2 + 1;
+            }
+            return new Color(pixmap.getPixel(px, py)).toString();
+        } finally {
+            pixmap.dispose();
+        }
+    }
+
+    /** @deprecated Use {@link #getpixelColor(String)} with the file path to avoid
+     *  touching the texture's internal TextureData. */
+    @Deprecated
     public String getpixelColor(Texture i) {
         if (!i.getTextureData().isPrepared()) {
             i.getTextureData().prepare(); //prepare texture

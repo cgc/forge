@@ -30,6 +30,7 @@ import forge.gui.GuiBase;
 import forge.gui.error.BugReporter;
 import forge.interfaces.IDeviceAdapter;
 import forge.localinstance.properties.ForgeConstants;
+import com.badlogic.gdx.scenes.scene2d.utils.ScissorStack;
 import forge.localinstance.properties.ForgePreferences;
 import forge.localinstance.properties.ForgePreferences.FPref;
 import forge.model.FModel;
@@ -928,6 +929,28 @@ public class Forge implements ApplicationListener {
             ImageCache.getInstance().allowSingleLoad();
             ForgeAnimation.advanceAll();
 
+            // Reset scissor state at the start of every frame.
+            // SPD (and GL best-practice) always disables GL_SCISSOR_TEST before glClear so
+            // that the clear covers the full framebuffer.  Without this, a scissor
+            // rectangle leaked from a previous frame (e.g. an exception thrown between
+            // startClip / endClip) would confine both the clear AND subsequent batch.draw()
+            // calls to that stale rectangle — making cards appear as black squares while
+            // the rest of the UI still renders correctly inside the clipped region.
+            // ScissorStack.getScissors() is absent in this LibGDX build, so drain the stack
+            // via popScissors() — it calls glDisable(SCISSOR_TEST) automatically when empty.
+            int staleScissors = 0;
+            try {
+                // pop() on an empty LibGDX Array throws IllegalStateException; that's our
+                // natural termination condition.  Cap at 50 to guard against any future
+                // change in behaviour (nesting depth is never legitimately > a handful).
+                while (staleScissors < 50) {
+                    ScissorStack.popScissors();
+                    staleScissors++;
+                }
+            } catch (IllegalStateException ignored) {} // stack exhausted — expected exit
+            if (staleScissors > 0)
+                System.err.println("[Forge] render: cleared " + staleScissors + " stale scissor(s) from previous frame");
+            Gdx.gl.glDisable(GL20.GL_SCISSOR_TEST); // ensure disabled even if stack was already empty
             Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT); // Clear the screen.
             //set delta for rotation
             deltaTime += Gdx.graphics.getDeltaTime();

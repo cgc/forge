@@ -24,6 +24,7 @@ import com.badlogic.gdx.backends.iosrobovm.IOSApplication;
 import com.badlogic.gdx.backends.iosrobovm.IOSApplicationConfiguration;
 import com.badlogic.gdx.backends.iosrobovm.IOSFiles;
 import com.badlogic.gdx.backends.iosrobovm.IOSInput;
+import org.robovm.apple.glkit.GLKViewDrawableDepthFormat;
 
 import forge.Forge;
 import forge.gui.GuiBase;
@@ -71,6 +72,13 @@ public class Main extends IOSApplication.Delegate {
         final IOSApplicationConfiguration config = new IOSApplicationConfiguration();
         config.useAccelerometer = false;
         config.useCompass = false;
+        // Disable the depth buffer: Forge is a pure-2D app and never uses depth
+        // testing, so allocating a 16-bit depth renderbuffer (the GLKit default)
+        // wastes VRAM and — on some iOS/Metal driver combinations — can cause the
+        // framebuffer to be cleared to opaque black on each render pass instead of
+        // transparent.  Shattered Pixel Dungeon (another libGDX/iOS title) sets
+        // this to None for the same reason.
+        config.depthFormat = GLKViewDrawableDepthFormat.None;
         // Audio is enabled; OpenAL, AudioToolbox, and AVFoundation are all listed as
         // frameworks in robovm.xml.  AudioClip and AudioMusic null-check the result
         // of Gdx.audio.newSound/newMusic, so a missing sound file or transient OpenAL
