@@ -1,5 +1,6 @@
 package forge.ios;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -37,6 +38,20 @@ public class Main extends IOSApplication.Delegate {
         Foundation.log("%@", new NSString("[Forge] " + msg));
     }
 
+    /** Logs the top-level contents of {@code path} at DEBUG level via nslog. */
+    private static void logDir(String label, String path) {
+        File dir = new File(path);
+        nslog(label + " exists=" + dir.exists() + " isDir=" + dir.isDirectory());
+        if (dir.isDirectory()) {
+            String[] entries = dir.list();
+            if (entries == null) {
+                nslog(label + " list()=null (permission denied?)");
+            } else {
+                nslog(label + " entries(" + entries.length + ")=" + java.util.Arrays.toString(entries));
+            }
+        }
+    }
+
     @Override
     public boolean didFinishLaunching(UIApplication application, UIApplicationLaunchOptions launchOptions) {
         // Wrap the entire launch sequence so that any Java exception is printed to
@@ -69,6 +84,24 @@ public class Main extends IOSApplication.Delegate {
         nslog("createApplication: assetsDir=" + assetsDir);
         nslog("createApplication: HOME=" + System.getenv("HOME"));
 
+        // ── Directory diagnostics ────────────────────────────────────────────────
+        // Log the bundle layout so we can confirm that card-image directories are
+        // present in the build.  These messages appear in Console.app and Xcode's
+        // device log even on release builds with no debugger attached.
+        logDir("bundle", assetsDir);
+        logDir("bundle/res", assetsDir + "res");
+        logDir("bundle/res/pics", assetsDir + "res/pics");
+        logDir("bundle/res/pics/cards", assetsDir + "res/pics/cards");
+
+        // Also log the writable data-container paths where the user's downloaded
+        // card images would live after an in-app download.
+        String home = System.getenv("HOME");
+        if (home != null) {
+            logDir("HOME/Documents", home + "/Documents");
+            logDir("HOME/Documents/pics", home + "/Documents/pics");
+            logDir("HOME/Documents/pics/cards", home + "/Documents/pics/cards");
+        }
+
         final IOSApplicationConfiguration config = new IOSApplicationConfiguration();
         config.useAccelerometer = false;
         config.useCompass = false;
@@ -85,7 +118,9 @@ public class Main extends IOSApplication.Delegate {
         // init failure is handled gracefully without crashing the app.
         config.useAudio = true;
         boolean isLandscape = false;
-        final ApplicationListener app = Forge.getApp(null, new IOSClipboard(), new IOSAdapter(), assetsDir, false, !isLandscape, 0, false, 0);
+        nslog("createApplication: calling Forge.getApp()");
+        final ApplicationListener app = Forge.getApp(null, new IOSClipboard(), new IOSAdapter(assetsDir), assetsDir, false, !isLandscape, 0, false, 0);
+        nslog("createApplication: Forge.getApp() returned " + (app == null ? "null" : app.getClass().getName()));
         // The generic isUsingAppDirectory check in Forge.getApp() matches the Android
         // package name ("forge.app") in the OBB path, but the iOS bundle is named
         // "forge.ios.Main.app" which does not match that substring.  Override it here
@@ -108,6 +143,7 @@ public class Main extends IOSApplication.Delegate {
                 };
             }
         };
+        nslog("createApplication: IOSApplication created, returning");
         return iosApp;
     }
 
@@ -175,6 +211,12 @@ public class Main extends IOSApplication.Delegate {
     }
 
     private static final class IOSAdapter implements IDeviceAdapter {
+        private final String bundlePath;
+
+        IOSAdapter(String bundlePath) {
+            this.bundlePath = bundlePath;
+        }
+
         @Override
         public boolean isConnectedToInternet() {
             return true;
@@ -187,7 +229,9 @@ public class Main extends IOSApplication.Delegate {
 
         @Override
         public String getDownloadsDir() {
-            return new IOSFiles().getExternalStoragePath();
+            String dir = new IOSFiles().getExternalStoragePath();
+            nslog("IOSAdapter.getDownloadsDir()=" + dir);
+            return dir;
         }
 
         @Override
@@ -207,7 +251,12 @@ public class Main extends IOSApplication.Delegate {
 
         @Override
         public boolean openFile(final String filename) {
-            return new IOSFiles().local(filename).exists();
+            // Check both the writable data container and the read-only bundle so we
+            // can diagnose which location the app is actually searching.
+            boolean localExists = new IOSFiles().local(filename).exists();
+            boolean bundleExists = new File(bundlePath + filename).exists();
+            nslog("IOSAdapter.openFile(" + filename + "): local=" + localExists + " bundle=" + bundleExists);
+            return localExists;
         }
 
         @Override

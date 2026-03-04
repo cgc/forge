@@ -495,13 +495,6 @@ public class Main extends AndroidApplication {
         config.useGyroscope = false;
         config.useRotationVectorSensor = false;
         config.useImmersiveMode = false;
-        // Forge is a pure-2D app and never uses depth testing.  Requesting a
-        // depth buffer (the libGDX default of 16 bits) wastes VRAM and, on
-        // some Android GPU/driver combinations, causes the EGL config chooser
-        // to select a surface format that produces black card images.
-        // Shattered Pixel Dungeon (another libGDX/Android title) sets this to
-        // 0 for the same reason.
-        config.depth = 0;
         config.nativeLoader = () -> ReLinker.loadLibrary(getContext(), "gdx");
 
         if (!Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
