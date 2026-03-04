@@ -385,9 +385,38 @@ public class Forge implements ApplicationListener {
         System.out.println("[Forge] === Startup path diagnostics ===");
         System.out.println("[Forge] ASSETS_DIR        : " + ForgeConstants.ASSETS_DIR);
         System.out.println("[Forge] USER_DIR           : " + ForgeConstants.USER_DIR);
-        boolean cardPicsExists = new java.io.File(ForgeConstants.CACHE_CARD_PICS_DIR).exists();
+        System.out.println("[Forge] enableUIMask       : " + enableUIMask);
+        System.out.println("[Forge] allowCardBG        : " + allowCardBG);
+
+        // Card pics directory – check existence and list set subdirectories so we
+        // know whether any card images are actually present (not just the empty dir).
+        java.io.File cardPicsDir = new java.io.File(ForgeConstants.CACHE_CARD_PICS_DIR);
+        boolean cardPicsExists = cardPicsDir.exists();
         System.out.println("[Forge] CACHE_CARD_PICS_DIR: " + ForgeConstants.CACHE_CARD_PICS_DIR
                 + " (exists=" + cardPicsExists + ")");
+        if (cardPicsExists) {
+            String[] entries = cardPicsDir.list();
+            int entryCount = entries != null ? entries.length : 0;
+            System.out.println("[Forge] CACHE_CARD_PICS_DIR entry count: " + entryCount);
+            if (entries != null && entries.length > 0) {
+                // Log the first few set folder names so we can verify the directory structure
+                int limit = Math.min(entries.length, 5);
+                StringBuilder sample = new StringBuilder("[Forge] CACHE_CARD_PICS_DIR first entries:");
+                for (int i = 0; i < limit; i++) {
+                    sample.append(" ").append(entries[i]);
+                    java.io.File sub = new java.io.File(cardPicsDir, entries[i]);
+                    if (sub.isDirectory()) {
+                        String[] subEntries = sub.list();
+                        int subCount = subEntries != null ? subEntries.length : 0;
+                        sample.append("(dir, ").append(subCount).append(" files)");
+                    }
+                }
+                System.out.println(sample);
+            } else {
+                System.out.println("[Forge] CACHE_CARD_PICS_DIR is empty – no card images installed");
+            }
+        }
+
         boolean defaultSkinsExists = new java.io.File(ForgeConstants.DEFAULT_SKINS_DIR).exists();
         System.out.println("[Forge] DEFAULT_SKINS_DIR  : " + ForgeConstants.DEFAULT_SKINS_DIR
                 + " (exists=" + defaultSkinsExists + ")");

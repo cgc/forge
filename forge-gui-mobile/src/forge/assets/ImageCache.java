@@ -262,6 +262,13 @@ public class ImageCache {
 
         Texture image;
         File imageFile = ImageKeys.getImageFile(imageKey);
+        if (imageFile == null && (imageKey.contains("/") || imageKey.contains(".full"))) {
+            // Card or token key that resolved to no file on disk – log once per key so the
+            // operator knows the card-pics directory is missing the expected image.
+            if (missingIconKeys.get().add("nofile:" + imageKey)) {
+                System.err.println("[ImageCache] No image file found for key: " + imageKey);
+            }
+        }
         if (useDefaultIfNotFound) {
             // Load from file and add to cache if not found in cache initially.
             image = getAsset(imageFile);
@@ -347,7 +354,17 @@ public class ImageCache {
                     radius = 25;
                 else
                     radius = 22;
-                updateImageRecord(cardTexture.toString(), isCloserToWhite(getpixelColor(cardTexture)), radius, cardTexture.toString().contains(".fullborder.") || cardTexture.toString().contains("tokens"));
+                String cardTextureStr = cardTexture.toString();
+                boolean isFullBorder = cardTextureStr.contains(".fullborder.") || cardTextureStr.contains("tokens");
+                try {
+                    updateImageRecord(cardTextureStr, isCloserToWhite(getpixelColor(cardTexture)), radius, isFullBorder);
+                } catch (Exception e) {
+                    // getpixelColor() can fail if the texture's CPU-side pixmap was already
+                    // consumed (e.g. with MipMap filtering on some OpenGL ES drivers).  Use
+                    // a default dark border so the texture is still returned and rendered.
+                    System.err.println("[ImageCache] getpixelColor failed for " + fileName + ": " + e.getMessage());
+                    updateImageRecord(cardTextureStr, Pair.of(Color.valueOf("#171717").toString(), false), radius, isFullBorder);
+                }
             }
             return cardTexture;
         }
