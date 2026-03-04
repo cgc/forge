@@ -376,11 +376,43 @@ public class Forge implements ApplicationListener {
             e.printStackTrace();
         }
     }
+
+    /** Logs key file-system paths and existence checks to the device console.
+     *  Helps diagnose "black squares in place of cards" by confirming that
+     *  the card-pics directory, the default skin directory and the no_card
+     *  placeholder image are all reachable from the running process. */
+    private static void logStartupDiagnostics() {
+        System.out.println("[Forge] === Startup path diagnostics ===");
+        System.out.println("[Forge] ASSETS_DIR        : " + ForgeConstants.ASSETS_DIR);
+        System.out.println("[Forge] USER_DIR           : " + ForgeConstants.USER_DIR);
+        boolean cardPicsExists = new java.io.File(ForgeConstants.CACHE_CARD_PICS_DIR).exists();
+        System.out.println("[Forge] CACHE_CARD_PICS_DIR: " + ForgeConstants.CACHE_CARD_PICS_DIR
+                + " (exists=" + cardPicsExists + ")");
+        boolean defaultSkinsExists = new java.io.File(ForgeConstants.DEFAULT_SKINS_DIR).exists();
+        System.out.println("[Forge] DEFAULT_SKINS_DIR  : " + ForgeConstants.DEFAULT_SKINS_DIR
+                + " (exists=" + defaultSkinsExists + ")");
+        boolean noCardExists = new java.io.File(ForgeConstants.NO_CARD_FILE).exists();
+        System.out.println("[Forge] NO_CARD_FILE       : " + ForgeConstants.NO_CARD_FILE
+                + " (exists=" + noCardExists + ")");
+        // Log a sample of skin texture files so we know if the default skin is present
+        String[] sampleSkinFiles = { "IMG_CARDBG_C.png", "IMG_CARDBG_W.png", "sprite_icons.png" };
+        for (String sf : sampleSkinFiles) {
+            boolean sfExists = new java.io.File(ForgeConstants.DEFAULT_SKINS_DIR + sf).exists();
+            System.out.println("[Forge] skin/" + sf + " exists=" + sfExists);
+        }
+        System.out.println("[Forge] === End diagnostics ===");
+    }
+
     protected void afterDbLoaded() {
         if (GuiBase.isAndroid() && autoCache)
             getSplashScreen().getProgressBar().setDescription(getLocalizer().getMessage("lblFinishingStartup") + "\nDetected RAM: " + totalDeviceRAM + "MB. Cache size: " + cacheSize);
         else
             getSplashScreen().getProgressBar().setDescription(getLocalizer().getMessage("lblFinishingStartup"));
+
+        // Startup diagnostics: log key paths so that "black squares" issues can be traced.
+        // Visible in Xcode console / Console.app when connected to a device.
+        logStartupDiagnostics();
+
         //override transition & title bg
         try {
             FileHandle transitionFile = Config.instance().getFile("ui/transition.png");
