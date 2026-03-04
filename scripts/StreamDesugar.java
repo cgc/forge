@@ -66,11 +66,11 @@ import java.util.Arrays;
  *   <li>{@code Map.replace(key, oldVal, newVal)} → {@code StreamUtil.mapReplace(...)}</li>
  *   <li>{@code Map.Entry.comparingByValue()} / {@code .comparingByValue(Comparator)} →
  *       {@code StreamUtil.mapEntryComparingByValue(...)}</li>
- *   <li>{@code iterable.forEach(Consumer)} (any {@code java.*} owner) →
+ *   <li>{@code iterable.forEach(Consumer)} (any {@code java.*} or {@code forge.*} owner) →
  *       {@code StreamUtil.iterableForEach(iterable, consumer)}</li>
  *   <li>{@code list.sort(Comparator)} (any {@code java.*} owner) →
  *       {@code StreamUtil.listSort(list, comparator)}</li>
- *   <li>{@code List.of(...)} (0–5 elements + varargs) → {@code StreamUtil.listOf(...)}</li>
+ *   <li>{@code List.of(...)} (0–7 elements + varargs) → {@code StreamUtil.listOf(...)}</li>
  *   <li>{@code List.copyOf(Collection)} → {@code StreamUtil.listCopyOf(...)}</li>
  *   <li>{@code list.replaceAll(UnaryOperator)} (any {@code java.*} owner) →
  *       {@code StreamUtil.listReplaceAll(list, operator)}</li>
@@ -85,6 +85,23 @@ import java.util.Arrays;
  *   <li>{@code Integer.min(a, b)} → {@code Math.min(a, b)} (already in Java 7)</li>
  *   <li>{@code Comparator.comparingLong(keyExtractor)} →
  *       {@code StreamUtil.comparatorComparingLong(keyExtractor)}</li>
+ *   <li>{@code BreakIterator.getLineInstance(Locale)} →
+ *       {@code forge.ios.IosUtil.getLineBreakIterator(Locale)} — ICU data absent on iOS</li>
+ *   <li>{@code string.codePoints()} / {@code charseq.codePoints()} →
+ *       {@code StreamUtil.codePoints(charseq)} — Java 8 method absent from robovm-rt</li>
+ *   <li>{@code optional.isEmpty()} → {@code StreamUtil.optionalIsEmpty(optional)} —
+ *       Java 11 method absent from Android 7 / robovm-rt</li>
+ *   <li>{@code Map.entry(key, value)} → {@code StreamUtil.mapEntry(key, value)} —
+ *       Java 9 static factory absent from Android 7 / robovm-rt</li>
+ *   <li>{@code Integer.toUnsignedString(int)} →
+ *       {@code StreamUtil.integerToUnsignedString(int)} — absent from Android API 24</li>
+ *   <li>{@code Long.compareUnsigned(long, long)} →
+ *       {@code StreamUtil.longCompareUnsigned(long, long)} — absent from Android API 24</li>
+ *   <li>{@code Collectors.groupingBy(classifier, mapFactory, downstream)} — 3-arg overload →
+ *       {@code StreamUtil.collectorsGroupingBy(...)} — absent from robovm-rt's Collectors stub</li>
+ *   <li>INVOKEDYNAMIC backed by {@code Arrays::stream} as {@code Function<T[],Stream<T>>}
+ *       (e.g. {@code stream.flatMap(Arrays::stream)}) →
+ *       {@code INVOKESTATIC StreamUtil.arrayStreamFunction()}</li>
  * </ol>
  *
  * <p>The transformation is idempotent: files that have already been transformed are
@@ -95,6 +112,7 @@ import java.util.Arrays;
 public class StreamDesugar {
 
     private static final String STREAM_UTIL        = "forge/util/StreamUtil";
+    private static final String IOS_UTIL           = "forge/ios/IosUtil";
     private static final String STREAM_DESC        = "()Ljava/util/stream/Stream;";
     private static final String SPLITERATOR_DESC   = "()Ljava/util/Spliterator;";
     private static final String TO_PATH_DESC       = "()Ljava/nio/file/Path;";
@@ -207,8 +225,8 @@ public class StreamDesugar {
             @Override
             public void visitMethodInsn(int opcode, String owner, String name,
                                         String descriptor, boolean isInterface) {
-                // Already targeting StreamUtil – skip (idempotency guard).
-                if (STREAM_UTIL.equals(owner)) {
+                // Already targeting StreamUtil or IosUtil – skip (idempotency guard).
+                if (STREAM_UTIL.equals(owner) || IOS_UTIL.equals(owner)) {
                     super.visitMethodInsn(opcode, owner, name, descriptor, isInterface);
                     return;
                 }
@@ -623,9 +641,13 @@ public class StreamDesugar {
                 // IMPORTANT: java.util.stream.Stream also has forEach(Consumer) but Stream is NOT
                 // an Iterable.  Exclude java/util/stream/* owners to avoid a ClassCastException
                 // when stream.forEach(...) would be passed to iterableForEach(Iterable, Consumer).
+                // Also covers forge/* owners (e.g. forge.game.card.CardCollection) because javac
+                // can emit the concrete type as the INVOKEINTERFACE owner even though the method
+                // is a Java-8 default method inherited from java.lang.Iterable, which is absent
+                // from MobiVM's robovm-rt.
                 if ("forEach".equals(name)
                         && ("(" + CONS + ")V").equals(descriptor)
-                        && owner.startsWith("java/")
+                        && (owner.startsWith("java/") || owner.startsWith("forge/"))
                         && !owner.startsWith("java/util/stream/")) {
                     super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "iterableForEach",
                             "(" + ITER + CONS + ")V", false);
@@ -644,7 +666,7 @@ public class StreamDesugar {
                     return;
                 }
 
-                // Pattern 35: List.of(...) — Java 9 static factory (0–5 elements + varargs).
+                // Pattern 35: List.of(...) — Java 9 static factory (0–7 elements + varargs).
                 // Descriptor is passed through; StreamUtil provides matching overloads.
                 if ("of".equals(name)
                         && "java/util/List".equals(owner)
@@ -811,36 +833,123 @@ public class StreamDesugar {
                     return;
                 }
 
+                // Pattern 49: BreakIterator.getLineInstance(Locale) — ICU data files are not
+                // bundled with iOS apps (they live at Android-specific paths absent on iOS),
+                // so ubrk_open() always fails with U_MISSING_RESOURCE_ERROR.  Rewrites to
+                // IosUtil.getLineBreakIterator(Locale) which returns a pure-Java fallback.
+                if ("getLineInstance".equals(name)
+                        && "(Ljava/util/Locale;)Ljava/text/BreakIterator;".equals(descriptor)
+                        && "java/text/BreakIterator".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, IOS_UTIL,
+                            "getLineBreakIterator",
+                            "(Ljava/util/Locale;)Ljava/text/BreakIterator;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 50: charseq.codePoints() — Java 8 instance method, absent from
+                // robovm-rt for both java.lang.String (INVOKEVIRTUAL) and
+                // java.lang.CharSequence (INVOKEINTERFACE).  Rewrites to
+                // StreamUtil.codePoints(charseq) which builds an IntStream from code points.
+                if ("codePoints".equals(name)
+                        && "()Ljava/util/stream/IntStream;".equals(descriptor)
+                        && owner.startsWith("java/lang/")) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "codePoints",
+                            "(Ljava/lang/CharSequence;)Ljava/util/stream/IntStream;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 51: optional.isEmpty() — Java 11 instance method, absent from
+                // Android 7 / robovm-rt.  Rewrites to StreamUtil.optionalIsEmpty(optional).
+                if ("isEmpty".equals(name)
+                        && "()Z".equals(descriptor)
+                        && "java/util/Optional".equals(owner)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "optionalIsEmpty",
+                            "(Ljava/util/Optional;)Z", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 52: Map.entry(key, value) — Java 9 static factory, absent from
+                // Android 7 / robovm-rt.  Rewrites to StreamUtil.mapEntry(key, value).
+                if ("entry".equals(name)
+                        && ("(" + OBJ + OBJ + ")Ljava/util/Map$Entry;").equals(descriptor)
+                        && "java/util/Map".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "mapEntry",
+                            "(" + OBJ + OBJ + ")Ljava/util/Map$Entry;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 53: Integer.toUnsignedString(int) — Java 8 static, absent from
+                // Android API 24 / robovm-rt.  Rewrites to StreamUtil.integerToUnsignedString(i).
+                if ("toUnsignedString".equals(name)
+                        && "(I)Ljava/lang/String;".equals(descriptor)
+                        && "java/lang/Integer".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "integerToUnsignedString",
+                            "(I)Ljava/lang/String;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 54: Long.compareUnsigned(x, y) — Java 8 static, absent from
+                // Android API 24 / robovm-rt.  Rewrites to StreamUtil.longCompareUnsigned(x, y).
+                if ("compareUnsigned".equals(name)
+                        && "(JJ)I".equals(descriptor)
+                        && "java/lang/Long".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL, "longCompareUnsigned",
+                            "(JJ)I", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 55: Collectors.groupingBy(classifier, mapFactory, downstream) — the
+                // 3-arg overload is absent from robovm-rt's Collectors stub.
+                // Rewrites to StreamUtil.collectorsGroupingBy(classifier, mapFactory, downstream).
+                if ("groupingBy".equals(name)
+                        && ("(" + FN + SUP + CLTR + ")" + CLTR).equals(descriptor)
+                        && "java/util/stream/Collectors".equals(owner)
+                        && opcode == Opcodes.INVOKESTATIC) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "collectorsGroupingBy", "(" + FN + SUP + CLTR + ")" + CLTR, false);
+                    modified = true;
+                    return;
+                }
+
                 super.visitMethodInsn(opcode, owner, name, descriptor, isInterface);
             }
 
             /**
              * Intercepts INVOKEDYNAMIC instructions that create lambdas / method references
-             * backed by Java 8+ methods missing from robovm-rt's Objects class.
+             * backed by Java 8+ methods missing from robovm-rt.
              *
-             * <p>When source code contains {@code filter(Objects::nonNull)} or
-             * {@code removeIf(Objects::isNull)}, the compiler emits an INVOKEDYNAMIC
-             * instruction whose bootstrap arguments reference {@code Objects.nonNull} /
-             * {@code Objects.isNull} as the implementation method handle.  At RoboVM AOT
-             * compile time this generates a synthetic {@code $$Lambda$N} class whose
-             * {@code test()} method calls the missing method — causing
-             * {@link NoSuchMethodError} at runtime.
+             * <p>When source code contains {@code filter(Objects::nonNull)},
+             * {@code removeIf(Objects::isNull)}, or {@code flatMap(Arrays::stream)},
+             * the compiler emits an INVOKEDYNAMIC instruction whose bootstrap arguments
+             * reference the missing method as the implementation method handle.  At RoboVM
+             * AOT compile time this generates a synthetic {@code $$Lambda$N} class whose
+             * method calls the missing method — causing {@link NoSuchMethodError} at runtime.
              *
              * <p>This override detects such instructions and replaces the entire
              * INVOKEDYNAMIC with a direct {@code INVOKESTATIC} call to a
-             * {@code StreamUtil} factory method that returns an equivalent
-             * {@link java.util.function.Predicate}.  The stack effect is identical
-             * (no consumed stack slots, one pushed Predicate reference) so no
-             * additional adjustments are needed.
+             * {@code StreamUtil} factory method that returns an equivalent functional
+             * interface value.  The stack effect is identical (no consumed stack slots,
+             * one pushed functional-interface reference) so no additional adjustments
+             * are needed.
              */
             @Override
             public void visitInvokeDynamicInsn(String name, String descriptor,
                     Handle bootstrapMethodHandle, Object... bootstrapMethodArguments) {
-                // Only intercept LambdaMetafactory-generated lambdas where the
-                // implementation method is a static method on java.util.Objects.
                 if (bootstrapMethodArguments.length >= 2
                         && bootstrapMethodArguments[1] instanceof Handle) {
                     Handle implHandle = (Handle) bootstrapMethodArguments[1];
+
+                    // Objects::nonNull / Objects::isNull as Predicate
                     if ("java/util/Objects".equals(implHandle.getOwner())
                             && implHandle.getTag() == Opcodes.H_INVOKESTATIC
                             && descriptor.startsWith("()")
@@ -859,6 +968,30 @@ public class StreamDesugar {
                             modified = true;
                             return;
                         }
+                    }
+
+                    // Arrays::stream as Function (e.g. stream.flatMap(Arrays::stream))
+                    // Arrays.stream(T[]) is a Java 8 static method absent from robovm-rt.
+                    // The compiler emits an INVOKEDYNAMIC whose impl handle points to
+                    // Arrays.stream([Ljava/lang/Object;)Ljava/util/stream/Stream; and whose
+                    // factory descriptor produces a Function.  Replace the whole instruction
+                    // with StreamUtil.arrayStreamFunction() which returns an equivalent
+                    // Function backed by Stream.of() — present in the iOS stubs.
+                    // Note: primitive-array overloads (Arrays.stream(int[]) etc.) return
+                    // IntStream/LongStream/DoubleStream, so their descriptors never end with
+                    // "Ljava/util/stream/Stream;" and are correctly excluded by this pattern.
+                    // The startsWith("([L") guard additionally confirms a reference-type array.
+                    if ("java/util/Arrays".equals(implHandle.getOwner())
+                            && "stream".equals(implHandle.getName())
+                            && implHandle.getTag() == Opcodes.H_INVOKESTATIC
+                            && implHandle.getDesc().startsWith("([L")
+                            && implHandle.getDesc().endsWith("Ljava/util/stream/Stream;")
+                            && descriptor.startsWith("()")
+                            && descriptor.endsWith("Ljava/util/function/Function;")) {
+                        super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                                "arrayStreamFunction", "()" + FN, false);
+                        modified = true;
+                        return;
                     }
                 }
                 super.visitInvokeDynamicInsn(name, descriptor,

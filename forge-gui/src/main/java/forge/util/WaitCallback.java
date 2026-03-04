@@ -11,6 +11,7 @@ public abstract class WaitCallback<T> implements Consumer<T>, Runnable {
     private final Lock lock = new Lock();
 
     private T result;
+    private volatile Throwable edtException;
 
     @Override
     public final void accept(T result0) {
@@ -22,7 +23,14 @@ public abstract class WaitCallback<T> implements Consumer<T>, Runnable {
 
     public final T invokeAndWait() {
         FThreads.assertExecutedByEdt(false); //not supported if on UI thread
-        FThreads.invokeInEdtLater(this);
+        FThreads.invokeInEdtLater(() -> {
+            try {
+                WaitCallback.this.run();
+            } catch (Throwable t) {
+                edtException = t;
+                accept(null);
+            }
+        });
         try {
             synchronized (lock) {
                 lock.wait();
@@ -30,6 +38,9 @@ public abstract class WaitCallback<T> implements Consumer<T>, Runnable {
         }
         catch (InterruptedException e) {
             e.printStackTrace();
+        }
+        if (edtException != null) {
+            throw new RuntimeException("Exception in EDT during WaitCallback", edtException);
         }
         return result;
     }

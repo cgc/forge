@@ -323,6 +323,8 @@ public class Assets implements Disposable {
                 manager().finishLoadingAsset(blankImage.path());
                 defaultImage = manager().get(blankImage.path());
             } else {
+                System.err.println("[Assets] no_card.jpg not found at " + ForgeConstants.NO_CARD_FILE
+                        + " -- falling back to 1x1 black dummy; cards without art will show as black squares");
                 defaultImage = getDummy();
             }
         }

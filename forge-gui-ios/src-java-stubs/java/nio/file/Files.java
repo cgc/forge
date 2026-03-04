@@ -14,7 +14,7 @@ import java.util.stream.Stream;
 public final class Files {
     private Files() {}
 
-    public static boolean exists(Path path) {
+    public static boolean exists(Path path, LinkOption... options) {
         return path.toFile().exists();
     }
 

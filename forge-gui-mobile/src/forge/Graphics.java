@@ -65,6 +65,17 @@ public class Graphics {
 
     public Graphics() {
         ShaderProgram.pedantic = false;
+        // Log any shaders that failed to compile so iOS GLSL ES issues are immediately visible.
+        // (Instance field initializers run before this constructor body, so all shaders are
+        //  already compiled at this point.)
+        for (ShaderProgram sp : new ShaderProgram[]{
+                shaderRoundedRect, shaderRoundedRect2, shaderGrayscale, shaderWarp,
+                shaderOutline, shaderUnderwater, shaderNightDay}) {
+            if (sp != null && !sp.isCompiled()) {
+                System.err.println("[Graphics] shader failed to compile: "
+                        + sp.getLog().trim().replace("\n", " | "));
+            }
+        }
     }
 
     public ShaderProgram getShaderOutline() {

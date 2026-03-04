@@ -17,7 +17,7 @@ import java.util.function.ToIntFunction;
 import java.util.function.ToLongFunction;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collector;
-import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class StreamUtil {
@@ -62,6 +62,24 @@ public class StreamUtil {
      */
     public static <T> Stream<T> stream(T[] array) {
         return Stream.of(array);
+    }
+
+    /**
+     * Returns a {@link Function} that converts an array to a {@link Stream},
+     * equivalent to the {@code Arrays::stream} method reference.
+     *
+     * <p>{@code Arrays.stream()} was added in Java 8 and is absent from MobiVM's runtime.
+     * When source code uses {@code Arrays::stream} as a method reference (e.g. inside
+     * {@code stream.flatMap(Arrays::stream)}), the compiler generates an INVOKEDYNAMIC
+     * instruction backed by {@code Arrays.stream}.  At RoboVM AOT time this synthetic
+     * lambda calls the missing method, causing {@link NoSuchMethodError} at runtime.
+     * The build-time bytecode transformer ({@code StreamDesugar}) rewrites such
+     * INVOKEDYNAMIC instructions to call this factory instead.
+     *
+     * @return a Function equivalent to {@code Arrays::stream}.
+     */
+    public static <T> Function<T[], Stream<T>> arrayStreamFunction() {
+        return arr -> Stream.of(arr);
     }
 
     /**
@@ -376,6 +394,33 @@ public class StreamUtil {
         return Collections.unmodifiableList(m);
     }
 
+    /** Equivalent to {@code List.of(e1, e2, e3, e4, e5, e6)} (Java 9). */
+    @SuppressWarnings("unchecked")
+    public static <E> List<E> listOf(Object e1, Object e2, Object e3, Object e4, Object e5, Object e6) {
+        List<E> m = new ArrayList<>(6);
+        m.add((E) e1);
+        m.add((E) e2);
+        m.add((E) e3);
+        m.add((E) e4);
+        m.add((E) e5);
+        m.add((E) e6);
+        return Collections.unmodifiableList(m);
+    }
+
+    /** Equivalent to {@code List.of(e1, e2, e3, e4, e5, e6, e7)} (Java 9). */
+    @SuppressWarnings("unchecked")
+    public static <E> List<E> listOf(Object e1, Object e2, Object e3, Object e4, Object e5, Object e6, Object e7) {
+        List<E> m = new ArrayList<>(7);
+        m.add((E) e1);
+        m.add((E) e2);
+        m.add((E) e3);
+        m.add((E) e4);
+        m.add((E) e5);
+        m.add((E) e6);
+        m.add((E) e7);
+        return Collections.unmodifiableList(m);
+    }
+
     /**
      * Equivalent to {@code List.of(elements)} (Java 9, varargs overload).
      *
@@ -556,11 +601,65 @@ public class StreamUtil {
 
     /**
      * Equivalent to {@code Collectors.toCollection(collectionFactory)} (Java 8).
-     * Absent from robovm-rt's Collectors; delegates to the standard implementation.
+     * Absent from robovm-rt's Collectors; implemented directly to avoid infinite
+     * recursion (the desugar tool rewrites {@code Collectors.toCollection} calls —
+     * including any call inside this very class — back to this method).
      */
     public static <T, C extends Collection<T>> Collector<T, ?, C> collectorsToCollection(
             Supplier<C> collectionFactory) {
-        return Collectors.toCollection(collectionFactory);
+        return Collector.of(
+                collectionFactory,
+                (c, t) -> { c.add(t); },
+                (left, right) -> { left.addAll(right); return left; },
+                Collector.Characteristics.IDENTITY_FINISH);
+    }
+
+    /**
+     * Equivalent to {@code Collectors.groupingBy(classifier, mapFactory, downstream)} (Java 8).
+     * Absent from robovm-rt's Collectors; implemented directly to avoid infinite
+     * recursion (the desugar tool rewrites {@code Collectors.groupingBy} calls —
+     * including any call inside this very class — back to this method).
+     *
+     * <p>Uses a {@link LinkedHashMap} as the intermediate accumulator so that entries are
+     * transferred to the result map in encounter order.  When {@code mapFactory} produces an
+     * ordered map (e.g. {@code LinkedHashMap::new}), the result preserves encounter order;
+     * when it produces an unordered map (e.g. {@code HashMap::new}), ordering is irrelevant.
+     */
+    @SuppressWarnings("unchecked")
+    public static <T, K, D, A, M extends Map<K, D>> Collector<T, ?, M> collectorsGroupingBy(
+            Function<? super T, ? extends K> classifier,
+            Supplier<M> mapFactory,
+            Collector<? super T, A, D> downstream) {
+        Collector<T, A, D> ds = (Collector<T, A, D>) downstream;
+        Supplier<A> dsSupplier = ds.supplier();
+        BiConsumer<A, T> dsAccumulator = ds.accumulator();
+        BinaryOperator<A> dsCombiner = ds.combiner();
+        Function<A, D> dsFinisher = ds.finisher();
+        return (Collector<T, ?, M>) Collector.of(
+                () -> new LinkedHashMap<K, A>(),
+                (LinkedHashMap<K, A> acc, T t) -> {
+                    K key = classifier.apply(t);
+                    A a = acc.get(key);
+                    if (a == null) {
+                        a = dsSupplier.get();
+                        acc.put(key, a);
+                    }
+                    dsAccumulator.accept(a, t);
+                },
+                (LinkedHashMap<K, A> acc1, LinkedHashMap<K, A> acc2) -> {
+                    for (Map.Entry<K, A> e : acc2.entrySet()) {
+                        A old = acc1.get(e.getKey());
+                        acc1.put(e.getKey(), old == null ? e.getValue() : dsCombiner.apply(old, e.getValue()));
+                    }
+                    return acc1;
+                },
+                (LinkedHashMap<K, A> acc) -> {
+                    M result = mapFactory.get();
+                    for (Map.Entry<K, A> e : acc.entrySet()) {
+                        result.put(e.getKey(), dsFinisher.apply(e.getValue()));
+                    }
+                    return result;
+                });
     }
 
     // ── Map.Entry helpers (Java 8 static methods absent from robovm-rt) ──────
@@ -588,6 +687,19 @@ public class StreamUtil {
     public static <K, V> Comparator<Map.Entry<K, V>> mapEntryComparingByValue(
             Comparator<? super V> comparator) {
         return (e1, e2) -> comparator.compare(e1.getValue(), e2.getValue());
+    }
+
+    // ── Map.Entry static factory (Java 9, absent from Android 7 / robovm-rt) ───
+
+    /**
+     * Equivalent to {@code Map.entry(key, value)} (Java 9 static factory).
+     *
+     * <p>Returns an unmodifiable {@link Map.Entry} containing the given key and value.
+     * Neither key nor value may be null.
+     */
+    public static <K, V> Map.Entry<K, V> mapEntry(K key, V value) {
+        if (key == null || value == null) throw new NullPointerException("key and value must not be null");
+        return new AbstractMap.SimpleImmutableEntry<>(key, value);
     }
 
     // ── Map additional helpers (Java 8 default methods absent from robovm-rt) ─
@@ -791,6 +903,64 @@ public class StreamUtil {
         T val = supplier.get();
         if (val == null) throw new NullPointerException("supplier.get()");
         return val;
+    }
+
+    // ── String / CharSequence helpers (Java 8 methods absent from robovm-rt) ────
+
+    /**
+     * Equivalent to {@code s.codePoints()} (Java 8 method on CharSequence/String).
+     *
+     * <p>Returns an {@link IntStream} of Unicode code points in the given character sequence.
+     * Surrogate pairs are combined into a single code point; lone surrogates are passed
+     * through as-is.
+     */
+    public static IntStream codePoints(CharSequence s) {
+        int len = s.length();
+        // Allocate worst-case (all BMP, 1 char per code point); trim with copyOf at the end.
+        // Using a plain int[] avoids boxing and is correct even with surrogate pairs because
+        // Character.codePointAt handles them and charCount advances by 2.
+        int[] buf = new int[len];
+        int count = 0;
+        for (int i = 0; i < len; ) {
+            int cp = Character.codePointAt(s, i);
+            buf[count++] = cp;
+            i += Character.charCount(cp);
+        }
+        return IntStream.of(count == len ? buf : Arrays.copyOf(buf, count));
+    }
+
+    // ── Optional helpers (Java 11 methods absent from Android 7 / robovm-rt) ──
+
+    /**
+     * Equivalent to {@code optional.isEmpty()} (Java 11 instance method).
+     *
+     * <p>Returns {@code true} if the optional does not contain a value.
+     */
+    public static boolean optionalIsEmpty(Optional<?> optional) {
+        return !optional.isPresent();
+    }
+
+    // ── Integer / Long helpers (Java 8 methods absent from Android 7 API 24) ──
+
+    /**
+     * Equivalent to {@code Integer.toUnsignedString(i)} (Java 8 static, absent from
+     * Android API 24 / robovm-rt).
+     *
+     * <p>Returns the unsigned decimal string representation of the given int value,
+     * treating the bit pattern as an unsigned 32-bit integer.
+     */
+    public static String integerToUnsignedString(int i) {
+        return Long.toString(i & 0xFFFFFFFFL);
+    }
+
+    /**
+     * Equivalent to {@code Long.compareUnsigned(x, y)} (Java 8 static, absent from
+     * Android API 24 / robovm-rt).
+     *
+     * <p>Compares two {@code long} values as unsigned 64-bit integers.
+     */
+    public static int longCompareUnsigned(long x, long y) {
+        return Long.compare(x + Long.MIN_VALUE, y + Long.MIN_VALUE);
     }
 
     /**
