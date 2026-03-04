@@ -353,12 +353,15 @@ public class ImageCache {
                     int th = cardTexture.getHeight();
                     boolean widthPOT  = (tw  & (tw  - 1)) == 0;
                     boolean heightPOT = (th & (th - 1)) == 0;
+                    // genMipMaps reflects the actual parameter used (iOS overrides to false even
+                    // when texture filtering is enabled, to avoid NPOT texture-incomplete black squares).
+                    boolean genMipMaps = Forge.getAssets().getTextureFilter().genMipMaps;
                     System.err.println("[ImageCache] loaded card texture #" + counter
                             + " path=" + fileName
                             + " size=" + tw + "x" + th
                             + " POT=" + (widthPOT && heightPOT)
                             + " format=" + cardTexture.getTextureData().getFormat()
-                            + " genMipMaps=" + Forge.isTextureFilteringEnabled());
+                            + " genMipMaps=" + genMipMaps);
                 }
                 String setCode = imageKey.split("/")[0].trim().toUpperCase();
                 int radius;
