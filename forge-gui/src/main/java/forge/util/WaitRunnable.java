@@ -7,13 +7,19 @@ public abstract class WaitRunnable implements Runnable {
     }
 
     private final Lock lock = new Lock();
+    private volatile Throwable edtException;
 
     public final void invokeAndWait() {
         FThreads.assertExecutedByEdt(false); //not supported if on UI thread
         FThreads.invokeInEdtLater(() -> {
-            WaitRunnable.this.run();
-            synchronized(lock) {
-                lock.notify();
+            try {
+                WaitRunnable.this.run();
+            } catch (Throwable t) {
+                edtException = t;
+            } finally {
+                synchronized(lock) {
+                    lock.notify();
+                }
             }
         });
         try {
@@ -23,6 +29,9 @@ public abstract class WaitRunnable implements Runnable {
         }
         catch (InterruptedException e) {
             e.printStackTrace();
+        }
+        if (edtException != null) {
+            throw new RuntimeException("Exception in EDT during WaitRunnable", edtException);
         }
     }
 }

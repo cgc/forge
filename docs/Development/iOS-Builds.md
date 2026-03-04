@@ -200,6 +200,77 @@ bash scripts/patch-robovm-soot.sh
 The iOS CI workflows (`test-ios-build.yml`, `ios-ipa-build.yml`) invoke this script automatically
 as a dedicated step before compiling the project.
 
+## Java 8 API stubs
+
+MobiVM's runtime (`robovm-rt`) is based on Android's class library, which predates Java 8 SE and is
+missing several standard packages used throughout `forge-gui-mobile` and its dependencies:
+
+| Missing package | Classes used |
+|---|---|
+| `java.nio.file.*` | `Paths`, `Files`, `Path`, `OpenOption` |
+| `java.util.function.*` | `Function`, `Consumer`, `Supplier`, `Predicate`, `BiFunction`, `BiConsumer`, `BinaryOperator`, and primitive specialisations |
+| `java.util.stream.*` | `Stream`, `IntStream`, `Collectors`, `Collector`, `StreamSupport` |
+| `java.util.Optional` | `Optional`, `OptionalInt`, `OptionalDouble` |
+| `java.util.Spliterator` | `Spliterator`, `Spliterator.OfInt` |
+
+Without these classes RoboVM's AOT compiler cannot include them in the native binary and they
+resolve to `NoClassDefFoundError` at startup.
+
+The supplement jar is built in two parts:
+
+* **JVM-extracted classes** — `java.util.function.*`, `java.util.Optional*`, and
+  `java.util.Spliterator*` are pure functional interfaces / value types with no
+  `jdk.internal.*` dependencies.  Rather than maintaining hand-written copies, the
+  build script extracts the real `.class` files directly from the running JVM's class
+  library (`java.base` module on JDK 9+, `rt.jar` on JDK 8).  This guarantees
+  correctness and eliminates the maintenance burden of keeping stub sources in sync.
+
+* **Source stubs** — `java.util.stream.*` and `java.nio.file.*` cannot be taken
+  wholesale from the JVM.  `Collectors` and `ReferencePipeline` reference
+  `jdk.internal.access.SharedSecrets` which is absent from robovm-rt, and
+  `java.nio.file` requires a `FileSystemProvider` infrastructure that does not exist
+  on iOS.  Minimal, working implementations for the subset used by forge are compiled
+  from source in `forge-gui-ios/src-java-stubs/`.  Stream operations (`filter`, `map`,
+  `collect`, etc.) are backed by `ArrayList`.
+
+### Why a build script rather than source in `src/`
+
+Java 17's module system rejects `java.*` package declarations in the unnamed module at compile time
+(`"package exists in another module: java.base"`). Compiling the stubs requires
+`--patch-module java.base=src-java-stubs`, but applying `--patch-module` to the whole
+`forge-gui-ios` source tree makes all other sources lose visibility of non-`java.base` packages
+(`org.robovm.*`, `com.badlogic.*`, etc.). The solution: compile only the stubs with
+`--patch-module`, merge them with the JVM-extracted class files, package everything into a jar,
+and install that jar into `forge-gui-ios/local-repo/` as a regular Maven artifact
+(`forge:java-stubs:1.0`). Everything else compiles normally with the stubs jar on the classpath;
+RoboVM's AOT pass also sees the stubs and resolves all references.
+
+### Automated setup (CI pre-build step)
+
+The script `scripts/build-java-stubs.sh` automates the setup:
+
+1. Locates the JVM's class library (`java.base.jmod` on JDK 9+, `rt.jar` on JDK 8).
+2. Extracts `java/util/function/`, `java/util/Optional*.class`, and
+   `java/util/Spliterator*.class` directly from the JVM.
+3. Compiles the stream/nio source stubs from `src-java-stubs/` with `--patch-module`.
+4. Packages all `.class` files into a jar.
+5. Writes `forge:java-stubs:1.0` into `forge-gui-ios/local-repo/` together with a synthetic POM
+   and SHA-1/MD5 checksum files.
+
+`forge-gui-ios/local-repo/` is listed in `forge-gui-ios/.gitignore` so the built jar is never
+committed to version control.
+
+The script is idempotent: a `.forge-built` marker file prevents redundant work on repeated runs.
+
+Run the script manually before an iOS build:
+
+```
+bash scripts/build-java-stubs.sh
+```
+
+The iOS CI workflows invoke both this script and `patch-robovm-soot.sh` automatically before
+compiling the project.
+
 ## Troubleshooting
 
 - **`error: SDK "iphoneos" cannot be located`** — Xcode is not installed or the command-line tools

@@ -11,6 +11,12 @@
       </includes>
     </resource>
     <resource>
+      <directory>../forge-gui-android/assets</directory>
+      <includes>
+        <include>fallback_skin/**</include>
+      </includes>
+    </resource>
+    <resource>
       <directory>res</directory>
     </resource>
   </resources>
@@ -43,12 +49,19 @@
       compiled and registered automatically without force-linking.
     -->
     <pattern>com.badlogic.gdx.scenes.scene2d.ui.*</pattern>
+    <pattern>com.android.okhttp.HttpsHandler</pattern>
+    <!--
+      The Android/MobiVM SSL security providers are referenced exclusively via
+      Class.forName() inside the Java security subsystem (Security.insertProviderAt).
+      Without force-linking, the static linker strips them from the binary,
+      Class.forName() fails at runtime, and the TLS/HTTPS stack cannot initialize —
+      preventing all online card-image downloads.  Adding broad wildcard patterns
+      is the canonical fix recommended in the warning message itself.
+    -->
+    <pattern>com.android.org.conscrypt.**</pattern>
+    <pattern>com.android.org.bouncycastle.**</pattern>
+    <pattern>org.apache.harmony.security.**</pattern>
   </forceLinkClasses>
-  <libs>
-    <lib>libs/libgdx.a</lib>
-    <lib>libs/libObjectAL.a</lib>
-    <lib>libs/libgdx-freetype.a</lib>
-  </libs>
   <frameworks>
     <framework>UIKit</framework>
     <framework>OpenGLES</framework>

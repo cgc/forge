@@ -30,6 +30,7 @@ import forge.gui.GuiBase;
 import forge.gui.error.BugReporter;
 import forge.interfaces.IDeviceAdapter;
 import forge.localinstance.properties.ForgeConstants;
+import com.badlogic.gdx.scenes.scene2d.utils.ScissorStack;
 import forge.localinstance.properties.ForgePreferences;
 import forge.localinstance.properties.ForgePreferences.FPref;
 import forge.model.FModel;
@@ -49,8 +50,6 @@ import forge.util.*;
 import io.sentry.ScopeType;
 import io.sentry.Sentry;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.Consumer;
 
@@ -176,9 +175,24 @@ public class Forge implements ApplicationListener {
         if (OperatingSystem.isWindows())
             getDeviceAdapter().closeSplashScreen();
 
-        GuiBase.setIsAndroid(Gdx.app.getType() == Application.ApplicationType.Android);
+        GuiBase.setIsAndroid(Gdx.app.getType() == Application.ApplicationType.Android
+                || Gdx.app.getType() == Application.ApplicationType.iOS);
+        GuiBase.setIsIOS(Gdx.app.getType() == Application.ApplicationType.iOS);
 
-        if (!GuiBase.isAndroid() || (androidVersion > 25 && totalDeviceRAM > 3400)) {
+        // Log GL info on iOS so we can distinguish simulator (software renderer) from
+        // a real device (Metal-backed GL) and confirm the driver is what we expect.
+        if (GuiBase.isIOS()) {
+            String glVendor   = Gdx.gl.glGetString(GL20.GL_VENDOR);
+            String glRenderer = Gdx.gl.glGetString(GL20.GL_RENDERER);
+            String glVersion  = Gdx.gl.glGetString(GL20.GL_VERSION);
+            System.err.println("[Forge] GL_VENDOR="   + glVendor);
+            System.err.println("[Forge] GL_RENDERER=" + glRenderer);
+            System.err.println("[Forge] GL_VERSION="  + glVersion);
+            System.err.println("[Forge] screen="      + Gdx.graphics.getWidth() + "x" + Gdx.graphics.getHeight());
+        }
+
+        // isIOS() guard: iOS sets isAndroid()=true but androidVersion=0; iOS is modern and should allow card backgrounds
+        if (!GuiBase.isAndroid() || GuiBase.isIOS() || (androidVersion > 25 && totalDeviceRAM > 3400)) {
             allowCardBG = true;
         }
         assets = new Assets();
@@ -200,7 +214,7 @@ public class Forge implements ApplicationListener {
          */
         Gdx.input.setCatchKey(Keys.BACK, true);
         destroyThis = true; //Prevent back()
-        if (Files.exists(Paths.get(ForgeConstants.DEFAULT_SKINS_DIR+ForgeConstants.ADV_TEXTURE_BG_FILE)))
+        if (FileUtil.doesFileExist(ForgeConstants.DEFAULT_SKINS_DIR+ForgeConstants.ADV_TEXTURE_BG_FILE))
             selector = getForgePreferences().getPref(FPref.UI_SELECTOR_MODE);
         boolean landscapeMode = !isPortraitMode;
         //update landscape mode preference if it doesn't match what the app loaded as
@@ -375,11 +389,72 @@ public class Forge implements ApplicationListener {
             e.printStackTrace();
         }
     }
+
+    /** Logs key file-system paths and existence checks to the device console.
+     *  Helps diagnose "black squares in place of cards" by confirming that
+     *  the card-pics directory, the default skin directory and the no_card
+     *  placeholder image are all reachable from the running process. */
+    private static void logStartupDiagnostics() {
+        System.out.println("[Forge] === Startup path diagnostics ===");
+        System.out.println("[Forge] ASSETS_DIR        : " + ForgeConstants.ASSETS_DIR);
+        System.out.println("[Forge] USER_DIR           : " + ForgeConstants.USER_DIR);
+        System.out.println("[Forge] enableUIMask       : " + enableUIMask);
+        System.out.println("[Forge] allowCardBG        : " + allowCardBG);
+
+        // Card pics directory – check existence and list set subdirectories so we
+        // know whether any card images are actually present (not just the empty dir).
+        java.io.File cardPicsDir = new java.io.File(ForgeConstants.CACHE_CARD_PICS_DIR);
+        boolean cardPicsExists = cardPicsDir.exists();
+        System.out.println("[Forge] CACHE_CARD_PICS_DIR: " + ForgeConstants.CACHE_CARD_PICS_DIR
+                + " (exists=" + cardPicsExists + ")");
+        if (cardPicsExists) {
+            String[] entries = cardPicsDir.list();
+            int entryCount = entries != null ? entries.length : 0;
+            System.out.println("[Forge] CACHE_CARD_PICS_DIR entry count: " + entryCount);
+            if (entries != null && entries.length > 0) {
+                // Log the first few set folder names so we can verify the directory structure
+                int limit = Math.min(entries.length, 5);
+                StringBuilder sample = new StringBuilder("[Forge] CACHE_CARD_PICS_DIR first entries:");
+                for (int i = 0; i < limit; i++) {
+                    sample.append(" ").append(entries[i]);
+                    java.io.File sub = new java.io.File(cardPicsDir, entries[i]);
+                    if (sub.isDirectory()) {
+                        String[] subEntries = sub.list();
+                        int subCount = subEntries != null ? subEntries.length : 0;
+                        sample.append("(dir, ").append(subCount).append(" files)");
+                    }
+                }
+                System.out.println(sample);
+            } else {
+                System.out.println("[Forge] CACHE_CARD_PICS_DIR is empty – no card images installed");
+            }
+        }
+
+        boolean defaultSkinsExists = new java.io.File(ForgeConstants.DEFAULT_SKINS_DIR).exists();
+        System.out.println("[Forge] DEFAULT_SKINS_DIR  : " + ForgeConstants.DEFAULT_SKINS_DIR
+                + " (exists=" + defaultSkinsExists + ")");
+        boolean noCardExists = new java.io.File(ForgeConstants.NO_CARD_FILE).exists();
+        System.out.println("[Forge] NO_CARD_FILE       : " + ForgeConstants.NO_CARD_FILE
+                + " (exists=" + noCardExists + ")");
+        // Log a sample of skin texture files so we know if the default skin is present
+        String[] sampleSkinFiles = { "IMG_CARDBG_C.png", "IMG_CARDBG_W.png", "sprite_icons.png" };
+        for (String sf : sampleSkinFiles) {
+            boolean sfExists = new java.io.File(ForgeConstants.DEFAULT_SKINS_DIR + sf).exists();
+            System.out.println("[Forge] skin/" + sf + " exists=" + sfExists);
+        }
+        System.out.println("[Forge] === End diagnostics ===");
+    }
+
     protected void afterDbLoaded() {
         if (GuiBase.isAndroid() && autoCache)
             getSplashScreen().getProgressBar().setDescription(getLocalizer().getMessage("lblFinishingStartup") + "\nDetected RAM: " + totalDeviceRAM + "MB. Cache size: " + cacheSize);
         else
             getSplashScreen().getProgressBar().setDescription(getLocalizer().getMessage("lblFinishingStartup"));
+
+        // Startup diagnostics: log key paths so that "black squares" issues can be traced.
+        // Visible in Xcode console / Console.app when connected to a device.
+        logStartupDiagnostics();
+
         //override transition & title bg
         try {
             FileHandle transitionFile = Config.instance().getFile("ui/transition.png");
@@ -866,6 +941,28 @@ public class Forge implements ApplicationListener {
             ImageCache.getInstance().allowSingleLoad();
             ForgeAnimation.advanceAll();
 
+            // Reset scissor state at the start of every frame.
+            // SPD (and GL best-practice) always disables GL_SCISSOR_TEST before glClear so
+            // that the clear covers the full framebuffer.  Without this, a scissor
+            // rectangle leaked from a previous frame (e.g. an exception thrown between
+            // startClip / endClip) would confine both the clear AND subsequent batch.draw()
+            // calls to that stale rectangle — making cards appear as black squares while
+            // the rest of the UI still renders correctly inside the clipped region.
+            // ScissorStack.getScissors() is absent in this LibGDX build, so drain the stack
+            // via popScissors() — it calls glDisable(SCISSOR_TEST) automatically when empty.
+            int staleScissors = 0;
+            try {
+                // pop() on an empty LibGDX Array throws IllegalStateException; that's our
+                // natural termination condition.  Cap at 50 to guard against any future
+                // change in behaviour (nesting depth is never legitimately > a handful).
+                while (staleScissors < 50) {
+                    ScissorStack.popScissors();
+                    staleScissors++;
+                }
+            } catch (IllegalStateException ignored) {} // stack exhausted — expected exit
+            if (staleScissors > 0)
+                System.err.println("[Forge] render: cleared " + staleScissors + " stale scissor(s) from previous frame");
+            Gdx.gl.glDisable(GL20.GL_SCISSOR_TEST); // ensure disabled even if stack was already empty
             Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT); // Clear the screen.
             //set delta for rotation
             deltaTime += Gdx.graphics.getDeltaTime();
