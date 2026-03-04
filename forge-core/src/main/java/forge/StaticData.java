@@ -16,11 +16,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import java.io.File;
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -780,13 +777,12 @@ public class StaticData {
         boolean nifHeader = false;
         boolean cniHeader = false;
         final Pattern funnyCardCollectorNumberPattern = Pattern.compile("^F★?\\d+★?");
-        ExecutorService executor = Executors.newCachedThreadPool();
         for (CardEdition e : editions) {
             if (CardEdition.Type.FUNNY.equals(e.getType()))
                 continue;
 
             Map<String, Pair<Boolean, Integer>> cardCount = new HashMap<>();
-            List<Future<?>> futures = new ArrayList<>();
+            List<CompletableFuture<?>> futures = new ArrayList<>();
             for (CardEdition.EditionEntry c : e.getObtainableCards()) {
                 int amount = 1;
 
@@ -799,26 +795,39 @@ public class StaticData {
 
             // loop through the cards in this edition, considering art variations...
             for (Map.Entry<String, Pair<Boolean, Integer>> entry : cardCount.entrySet()) {
-                futures.add(executor.submit(()-> {
-                    try {
-                        final String c = entry.getKey();
-                        final int artID = entry.getValue().getRight();
-                        final boolean isFunny = entry.getValue().getLeft();
-                        PaperCard cp = getCommonCards().getCard(c, e.getCode(), artID);
-                        if (cp == null) {
-                            cp = getVariantCards().getCard(c, e.getCode(), artID);
-                        }
-                        if (cp == null) {
-                            if (isFunny) //skip funny cards
-                                return null;
-                            if (!loadNonLegalCards && CardEdition.Type.FUNNY.equals(e.getType()))
+                futures.add(CompletableFuture.supplyAsync(()-> {
+                    final String c = entry.getKey();
+                    final int artID = entry.getValue().getRight();
+                    final boolean isFunny = entry.getValue().getLeft();
+                    PaperCard cp = getCommonCards().getCard(c, e.getCode(), artID);
+                    if (cp == null) {
+                        cp = getVariantCards().getCard(c, e.getCode(), artID);
+                    }
+                    if (cp == null) {
+                        if (isFunny) //skip funny cards
+                            return null;
+                        if (!loadNonLegalCards && CardEdition.Type.FUNNY.equals(e.getType()))
+                            return null;
+                        EDITION_Q.add(e.getCode() + "_" + e.getName());
+                        CNI_Q.add(e.getCode() + "_" + c + "\n");
+                        return null;
+                    }
+                    // check the front image
+                    String imagePath = ImageUtil.getImageRelativePath(cp, "", true, false);
+                    if (imagePath != null) {
+                        File file = ImageKeys.getImageFile(imagePath);
+                        if (file == null && ImageKeys.hasSetLookup(imagePath))
+                            file = ImageKeys.setLookUpFile(imagePath, imagePath +"border");
+                        if (file == null) {
+                            if (imagePath.isEmpty())
                                 return null;
                             EDITION_Q.add(e.getCode() + "_" + e.getName());
-                            CNI_Q.add(e.getCode() + "_" + c + "\n");
-                            return null;
+                            NIF_Q.add(e.getCode() + "_" + imagePath + "\n");
                         }
-                        // check the front image
-                        String imagePath = ImageUtil.getImageRelativePath(cp, "", true, false);
+                    }
+                    // check the back face
+                    if (cp.hasBackFace()) {
+                        imagePath = ImageUtil.getImageRelativePath(cp, "back", true, false);
                         if (imagePath != null) {
                             File file = ImageKeys.getImageFile(imagePath);
                             if (file == null && ImageKeys.hasSetLookup(imagePath))
@@ -830,34 +839,15 @@ public class StaticData {
                                 NIF_Q.add(e.getCode() + "_" + imagePath + "\n");
                             }
                         }
-                        // check the back face
-                        if (cp.hasBackFace()) {
-                            imagePath = ImageUtil.getImageRelativePath(cp, "back", true, false);
-                            if (imagePath != null) {
-                                File file = ImageKeys.getImageFile(imagePath);
-                                if (file == null && ImageKeys.hasSetLookup(imagePath))
-                                    file = ImageKeys.setLookUpFile(imagePath, imagePath +"border");
-                                if (file == null) {
-                                    if (imagePath.isEmpty())
-                                        return null;
-                                    EDITION_Q.add(e.getCode() + "_" + e.getName());
-                                    NIF_Q.add(e.getCode() + "_" + imagePath + "\n");
-                                }
-                            }
-                        }
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
                     }
+                    return null;
+                }).exceptionally(ex -> {
+                    ex.printStackTrace();
                     return null;
                 }));
             }
-            for (Future<?> future : futures) {
-                try {
-                    future.get(60, TimeUnit.SECONDS);
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
-            }
+            CompletableFuture<?>[] futuresArray = futures.toArray(new CompletableFuture<?>[0]);
+            CompletableFuture.allOf(futuresArray).join();
             futures.clear();
 
             // TODO: Audit token images here...
@@ -883,7 +873,6 @@ public class StaticData {
                 }
             }
         }
-        executor.shutdown();
         // stream().toList() causes crash on Android 8-13, use Collectors.toList()
         List<String> NIF = new ArrayList<>(NIF_Q).stream().sorted().collect(Collectors.toList());
         List<String> CNI = new ArrayList<>(CNI_Q).stream().sorted().collect(Collectors.toList());

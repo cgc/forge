@@ -4,12 +4,13 @@
 # Builds a supplement jar containing the Java 8 APIs missing from MobiVM's robovm-rt
 # and installs it into forge-gui-ios/local-repo/ as:
 #
-#     forge:java-stubs:2.0
+#     forge:java-stubs:2.1
 #
 # MobiVM's runtime (robovm-rt) is based on Android's class library, which predates
 # Java 8 SE and is missing or incomplete for:
 #
 #   java.lang.Record       – abstract base class for Java 16 record classes
+#   java.util.concurrent.CompletableFuture – absent from robovm-rt's Java 7 runtime
 #   java.util.function.*   – all 43 functional interfaces
 #   java.util.Comparator   – naturalOrder/reverseOrder/comparing/comparingInt (Java 8 statics)
 #                            and reversed/thenComparing (Java 8 defaults) absent from robovm-rt
@@ -63,10 +64,21 @@
 # (e.g. commons-lang3's StopWatch) reference java.time.* directly and cannot be
 # changed without forking.
 #
-# The remaining 13 files (java.util.Comparator, java.util.Objects,
+# The remaining 14 files (java.util.concurrent.CompletableFuture,
+# java.util.Comparator, java.util.Objects,
 # java.util.Spliterators, java.util.stream.*, and java.nio.file: Path, Paths,
 # Files) cannot be downloaded from OpenJDK and must remain as custom stubs in
 # forge-gui-ios/src-java-stubs/.  The per-file reasons are:
+#
+# java.util.concurrent
+#   CompletableFuture.java – CompletableFuture was added in Java 8 and is
+#                      absent from robovm-rt's Java 7 runtime.  The real JDK 17
+#                      CompletableFuture is a large class that references
+#                      ForkJoinPool internals and sun.misc.Unsafe.  Our stub
+#                      re-implements the subset used by Forge (supplyAsync,
+#                      exceptionally, allOf, join) backed by a shared
+#                      ExecutorService, which is available in robovm-rt since
+#                      Java 5.
 #
 # java.util
 #   Comparator.java  – The real JDK 17 Comparator.java uses lambda bodies in its default
@@ -148,7 +160,7 @@ set -euo pipefail
 
 GROUP_ID="forge"
 ARTIFACT_ID="java-stubs"
-VERSION="2.0"
+VERSION="2.1"
 GROUP_PATH="forge/java-stubs"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
