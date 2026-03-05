@@ -39,7 +39,6 @@ public class Graphics {
     private final ShapeRenderer shapeRenderer = new ShapeRenderer();
     private final Deque<Matrix4> Dtransforms = new ArrayDeque<>();
     private final Vector3 tmp = new Vector3();
-    private final Matrix4 projMatrix = new Matrix4(); // reused each frame to avoid allocation
     private float regionHeight;
     private Rectangle bounds;
     private Rectangle visibleBounds;
@@ -125,17 +124,6 @@ public class Graphics {
         return shaderNightDay;
     }
     public void begin(float regionWidth0, float regionHeight0) {
-        // Refresh the projection matrix every frame so it always matches regionWidth/regionHeight.
-        // SpriteBatch initialises its projection once at construction time; if the GL surface is
-        // resized after that (which happens on iOS when viewDidLayoutSubviews settles the final
-        // safe-area-aware dimensions) the stale projection causes a mismatch with the scissor
-        // coordinates computed by HdpiUtils.toBackBufferY(), which uses the live
-        // Gdx.graphics.getHeight() value.  Keeping all three in sync (regionHeight, projection,
-        // and Gdx.graphics.getHeight) eliminates the blank clipped strip at the top of scroll
-        // panes, list views, and dropdowns.
-        projMatrix.setToOrtho2D(0, 0, regionWidth0, regionHeight0);
-        batch.setProjectionMatrix(projMatrix);
-        shapeRenderer.setProjectionMatrix(projMatrix);
         batch.begin();
         bounds = new Rectangle(0, 0, regionWidth0, regionHeight0);
         regionHeight = regionHeight0;

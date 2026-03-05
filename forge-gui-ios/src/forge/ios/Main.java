@@ -9,6 +9,7 @@ import java.util.Date;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.jupnp.UpnpServiceConfiguration;
+import org.robovm.apple.coregraphics.CGRect;
 import org.robovm.apple.foundation.Foundation;
 import org.robovm.apple.foundation.NSAutoreleasePool;
 import org.robovm.apple.foundation.NSBundle;
@@ -17,6 +18,7 @@ import org.robovm.apple.foundation.NSString;
 import org.robovm.apple.uikit.UIApplication;
 import org.robovm.apple.uikit.UIApplicationLaunchOptions;
 import org.robovm.apple.uikit.UIPasteboard;
+import org.robovm.apple.uikit.UIScreen;
 
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
@@ -25,6 +27,7 @@ import com.badlogic.gdx.backends.iosrobovm.IOSApplication;
 import com.badlogic.gdx.backends.iosrobovm.IOSApplicationConfiguration;
 import com.badlogic.gdx.backends.iosrobovm.IOSFiles;
 import com.badlogic.gdx.backends.iosrobovm.IOSInput;
+import com.badlogic.gdx.backends.iosrobovm.IOSScreenBounds;
 import org.robovm.apple.glkit.GLKViewDrawableDepthFormat;
 
 import forge.Forge;
@@ -135,6 +138,39 @@ public class Main extends IOSApplication.Delegate {
         // on iOS 14+ internally initializes CMMotionManager (CoreMotion) and
         // causes a noisy permission warning on physical devices.
         final IOSApplication iosApp = new IOSApplication(app, config) {
+            /**
+             * Forge always hides the status bar ({@code prefersStatusBarHidden} returns
+             * {@code true}).  The default libGDX implementation subtracts
+             * {@code UIApplication.statusBarFrame.height} from the screen height; on iOS
+             * 13–15 that value can be non-zero even after the bar is hidden, so the height
+             * returned here differs from the one reported after
+             * {@code viewDidLayoutSubviews} settles.  That difference causes libGDX to call
+             * {@code Forge.resize()} with a larger height, but {@code Forge.resize()} does
+             * not update the cached {@code screenWidth}/{@code screenHeight} fields used by
+             * {@code Forge.render()} → {@code Graphics.begin()}.  The resulting mismatch
+             * between {@code regionHeight} and {@code Gdx.graphics.getHeight()} shifts the
+             * scissor rectangle upward, clipping the top of every scroll-pane, list-view
+             * and drop-down container.
+             *
+             * <p>Fix: always report the full {@link UIScreen#getMainScreen()} bounds so
+             * that the dimensions seen at {@code create()} time are already final and
+             * {@code viewDidLayoutSubviews} does not trigger a second {@code resize()}
+             * call with different dimensions.
+             */
+            @Override
+            protected IOSScreenBounds computeBounds() {
+                CGRect screen = UIScreen.getMainScreen().getBounds();
+                double nativeScale = UIScreen.getMainScreen().getNativeScale();
+                int w = (int) Math.round(screen.getWidth());
+                int h = (int) Math.round(screen.getHeight());
+                int backW = (int) Math.round(w * nativeScale);
+                int backH = (int) Math.round(h * nativeScale);
+                nslog("computeBounds: w=" + w + " h=" + h
+                        + " backW=" + backW + " backH=" + backH
+                        + " scale=" + nativeScale);
+                return new IOSScreenBounds(0, 0, w, h, backW, backH);
+            }
+
             @Override
             protected IOSInput createInput() {
                 return new DefaultIOSInput(this) {
