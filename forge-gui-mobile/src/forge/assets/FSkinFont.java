@@ -22,6 +22,7 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.IntSet;
 import forge.Forge;
 import forge.gui.FThreads;
+import forge.gui.GuiBase;
 import forge.localinstance.properties.ForgeConstants;
 import forge.util.FileUtil;
 import forge.util.LineReader;
@@ -415,6 +416,7 @@ public class FSkinFont {
                         Forge.getAssets().manager().load(fontFile.path(), BitmapFont.class);
                         Forge.getAssets().manager().finishLoadingAsset(fontFile.path());
                         font = Forge.getAssets().manager().get(fontFile.path(), BitmapFont.class, false);
+                        applyFontFilter(font);
                     }
                     if (font != null)
                         found[0] = true;
@@ -435,6 +437,21 @@ public class FSkinFont {
             }
         } else {
             generateFont(FSkin.getSkinFile(TTF_FILE), fontName, fontSize);
+        }
+    }
+
+    /**
+     * Applies the appropriate texture filter to a freshly-loaded BitmapFont.
+     *
+     * On iOS, Retina displays (3×) make Nearest-filtered text look pixelated
+     * because the GPU upscales each texel by 3× with no interpolation.  Switching
+     * to Linear interpolation removes that stepping artefact.  On other platforms
+     * the default Nearest filter is preserved for backward compatibility.
+     */
+    private static void applyFontFilter(BitmapFont f) {
+        if (f == null || !GuiBase.isIOS()) return;
+        for (TextureRegion region : f.getRegions()) {
+            region.getTexture().setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
         }
     }
 
@@ -496,6 +513,7 @@ public class FSkinFont {
                     Forge.getAssets().manager().load(fontFile.path(), BitmapFont.class);
                     Forge.getAssets().manager().finishLoadingAsset(fontFile.path());
                     font = Forge.getAssets().manager().get(fontFile.path(), BitmapFont.class);
+                    applyFontFilter(font);
                 }
 
                 generator.dispose();

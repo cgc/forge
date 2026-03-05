@@ -349,10 +349,19 @@ public class ImageCache {
                 // Log the first 5 successfully-loaded card textures so that on iOS we can
                 // confirm textures are reaching the GPU with the expected dimensions/format.
                 if (counter <= 5) {
+                    int tw = cardTexture.getWidth();
+                    int th = cardTexture.getHeight();
+                    boolean widthPOT  = (tw  & (tw  - 1)) == 0;
+                    boolean heightPOT = (th & (th - 1)) == 0;
+                    // genMipMaps reflects the actual parameter used (iOS overrides to false even
+                    // when texture filtering is enabled, to avoid NPOT texture-incomplete black squares).
+                    boolean genMipMaps = Forge.getAssets().getTextureFilter().genMipMaps;
                     System.err.println("[ImageCache] loaded card texture #" + counter
                             + " path=" + fileName
-                            + " size=" + cardTexture.getWidth() + "x" + cardTexture.getHeight()
-                            + " format=" + cardTexture.getTextureData().getFormat());
+                            + " size=" + tw + "x" + th
+                            + " POT=" + (widthPOT && heightPOT)
+                            + " format=" + cardTexture.getTextureData().getFormat()
+                            + " genMipMaps=" + genMipMaps);
                 }
                 String setCode = imageKey.split("/")[0].trim().toUpperCase();
                 int radius;

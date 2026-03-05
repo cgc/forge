@@ -78,5 +78,14 @@
     -->
     <key>CADisableMinimumFrameDurationOnPhone</key>
     <true/>
+    <!--
+      UILaunchStoryboardName: declares the launch screen storyboard for the app.
+      Without this key, iOS runs the app in compatibility mode and adds black bars
+      at the top and bottom of modern iPhone screens (anything larger than 3.5").
+      The storyboard is compiled to a .storyboardc bundle by ibtool during the
+      IPA build.  The value must match the .storyboard filename without extension.
+    -->
+    <key>UILaunchStoryboardName</key>
+    <string>LaunchScreen</string>
 </dict>
 </plist>

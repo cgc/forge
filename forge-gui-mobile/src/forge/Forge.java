@@ -185,10 +185,29 @@ public class Forge implements ApplicationListener {
             String glVendor   = Gdx.gl.glGetString(GL20.GL_VENDOR);
             String glRenderer = Gdx.gl.glGetString(GL20.GL_RENDERER);
             String glVersion  = Gdx.gl.glGetString(GL20.GL_VERSION);
+            String glSlVers   = Gdx.gl.glGetString(GL20.GL_SHADING_LANGUAGE_VERSION);
+            String glExts     = Gdx.gl.glGetString(GL20.GL_EXTENSIONS);
             System.err.println("[Forge] GL_VENDOR="   + glVendor);
             System.err.println("[Forge] GL_RENDERER=" + glRenderer);
             System.err.println("[Forge] GL_VERSION="  + glVersion);
+            System.err.println("[Forge] GL_SHADING_LANGUAGE_VERSION=" + glSlVers);
             System.err.println("[Forge] screen="      + Gdx.graphics.getWidth() + "x" + Gdx.graphics.getHeight());
+            // Log NPOT-texture and texture-compression extension support — these constrain
+            // how card textures (typically non-power-of-two JPEGs) can be filtered/wrapped.
+            boolean npotSupported = glExts != null && (glExts.contains("GL_OES_texture_npot")
+                    || glExts.contains("GL_NV_texture_npot_2D_mipmap")
+                    || glExts.contains("GL_APPLE_texture_2D_limited_npot"));
+            System.err.println("[Forge] NPOT_texture_supported=" + npotSupported);
+            // Log individual extensions relevant to card rendering.
+            for (String ext : new String[]{"GL_OES_texture_npot", "GL_APPLE_texture_2D_limited_npot",
+                    "GL_EXT_texture_compression_s3tc", "GL_IMG_texture_compression_pvrtc",
+                    "GL_OES_compressed_ETC1_RGB8_texture"}) {
+                System.err.println("[Forge] ext " + ext + "=" + (glExts != null && glExts.contains(ext)));
+            }
+            // Max texture size — card images larger than this will silently fail on iOS.
+            java.nio.IntBuffer maxTextureSizeBuffer = java.nio.ByteBuffer.allocateDirect(4).order(java.nio.ByteOrder.nativeOrder()).asIntBuffer();
+            Gdx.gl.glGetIntegerv(GL20.GL_MAX_TEXTURE_SIZE, maxTextureSizeBuffer);
+            System.err.println("[Forge] GL_MAX_TEXTURE_SIZE=" + maxTextureSizeBuffer.get(0));
         }
 
         // isIOS() guard: iOS sets isAndroid()=true but androidVersion=0; iOS is modern and should allow card backgrounds
