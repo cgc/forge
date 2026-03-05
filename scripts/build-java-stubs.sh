@@ -4,7 +4,7 @@
 # Builds a supplement jar containing the Java 8 APIs missing from MobiVM's robovm-rt
 # and installs it into forge-gui-ios/local-repo/ as:
 #
-#     forge:java-stubs:2.1
+#     forge:java-stubs:2.2
 #
 # MobiVM's runtime (robovm-rt) is based on Android's class library, which predates
 # Java 8 SE and is missing or incomplete for:
@@ -160,7 +160,7 @@ set -euo pipefail
 
 GROUP_ID="forge"
 ARTIFACT_ID="java-stubs"
-VERSION="2.1"
+VERSION="2.2"
 GROUP_PATH="forge/java-stubs"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

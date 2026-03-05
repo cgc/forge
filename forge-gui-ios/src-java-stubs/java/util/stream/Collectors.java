@@ -6,6 +6,14 @@ import java.util.function.*;
 /**
  * Stub Collectors for MobiVM: java.util.stream is absent from robovm-rt.
  * Implements the most commonly-used collectors.
+ *
+ * <p><b>Implementation note:</b> All method bodies must use only Java 7-compatible
+ * APIs on {@code java.*} classes such as {@code java.util.Map} and
+ * {@code java.util.Collection}.  Java 8 default methods on those classes
+ * (e.g. {@code Map.computeIfAbsent}, {@code Map.merge}, {@code Map.forEach})
+ * are absent from MobiVM's robovm-rt.  Unlike the Forge module JARs, this
+ * stubs JAR is <em>not</em> processed by the StreamDesugar bytecode transformer,
+ * so Java 8 calls here would throw {@link NoSuchMethodError} at runtime.
  */
 public final class Collectors {
     private Collectors() {}
@@ -16,6 +24,11 @@ public final class Collectors {
 
     public static <T> Collector<T, Set<T>, Set<T>> toSet() {
         return Collector.of(HashSet::new, Set::add, (a, b) -> { a.addAll(b); return a; }, Function.identity());
+    }
+
+    public static <T, C extends Collection<T>> Collector<T, C, C> toCollection(Supplier<C> collectionFactory) {
+        return Collector.of(collectionFactory, Collection::add, (a, b) -> { a.addAll(b); return a; },
+                Collector.Characteristics.IDENTITY_FINISH);
     }
 
     public static <T> Collector<T, List<T>, List<T>> toUnmodifiableList() {
@@ -44,12 +57,69 @@ public final class Collectors {
                 StringJoiner::toString);
     }
 
+    @SuppressWarnings("unchecked")
     public static <T, K> Collector<T, Map<K, List<T>>, Map<K, List<T>>> groupingBy(Function<? super T, ? extends K> classifier) {
         return Collector.of(
                 HashMap::new,
-                (map, t) -> map.computeIfAbsent(classifier.apply(t), k -> new ArrayList<>()).add(t),
-                (a, b) -> { b.forEach((k, v) -> a.merge(k, v, (l1, l2) -> { l1.addAll(l2); return l1; })); return a; },
-                Function.identity());
+                (map, t) -> {
+                    K key = classifier.apply(t);
+                    List<T> list = (List<T>) map.get(key);
+                    if (list == null) { list = new ArrayList<>(); map.put(key, list); }
+                    list.add(t);
+                },
+                (a, b) -> {
+                    for (Map.Entry<?, ?> entry : b.entrySet()) {
+                        K key = (K) entry.getKey();
+                        List<T> aList = (List<T>) a.get(key);
+                        List<T> bList = (List<T>) entry.getValue();
+                        if (aList == null) { a.put(key, new ArrayList<>(bList)); }
+                        else { aList.addAll(bList); }
+                    }
+                    return a;
+                },
+                Collector.Characteristics.IDENTITY_FINISH);
+    }
+
+    /**
+     * Three-argument {@code groupingBy}: groups elements by classifier into a map created
+     * by {@code mapFactory}, accumulating each group with {@code downstream}.
+     *
+     * <p>The intermediate accumulator is a {@link LinkedHashMap} keyed by group key and
+     * valued by the downstream's intermediate accumulator type {@code A}.  After all
+     * elements are processed the downstream's finisher is applied to each group container
+     * to produce the final values of type {@code D}.
+     */
+    @SuppressWarnings("unchecked")
+    public static <T, K, D, A, M extends Map<K, D>> Collector<T, LinkedHashMap<K, A>, M> groupingBy(
+            Function<? super T, ? extends K> classifier,
+            Supplier<M> mapFactory,
+            Collector<? super T, A, D> downstream) {
+        Supplier<A> dsSupplier = downstream.supplier();
+        BiConsumer<A, ? super T> dsAccumulator = downstream.accumulator();
+        BinaryOperator<A> dsCombiner = downstream.combiner();
+        Function<A, D> dsFinisher = downstream.finisher();
+        return Collector.of(
+                LinkedHashMap::new,
+                (acc, t) -> {
+                    K key = classifier.apply(t);
+                    A a = acc.get(key);
+                    if (a == null) { a = dsSupplier.get(); acc.put(key, a); }
+                    dsAccumulator.accept(a, t);
+                },
+                (acc1, acc2) -> {
+                    for (Map.Entry<K, A> e : acc2.entrySet()) {
+                        A old = acc1.get(e.getKey());
+                        acc1.put(e.getKey(), old == null ? e.getValue() : dsCombiner.apply(old, e.getValue()));
+                    }
+                    return acc1;
+                },
+                (acc) -> {
+                    M result = mapFactory.get();
+                    for (Map.Entry<K, A> e : acc.entrySet()) {
+                        result.put(e.getKey(), dsFinisher.apply(e.getValue()));
+                    }
+                    return result;
+                });
     }
 
     public static <T, K, V> Collector<T, Map<K, V>, Map<K, V>> toMap(
@@ -62,15 +132,29 @@ public final class Collectors {
                 Function.identity());
     }
 
+    @SuppressWarnings("unchecked")
     public static <T, K, V> Collector<T, Map<K, V>, Map<K, V>> toMap(
             Function<? super T, ? extends K> keyMapper,
             Function<? super T, ? extends V> valueMapper,
             BinaryOperator<V> mergeFunction) {
         return Collector.of(
                 HashMap::new,
-                (map, t) -> map.merge(keyMapper.apply(t), valueMapper.apply(t), mergeFunction),
-                (a, b) -> { b.forEach((k, v) -> a.merge(k, v, mergeFunction)); return a; },
-                Function.identity());
+                (map, t) -> {
+                    K key = keyMapper.apply(t);
+                    V newVal = valueMapper.apply(t);
+                    V existing = (V) map.get(key);
+                    map.put(key, existing == null ? newVal : mergeFunction.apply(existing, newVal));
+                },
+                (a, b) -> {
+                    for (Map.Entry<?, ?> entry : b.entrySet()) {
+                        K key = (K) entry.getKey();
+                        V newVal = (V) entry.getValue();
+                        V existing = (V) a.get(key);
+                        a.put(key, existing == null ? newVal : mergeFunction.apply(existing, newVal));
+                    }
+                    return a;
+                },
+                Collector.Characteristics.IDENTITY_FINISH);
     }
 
     /**
@@ -88,8 +172,21 @@ public final class Collectors {
             Supplier<M> mapFactory) {
         return Collector.of(
                 mapFactory,
-                (map, t) -> map.merge(keyMapper.apply(t), valueMapper.apply(t), mergeFunction),
-                (a, b) -> { b.forEach((k, v) -> a.merge(k, v, mergeFunction)); return a; },
+                (map, t) -> {
+                    K key = keyMapper.apply(t);
+                    V newVal = valueMapper.apply(t);
+                    V existing = (V) map.get(key);
+                    map.put(key, existing == null ? newVal : mergeFunction.apply(existing, newVal));
+                },
+                (a, b) -> {
+                    for (Map.Entry<?, ?> entry : b.entrySet()) {
+                        K key = (K) entry.getKey();
+                        V newVal = (V) entry.getValue();
+                        V existing = (V) a.get(key);
+                        a.put(key, existing == null ? newVal : mergeFunction.apply(existing, newVal));
+                    }
+                    return a;
+                },
                 Collector.Characteristics.IDENTITY_FINISH);
     }
 
@@ -117,10 +214,12 @@ public final class Collectors {
     public static <T, R> Collector<T, ?, R> collectingAndThen(Collector<T, ?, R> downstream, Function<R, R> finisher) {
         // Cast away wildcard for intermediate type
         Collector<T, Object, R> dc = (Collector<T, Object, R>) downstream;
+        // Compose finishers without using Function.andThen() (a stripped default method).
+        Function<Object, R> composedFinisher = (a) -> finisher.apply(dc.finisher().apply(a));
         return Collector.of(
                 dc.supplier(),
                 dc.accumulator(),
                 dc.combiner(),
-                dc.finisher().andThen(finisher));
+                composedFinisher);
     }
 }
