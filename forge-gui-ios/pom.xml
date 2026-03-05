@@ -6,7 +6,7 @@
         <packaging.type>jar</packaging.type>
         <build.min.memory>-Xms128m</build.min.memory>
         <build.max.memory>-Xmx2048m</build.max.memory>
-        <robovm.version>10.2.2.3-SNAPSHOT</robovm.version>
+        <robovm.version>2.3.23</robovm.version>
         <!-- Auto-detected via the apple-silicon profile below; override with -Dios.simulator.arch=... -->
         <ios.simulator.arch>x86_64</ios.simulator.arch>
     </properties>
@@ -22,9 +22,9 @@
     <name>Forge iOS</name>
 
     <!--
-      robovmx is published as a SNAPSHOT to the Sonatype Maven Central snapshot
-      repository.  The forge-local repository contains only locally-built artefacts
-      (java-stubs, ASM cache).
+      Local file-system repository containing locally-built artifacts (java-stubs,
+      ASM cache, and the robovmx dist-compiler extracted by install-robovmx.sh).
+      See scripts/install-robovmx.sh for details.
     -->
     <repositories>
         <repository>
@@ -33,12 +33,6 @@
             <releases><enabled>true</enabled></releases>
             <snapshots><enabled>false</enabled></snapshots>
         </repository>
-        <repository>
-            <id>robovmx-snapshots</id>
-            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
-            <releases><enabled>false</enabled></releases>
-            <snapshots><enabled>true</enabled></snapshots>
-        </repository>
     </repositories>
     <pluginRepositories>
         <pluginRepository>
@@ -46,12 +40,6 @@
             <url>file://${project.basedir}/local-repo</url>
             <releases><enabled>true</enabled></releases>
             <snapshots><enabled>false</enabled></snapshots>
-        </pluginRepository>
-        <pluginRepository>
-            <id>robovmx-snapshots</id>
-            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
-            <releases><enabled>false</enabled></releases>
-            <snapshots><enabled>true</enabled></snapshots>
         </pluginRepository>
     </pluginRepositories>
 
@@ -177,7 +165,10 @@
              min-sdk-version=26 which already has Record support via desugaring.
 
              Using version 3.0: Maven caches release artifacts permanently in ~/.m2;
-             the version number must be bumped whenever the stub content changes. -->
+             the version number must be bumped whenever the stub content changes.
+             The robovmx compiler itself is installed by bash scripts/install-robovmx.sh
+             and wired in via the plugin dependency override in the ios-device/ios-simulator
+             profiles below. -->
         <dependency>
             <groupId>forge</groupId>
             <artifactId>java-stubs</artifactId>
@@ -191,9 +182,21 @@
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>com.robovmx</groupId>
+                        <groupId>com.mobidevelop.robovm</groupId>
                         <artifactId>robovm-maven-plugin</artifactId>
                         <version>${robovm.version}</version>
+                        <!-- Override the bundled robovm-dist-compiler with the robovmx build.
+                             robovmx replaces MobiVM's Android 4.4-era runtime with Android 12's
+                             libcore12, providing native Java 8+ support.  The -robovmx version
+                             is never published to Maven Central so Maven always resolves it from
+                             forge-local (populated by scripts/install-robovmx.sh). -->
+                        <dependencies>
+                            <dependency>
+                                <groupId>com.mobidevelop.robovm</groupId>
+                                <artifactId>robovm-dist-compiler</artifactId>
+                                <version>2.3.23-robovmx</version>
+                            </dependency>
+                        </dependencies>
                         <executions>
                             <execution>
                                 <id>ios-device-build</id>
@@ -217,9 +220,18 @@
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>com.robovmx</groupId>
+                        <groupId>com.mobidevelop.robovm</groupId>
                         <artifactId>robovm-maven-plugin</artifactId>
                         <version>${robovm.version}</version>
+                        <!-- Override the bundled robovm-dist-compiler with the robovmx build.
+                             See ios-device profile comment above for rationale. -->
+                        <dependencies>
+                            <dependency>
+                                <groupId>com.mobidevelop.robovm</groupId>
+                                <artifactId>robovm-dist-compiler</artifactId>
+                                <version>2.3.23-robovmx</version>
+                            </dependency>
+                        </dependencies>
                         <executions>
                             <execution>
                                 <id>ios-simulator-build</id>

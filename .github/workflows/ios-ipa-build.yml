@@ -26,6 +26,9 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
+      - name: Install robovmx compiler from GitHub release
+        run: bash scripts/install-robovmx.sh
+
       - name: Build Java stub (java.lang.Record) for robovmx
         run: bash scripts/build-java-stubs.sh
 
