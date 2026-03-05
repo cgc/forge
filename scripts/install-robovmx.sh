@@ -126,7 +126,24 @@ fi
 echo "[install-robovmx]   Verified: AppCompiler class present"
 
 # ---------------------------------------------------------------------------
-# Step 3 – Install into local-repo under MobiVM coordinates.
+# Step 2b – Patch META-INF/robovm/version.properties to "2.3.23".
+#
+# robovm-maven-plugin reads the version string from this file and resolves
+#   com.mobidevelop.robovm:robovm-dist:tar.gz:nocompiler:<version>
+# to download the native toolchain.  The robovmx compiler ships version
+# "10.2.2.4-SNAPSHOT" here, but that dist tarball does not exist in any
+# public repository.  Patching it to "2.3.23" makes the plugin fetch the
+# standard MobiVM 2.3.23 native dist from Maven Central, which is fully
+# compatible: robovmx only changes the Java runtime (libcore12), not the
+# native LLVM/linker toolchain that robovm-dist provides.
+# ---------------------------------------------------------------------------
+echo "[install-robovmx] Patching version.properties to 2.3.23 ..."
+mkdir -p "$WORK_DIR/patch/META-INF/robovm"
+echo "version=2.3.23" > "$WORK_DIR/patch/META-INF/robovm/version.properties"
+# zip -u updates an entry in-place; we cd into the staging tree so that the
+# path inside the archive is preserved as META-INF/robovm/version.properties.
+(cd "$WORK_DIR/patch" && zip -u "$EXTRACTED_JAR" META-INF/robovm/version.properties)
+echo "[install-robovmx]   Patched version.properties → 2.3.23"
 #
 # Using com.mobidevelop.robovm:robovm-dist-compiler:2.3.23-robovmx (same
 # groupId/artifactId as the original, new version suffix) ensures that the
