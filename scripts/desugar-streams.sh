@@ -1,29 +1,17 @@
 #!/usr/bin/env bash
 # desugar-streams.sh
 #
-# Build-time bytecode transformer for the iOS (MobiVM/RoboVM) build.
+# Build-time bytecode transformer for the iOS (robovmx) build.
 #
-# MobiVM's robovm-rt is based on Android's Java-7 class library and lacks several
-# Java-8+ methods on existing classes:
+# robovmx's runtime is based on Android 12's libcore (libcore12), which natively
+# provides all Java 8+ APIs.  The only call sites that require rewriting are:
 #
-#   • Collection.stream()          (NoSuchMethodError at runtime on iOS)
-#   • Iterable.spliterator()
-#   • Arrays.stream(T[])
-#   • File.toPath()
-#   • BufferedReader.lines()
-#   • Map.getOrDefault, computeIfAbsent, computeIfPresent, compute, merge, putIfAbsent
-#   • Collection.removeIf(Predicate)
-#   • Predicate.negate(), .and(), .or()  (stubs strip lambda bodies → UnsupportedOperationException)
-#   • Predicate.not(target)              (Java 11 static; stubs impl calls stripped negate())
-#   • Comparator.comparing (1-arg and 2-arg), comparingInt, reversed, thenComparing, thenComparingInt
+#   • String.isBlank()                   (Java 11; absent from robovmx's String)
+#   • String.repeat(int)                 (Java 11; absent from robovmx's String)
+#   • BreakIterator.getLineInstance(Locale)  (ICU data absent on iOS)
 #
-# Those methods cannot be patched via stub JARs because the pre-compiled
-# librobovm-rt.a has fixed dispatch tables.  Instead, this script rewrites the
-# compiled .class files to replace call sites with equivalent calls to
-# forge.util.StreamUtil, which provides compatible implementations.
-#
-# This is equivalent to what Android's D8/R8 "core library desugaring" does, but
-# implemented as a lightweight build step for the RoboVM toolchain.
+# This script rewrites those call sites to equivalent calls in forge.util.StreamUtil
+# and forge.ios.IosUtil using the StreamDesugar ASM transformer.
 #
 # USAGE
 # -----

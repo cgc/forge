@@ -26,10 +26,7 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Patch robovm-soot for Java Record support
-        run: bash scripts/patch-robovm-soot.sh
-
-      - name: Build Java 8 API stubs for MobiVM
+      - name: Build Java stub (java.lang.Record) for robovmx
         run: bash scripts/build-java-stubs.sh
 
       - name: Build all modules and package iOS IPA (unsigned)
