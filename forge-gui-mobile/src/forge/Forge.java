@@ -1106,6 +1106,16 @@ public class Forge implements ApplicationListener {
     @Override
     public void resize(int width, int height) {
         try {
+            // Keep screenWidth/screenHeight in sync with the actual GL surface dimensions.
+            // On iOS, viewDidLayoutSubviews can fire with different dimensions than those
+            // reported at create() time (e.g. after the status bar is hidden and the safe-area
+            // insets are settled). If we leave the stale values here, Graphics.begin() will
+            // set regionHeight = screenHeight (H₀) while HdpiUtils.toBackBufferY() uses the
+            // updated Gdx.graphics.getHeight() (H₁), causing the scissor rectangle to be
+            // placed at the wrong position and clipping the top of scroll-pane / list / dropdown
+            // containers.
+            screenWidth = width;
+            screenHeight = height;
             if (currentScreen != null) {
                 currentScreen.setSize(width, height);
             } else if (splashScreen != null) {
