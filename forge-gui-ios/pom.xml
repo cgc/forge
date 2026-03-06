@@ -181,8 +181,8 @@
             <id>ios-device</id>
             <build>
                 <plugins>
-                    <!-- Ensure forge-gui-ios/robovm-home/ is populated with the robovmx
-                         libcore12 dist before the robovm-maven-plugin runs.  The <home>
+                    <!-- Ensure forge-gui-ios/robovm-home/ is populated with the merged
+                         RoboVM dist before the robovm-maven-plugin runs.  The <home>
                          configuration below directs the plugin to use robovm-home/ as its
                          unpack base; AbstractRoboVMMojo.unpackRoboVMDist() skips extraction
                          when that directory already exists.  See install-robovmx.sh Step 4. -->
@@ -248,8 +248,8 @@
             <id>ios-simulator</id>
             <build>
                 <plugins>
-                    <!-- Ensure forge-gui-ios/robovm-home/ is populated with the robovmx dist.
-                         See ios-device profile comment above for rationale. -->
+                    <!-- Ensure forge-gui-ios/robovm-home/ is populated with the merged
+                         RoboVM dist.  See ios-device profile comment above for rationale. -->
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>exec-maven-plugin</artifactId>

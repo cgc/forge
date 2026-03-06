@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # ensure-robovm-bro-bridge.sh
 #
-# Ensures forge-gui-ios/robovm-home/ is populated with the robovmx libcore12
-# dist so that robovm-maven-plugin uses it as the robovm home directory.
+# Ensures forge-gui-ios/robovm-home/ is populated with the merged RoboVM dist
+# so that robovm-maven-plugin uses it as the robovm home directory.
 #
 # This is called by forge-gui-ios/pom.xml (exec-maven-plugin, prepare-package
 # phase) as a safety net for developers who run 'mvn' directly without first
@@ -10,15 +10,14 @@
 #
 # All logic has been consolidated into install-robovmx.sh, which:
 #   • Installs the robovmx AOT compiler fat JAR to forge-gui-ios/local-repo/
-#   • Populates forge-gui-ios/robovm-home/robovm-2.3.23/ with the robovmx
-#     libcore12 dist extracted from the IDEA plugin zip, providing:
-#       - lib/robovm-rt.jar         (libcore12, Android 12-based runtime)
-#       - lib/robovm-bro-bridge.jar (sourced from standard MobiVM dist;
-#                                    required by Config$Home.validate())
-#       - lib/vm/*/librobovm-bro.a  (new bro native lib, from robovmx dist)
+#   • Builds forge-gui-ios/robovm-home/robovm-2.3.23/ as a MERGE of:
+#       BASE:    standard MobiVM 2.3.23 dist (bin/, lib/vm/, robovm-bro-bridge.jar,
+#                and all other files Config$Home.validate() requires)
+#       OVERLAY: robovmx dist (lib/robovm-rt.jar replaced with libcore12 version;
+#                lib/vm/ios/arm64/librobovm-bro.a and other bro bridge files added)
 #     This fixes both:
 #       • "Path .../robovm-2.3.23 is not a valid RoboVM install directory:
-#         ../.. missing or invalid"  (Config$Home.validate() bro-bridge check)
+#         ../.. missing or invalid"  (lib/vm/ was missing from robovmx-only dist)
 #       • "Root class java/net/Inet6Address$Inet6AddressHolder not found"
 #         (ROOT_CLASSES in AppCompiler.java requires libcore12 inner classes)
 #
