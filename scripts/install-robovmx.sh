@@ -213,5 +213,43 @@ if [ -d "$M2_REPO" ]; then
     echo "[install-robovmx]   ~/.m2 entry updated."
 fi
 
+# ---------------------------------------------------------------------------
+# Step 4 – Clear any stale robovm-dist unpacked directory from ~/.m2.
+#
+# The robovm-maven-plugin downloads robovm-dist:2.3.23:tar.gz:nocompiler and
+# unpacks it to:
+#
+#   ~/.m2/repository/com/mobidevelop/robovm/robovm-dist/2.3.23/unpacked/
+#
+# The plugin's unpack() method skips re-extraction if the "unpacked/"
+# directory already exists (it only re-extracts for SNAPSHOT versions).
+#
+# If a previous build run left an empty or partially-extracted "unpacked/"
+# directory (e.g. an aborted build, or a failed download before the
+# version.properties patch was applied), the next build reuses it without
+# re-extracting.  This causes Config.Home.validate() to fail because the
+# expected lib/vm/ subdirectory is absent:
+#
+#   "Path .../unpacked/robovm-2.3.23 is not a valid RoboVM install
+#    directory: ../.. missing or invalid"
+#
+# The "../.." in the error comes from the robovmx compiler's validate()
+# method, which uses relativize(libVmDir, homeDir) to describe what's
+# missing — lib/vm/ is two levels down from homeDir, so its relative path
+# back is "../..".
+#
+# Deleting the unpacked/ directory here forces the plugin to do a clean
+# re-extraction of the dist tarball on the very next Maven build invocation.
+# ---------------------------------------------------------------------------
+M2_DIST_BASE="${HOME}/.m2/repository/com/mobidevelop/robovm/robovm-dist"
+if [ -d "$M2_DIST_BASE" ]; then
+    # Remove all "unpacked/" subdirectories under any robovm-dist version to
+    # ensure a clean re-extraction regardless of which version was attempted.
+    find "$M2_DIST_BASE" -mindepth 2 -maxdepth 2 -name "unpacked" -type d | while read -r UNPACK_DIR; do
+        echo "[install-robovmx] Removing stale dist unpack dir: $UNPACK_DIR"
+        rm -rf "$UNPACK_DIR"
+    done
+fi
+
 echo "$SCRIPT_HASH" > "$MARKER"
 echo "[install-robovmx] Done. ${GROUP_ID}:${ARTIFACT_ID}:${VERSION} installed to local-repo."
