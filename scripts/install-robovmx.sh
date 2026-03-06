@@ -184,5 +184,34 @@ _md5  "$DEST_DIR/$JAR_NAME"                         > "$DEST_DIR/$JAR_NAME.md5"
 _sha1 "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom"     > "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom.sha1"
 _md5  "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom"     > "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom.md5"
 
+# ---------------------------------------------------------------------------
+# Step 3 – Also install to ~/.m2 to override any stale cached copy.
+#
+# The CI uses actions/setup-java with cache: 'maven', which saves/restores
+# ~/.m2 between runs.  If a previous CI run resolved the plugin dependency
+# (robovm-dist-compiler:2.3.23-robovmx) BEFORE the version.properties patch
+# was added, Maven would have copied the old unpatched JAR to ~/.m2.  On
+# subsequent runs the cache restores that stale copy and Maven uses it
+# directly without checking local-repo again (local repo is only consulted
+# when the artifact is absent from ~/.m2).
+#
+# By copying the freshly patched JAR into ~/.m2 here (after the cache
+# restore but before the Maven build), we ensure Maven always uses the
+# patched version — regardless of whatever the CI cache contains.
+# ---------------------------------------------------------------------------
+M2_REPO="${HOME}/.m2/repository"
+M2_DEST="${M2_REPO}/${GROUP_PATH}/${VERSION}"
+if [ -d "$M2_REPO" ]; then
+    echo "[install-robovmx] Overwriting ~/.m2 cache entry with patched JAR ..."
+    mkdir -p "$M2_DEST"
+    cp "$DEST_DIR/$JAR_NAME"                         "$M2_DEST/$JAR_NAME"
+    cp "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom"     "$M2_DEST/${ARTIFACT_ID}-${VERSION}.pom"
+    cp "$DEST_DIR/$JAR_NAME.sha1"                    "$M2_DEST/$JAR_NAME.sha1"
+    cp "$DEST_DIR/$JAR_NAME.md5"                     "$M2_DEST/$JAR_NAME.md5"
+    cp "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom.sha1" "$M2_DEST/${ARTIFACT_ID}-${VERSION}.pom.sha1"
+    cp "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom.md5"  "$M2_DEST/${ARTIFACT_ID}-${VERSION}.pom.md5"
+    echo "[install-robovmx]   ~/.m2 entry updated."
+fi
+
 echo "$SCRIPT_HASH" > "$MARKER"
 echo "[install-robovmx] Done. ${GROUP_ID}:${ARTIFACT_ID}:${VERSION} installed to local-repo."
