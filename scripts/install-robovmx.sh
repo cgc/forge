@@ -53,41 +53,14 @@
 #   0004: AugEvalFunction – return Throwable instead of crashing when the
 #         exception ref is null in the typing phase
 #
-# DIST INSTALL — fixes both known failures
-# -----------------------------------------
-# The robovmx compiler's ROOT_CLASSES list (AppCompiler.java) references 40
-# classes specific to Android 12's libcore (e.g. java/net/Inet6Address$
-# Inet6AddressHolder, android/system/*, sun/nio/ch/*).  These classes are
-# absent from the standard MobiVM 2.3.23 rt.jar (Android 4.4 era), causing:
-#
-#   CompilerException: Root class java/net/Inet6Address$Inet6AddressHolder not found
-#
-# Additionally, Config$Home.validate() in the robovmx compiler checks for
-# the presence of bin/, lib/vm/, and lib/robovm-rt.jar.  The error:
-#
-#   IllegalArgumentException: .../robovm-2.3.23 is not a valid RoboVM
-#   install directory: ../.. missing or invalid
-#
-# means lib/vm/ is absent ("../.. missing or invalid" comes from
-# Config$Home.relativize(libVmDir, homeDir) which returns the path FROM
-# lib/vm/ BACK TO the home dir — two levels up = "../..").
-#
-# The robovmx dist embedded in the IDEA plugin zip is NOT a complete RoboVM
-# distribution: it contains only lib/robovm-rt.jar (libcore12 replacement)
-# and bro bridge files.  It lacks bin/ (the rvm launcher), lib/vm/ (native
-# VM object files), and the LLVM toolchain needed for compilation.
-#
-# Fix: build robovm-home/robovm-2.3.23/ as a MERGE of two components:
-#
-#   BASE:  standard MobiVM 2.3.23 dist (provides bin/, lib/vm/, toolchain,
-#          lib/robovm-bro-bridge.jar, and all other required files)
-#
-#   OVERLAY: robovmx dist (replaces lib/robovm-rt.jar with libcore12 version;
-#            adds lib/vm/ios/arm64/librobovm-bro.a and any other bro files)
-#
-# The base is extracted first, then the robovmx content is copied on top.
-# forge-gui-ios/pom.xml sets <home>${project.basedir}/robovm-home</home>
-# so the plugin uses robovm-home/robovm-2.3.23/ as the Config.Home directory.
+# DIST INSTALL (Step 4)
+# ---------------------
+# Builds forge-gui-ios/robovm-home/robovm-2.3.23/ as a MERGE of the standard
+# MobiVM 2.3.23 dist (base: bin/, lib/vm/, toolchain) and the robovmx partial
+# dist (overlay: libcore12 lib/robovm-rt.jar + bro bridge files).  The merged
+# directory is pre-populated before the Maven build so robovm-maven-plugin
+# skips extraction and uses it as Config.Home directly.  See the inline Step 4
+# comment block for the detailed rationale.
 #
 # Usage:  bash scripts/install-robovmx.sh
 #
@@ -115,6 +88,11 @@ ARTIFACT_ID="robovm-dist-compiler"
 VERSION="2.3.23-robovmx"
 GROUP_PATH="com/mobidevelop/robovm/robovm-dist-compiler"
 
+# Soot sources used to patch the AOT compiler (see Step 2c).
+SOOT_ARTIFACT_ID="robovm-soot"
+SOOT_VERSION="2.5.0-9"
+SOOT_SOURCES_URL="https://repo1.maven.org/maven2/com/mobidevelop/robovm/${SOOT_ARTIFACT_ID}/${SOOT_VERSION}/${SOOT_ARTIFACT_ID}-${SOOT_VERSION}-sources.jar"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 
@@ -133,24 +111,17 @@ ROBOVM_HOME="$REPO_ROOT/forge-gui-ios/robovm-home"
 # Its presence confirms the robovmx dist content is installed.
 _DIST_MARKER="${ROBOVM_HOME}/robovm-${ROBOVM_VERSION}/lib/vm/ios/arm64/librobovm-bro.a"
 
-_script_hash() {
+_sha1() {
     if command -v sha1sum >/dev/null 2>&1; then
-        sha1sum "${BASH_SOURCE[0]}" | cut -d' ' -f1
+        sha1sum "$1" | cut -d' ' -f1
     elif command -v shasum >/dev/null 2>&1; then
-        shasum "${BASH_SOURCE[0]}" | cut -d' ' -f1
+        shasum -a 1 "$1" | cut -d' ' -f1
     else
         echo "[install-robovmx] ERROR: neither sha1sum nor shasum found." >&2
         exit 1
     fi
 }
-
-_sha1() {
-    if command -v sha1sum >/dev/null 2>&1; then
-        sha1sum "$1" | cut -d' ' -f1
-    else
-        shasum -a 1 "$1" | cut -d' ' -f1
-    fi
-}
+_script_hash() { _sha1 "${BASH_SOURCE[0]}"; }
 
 _md5() {
     if command -v md5sum >/dev/null 2>&1; then
@@ -267,10 +238,6 @@ echo "[install-robovmx]   Patched version.properties → 2.3.23"
 # patch-robovm-soot.sh.  The robovmx compiler (now used instead of the standard
 # MobiVM compiler) embeds the same buggy soot, so we apply the same fixes here.
 # ---------------------------------------------------------------------------
-SOOT_ARTIFACT_ID="robovm-soot"
-SOOT_VERSION="2.5.0-9"
-SOOT_SOURCES_URL="https://repo1.maven.org/maven2/com/mobidevelop/robovm/${SOOT_ARTIFACT_ID}/${SOOT_VERSION}/${SOOT_ARTIFACT_ID}-${SOOT_VERSION}-sources.jar"
-
 echo "[install-robovmx] Step 2c: applying soot patches to robovmx compiler..."
 echo "[install-robovmx]   Downloading ${SOOT_ARTIFACT_ID}-${SOOT_VERSION} sources..."
 curl -fsSL "$SOOT_SOURCES_URL" -o "$WORK_DIR/robovm-soot-sources.jar"
@@ -320,9 +287,10 @@ echo "[install-robovmx]   Soot patches applied."
 # ---------------------------------------------------------------------------
 mkdir -p "$DEST_DIR"
 JAR_NAME="${ARTIFACT_ID}-${VERSION}.jar"
+POM_NAME="${ARTIFACT_ID}-${VERSION}.pom"
 cp "$EXTRACTED_JAR" "$DEST_DIR/$JAR_NAME"
 
-cat > "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom" << POM_EOF
+cat > "$DEST_DIR/${POM_NAME}" << POM_EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <project>
   <modelVersion>4.0.0</modelVersion>
@@ -333,10 +301,10 @@ cat > "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom" << POM_EOF
 </project>
 POM_EOF
 
-_sha1 "$DEST_DIR/$JAR_NAME"                         > "$DEST_DIR/$JAR_NAME.sha1"
-_md5  "$DEST_DIR/$JAR_NAME"                         > "$DEST_DIR/$JAR_NAME.md5"
-_sha1 "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom"     > "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom.sha1"
-_md5  "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom"     > "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom.md5"
+_sha1 "$DEST_DIR/$JAR_NAME"         > "$DEST_DIR/$JAR_NAME.sha1"
+_md5  "$DEST_DIR/$JAR_NAME"         > "$DEST_DIR/$JAR_NAME.md5"
+_sha1 "$DEST_DIR/$POM_NAME"         > "$DEST_DIR/$POM_NAME.sha1"
+_md5  "$DEST_DIR/$POM_NAME"         > "$DEST_DIR/$POM_NAME.md5"
 
 # ---------------------------------------------------------------------------
 # Step 3 – Also install to ~/.m2 to override any stale cached copy.
@@ -357,12 +325,12 @@ M2_DEST="${M2_REPO}/${GROUP_PATH}/${VERSION}"
 if [ -d "$M2_REPO" ]; then
     echo "[install-robovmx] Overwriting ~/.m2 cache entry with patched JAR ..."
     mkdir -p "$M2_DEST"
-    cp "$DEST_DIR/$JAR_NAME"                         "$M2_DEST/$JAR_NAME"
-    cp "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom"     "$M2_DEST/${ARTIFACT_ID}-${VERSION}.pom"
-    cp "$DEST_DIR/$JAR_NAME.sha1"                    "$M2_DEST/$JAR_NAME.sha1"
-    cp "$DEST_DIR/$JAR_NAME.md5"                     "$M2_DEST/$JAR_NAME.md5"
-    cp "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom.sha1" "$M2_DEST/${ARTIFACT_ID}-${VERSION}.pom.sha1"
-    cp "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom.md5"  "$M2_DEST/${ARTIFACT_ID}-${VERSION}.pom.md5"
+    cp "$DEST_DIR/$JAR_NAME"         "$M2_DEST/$JAR_NAME"
+    cp "$DEST_DIR/$POM_NAME"         "$M2_DEST/$POM_NAME"
+    cp "$DEST_DIR/$JAR_NAME.sha1"    "$M2_DEST/$JAR_NAME.sha1"
+    cp "$DEST_DIR/$JAR_NAME.md5"     "$M2_DEST/$JAR_NAME.md5"
+    cp "$DEST_DIR/$POM_NAME.sha1"    "$M2_DEST/$POM_NAME.sha1"
+    cp "$DEST_DIR/$POM_NAME.md5"     "$M2_DEST/$POM_NAME.md5"
     echo "[install-robovmx]   ~/.m2 entry updated."
 fi
 
