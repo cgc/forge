@@ -13,8 +13,9 @@
 #   • Populates forge-gui-ios/robovm-home/robovm-2.3.23/ with the robovmx
 #     libcore12 dist extracted from the IDEA plugin zip, providing:
 #       - lib/robovm-rt.jar         (libcore12, Android 12-based runtime)
-#       - lib/robovm-bro-bridge.jar (required by Config$Home.validate())
-#       - lib/vm/*/librobovm-bro.a  (new bro native lib)
+#       - lib/robovm-bro-bridge.jar (sourced from standard MobiVM dist;
+#                                    required by Config$Home.validate())
+#       - lib/vm/*/librobovm-bro.a  (new bro native lib, from robovmx dist)
 #     This fixes both:
 #       • "Path .../robovm-2.3.23 is not a valid RoboVM install directory:
 #         ../.. missing or invalid"  (Config$Home.validate() bro-bridge check)

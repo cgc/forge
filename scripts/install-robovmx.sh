@@ -47,8 +47,10 @@
 #   CompilerException: Root class java/net/Inet6Address$Inet6AddressHolder not found
 #
 # Additionally, Config$Home.validate() in the robovmx compiler checks for
-# lib/robovm-bro-bridge.jar which the standard MobiVM 2.3.23 dist lacks,
-# causing:
+# lib/robovm-bro-bridge.jar.  This file is NOT in the robovmx dist (the dist
+# only ships the native librobovm-bro.a); we source it from the standard
+# MobiVM 2.3.23 dist on Maven Central (Step 4b).  Validate() throws the
+# confusingly-named error:
 #
 #   IllegalArgumentException: .../robovm-2.3.23 is not a valid RoboVM
 #   install directory: ../.. missing or invalid
@@ -72,9 +74,9 @@
 #
 # The script is idempotent:
 #   • Compiler: .forge-built marker (script hash) in local-repo
-#   • Dist:     robovm-home/robovm-2.3.23/lib/robovm-bro-bridge.jar
-#               (robovm-bro-bridge.jar is unique to the robovmx dist;
-#                it is absent from the standard MobiVM 2.3.23 dist)
+#   • Dist:     robovm-home/robovm-2.3.23/lib/vm/ios/arm64/librobovm-bro.a
+#               (native bro lib, unique to the robovmx dist; absent from the
+#                standard MobiVM 2.3.23 dist)
 
 set -euo pipefail
 
@@ -103,9 +105,9 @@ MARKER="$DEST_DIR/.forge-built"
 # Project-local robovmx home directory (gitignored; populated by Step 4).
 # robovm-maven-plugin's <home> points here; it uses the robovm-2.3.23/ subdir.
 ROBOVM_HOME="$REPO_ROOT/forge-gui-ios/robovm-home"
-# robovm-bro-bridge.jar is present in the robovmx dist but NOT in the standard
-# MobiVM 2.3.23 dist.  Its presence confirms the robovmx content is installed.
-_DIST_MARKER="${ROBOVM_HOME}/robovm-${ROBOVM_VERSION}/lib/robovm-bro-bridge.jar"
+# librobovm-bro.a is unique to the robovmx dist (absent from standard MobiVM).
+# Its presence confirms the robovmx dist content is installed.
+_DIST_MARKER="${ROBOVM_HOME}/robovm-${ROBOVM_VERSION}/lib/vm/ios/arm64/librobovm-bro.a"
 
 _script_hash() {
     if command -v sha1sum >/dev/null 2>&1; then
@@ -312,8 +314,12 @@ fi  # _NEED_COMPILER_INSTALL
 #     compiler throws:
 #       CompilerException: Root class java/net/Inet6Address$Inet6AddressHolder
 #       not found
-#   • The robovmx dist also includes lib/robovm-bro-bridge.jar, satisfying
-#     the Config$Home.validate() check that causes "../.. missing or invalid".
+#
+# robovm-bro-bridge.jar is NOT in the robovmx dist (the dist only contains
+# the native librobovm-bro.a).  Config$Home.validate() checks for this file
+# and throws the confusingly-named "../.. missing or invalid" error when it
+# is absent.  We source it from the standard MobiVM 2.3.23 dist tarball on
+# Maven Central (see "Step 4b" below).
 # ---------------------------------------------------------------------------
 if [ "${_NEED_DIST_SETUP}" = true ]; then
     echo "[install-robovmx] Step 4: populating forge-gui-ios/robovm-home/ ..."
@@ -348,7 +354,56 @@ if [ "${_NEED_DIST_SETUP}" = true ]; then
     (cd "$WORK_DIR/rt-manifest" && zip -u "$RT_JAR" META-INF/MANIFEST.MF)
     echo "[install-robovmx]   rt.jar manifest patched."
 
-    # Copy the robovmx dist to robovm-home/robovm-2.3.23/.
+    # ---------------------------------------------------------------------------
+    # Step 4b – Add robovm-bro-bridge.jar to the robovmx dist.
+    #
+    # The robovmx dist contains librobovm-bro.a (native bridge lib) but NOT the
+    # Java companion robovm-bro-bridge.jar.  Config$Home.validate() in the robovmx
+    # compiler checks for lib/robovm-bro-bridge.jar and throws the confusingly-
+    # named error "../.. missing or invalid" when it is absent.
+    #
+    # The jar contains the Java API for the RoboVM Bro ObjC bridge (annotations,
+    # Ptr types, etc.) and is required for compiling code that interfaces with iOS
+    # frameworks.  We source it from the standard MobiVM 2.3.23 dist tarball:
+    #
+    #   Priority 1: ~/.m2 cached dist (fast; no download needed)
+    #   Priority 2: stream from Maven Central (downloads only up to this file in
+    #               the archive, typically a few MB; tar exits early on match)
+    #
+    # The download is a ONE-TIME COST: on subsequent builds the _DIST_MARKER check
+    # (librobovm-bro.a) detects the robovmx dist is already installed and skips
+    # Step 4 entirely.
+    # ---------------------------------------------------------------------------
+    _BRO_DEST="${ROBOVMX_ROOT}/lib/robovm-bro-bridge.jar"
+    _M2_STD_DIST="${M2_REPO}/com/mobidevelop/robovm/robovm-dist/${ROBOVM_VERSION}/robovm-dist-${ROBOVM_VERSION}-nocompiler.tar.gz"
+    _STD_DIST_URL="https://repo1.maven.org/maven2/com/mobidevelop/robovm/robovm-dist/${ROBOVM_VERSION}/robovm-dist-${ROBOVM_VERSION}-nocompiler.tar.gz"
+
+    if [ -f "${_M2_STD_DIST}" ]; then
+        echo "[install-robovmx]   Step 4b: extracting robovm-bro-bridge.jar from ~/.m2 cached standard dist..."
+        tar -xzOf "${_M2_STD_DIST}" \
+            "robovm-${ROBOVM_VERSION}/lib/robovm-bro-bridge.jar" \
+            > "${_BRO_DEST}"
+    else
+        # Stream from Maven Central.  tar stops reading stdin after extracting
+        # the named entry, which causes curl to receive SIGPIPE (expected and
+        # harmless).  We temporarily disable pipefail around this command.
+        echo "[install-robovmx]   Step 4b: streaming robovm-bro-bridge.jar from Maven Central..."
+        echo "[install-robovmx]   (Subsequent builds use ~/.m2 cache; this is a one-time download.)"
+        set +o pipefail
+        curl -fsSL "${_STD_DIST_URL}" | \
+            tar -xzOf - "robovm-${ROBOVM_VERSION}/lib/robovm-bro-bridge.jar" \
+            > "${_BRO_DEST}"
+        _TAR_STATUS="${PIPESTATUS[1]}"
+        set -o pipefail
+        if [ "${_TAR_STATUS}" -ne 0 ] || [ ! -s "${_BRO_DEST}" ]; then
+            echo "[install-robovmx] ERROR: Failed to extract robovm-bro-bridge.jar from standard MobiVM dist" >&2
+            exit 1
+        fi
+    fi
+    [ -s "${_BRO_DEST}" ] || { echo "[install-robovmx] ERROR: robovm-bro-bridge.jar is empty" >&2; exit 1; }
+    echo "[install-robovmx]   robovm-bro-bridge.jar added."
+
+    # Copy the robovmx dist (now including robovm-bro-bridge.jar) to robovm-home/robovm-2.3.23/.
     # The directory name robovm-2.3.23 matches getRoboVMVersion() ("2.3.23" from
     # the patched version.properties), which is what unpackRoboVMDist() expects
     # as the subdirectory of unpackBaseDir (= robovm-home/).
