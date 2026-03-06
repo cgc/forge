@@ -7,8 +7,8 @@
 #   1. com.mobidevelop.robovm:robovm-dist-compiler:2.3.23-robovmx
 #        (AOT compiler fat JAR) → forge-gui-ios/local-repo/ and ~/.m2
 #
-#   2. ~/.m2/.../robovm-dist/2.3.23/unpacked/robovm-2.3.23/
-#        (robovmx libcore12 runtime dist, replaces standard MobiVM rt.jar)
+#   2. forge-gui-ios/robovm-home/robovm-2.3.23/
+#        (robovmx libcore12 runtime dist; used as the robovm <home> directory)
 #
 # robovmx is a fork of MobiVM that replaces MobiVM's Android 4.4-era runtime
 # (robovm-rt) with Android 12's libcore (libcore12), giving full Java 8+
@@ -53,20 +53,28 @@
 #   IllegalArgumentException: .../robovm-2.3.23 is not a valid RoboVM
 #   install directory: ../.. missing or invalid
 #
-# Fix: we extract the full robovmx libcore12 dist from the IDEA zip and
-# pre-populate ~/.m2/.../robovm-dist/2.3.23/unpacked/robovm-2.3.23/ with it.
-# robovm-maven-plugin's unpack() skips re-extraction when the unpacked/
-# directory already exists (for non-SNAPSHOT versions), so our robovmx
-# content is used as-is.  We patch the rt.jar's Implementation-Version from
-# "10.2.2.4-SNAPSHOT" to "2.3.23" so that Config$Home.validate()'s version
-# check matches the patched version.properties in the compiler.
+# Fix: extract the robovmx libcore12 dist and populate a project-local
+# directory (forge-gui-ios/robovm-home/) with the robovmx content.
+# forge-gui-ios/pom.xml sets <home>${project.basedir}/robovm-home</home>
+# in the robovm-maven-plugin configuration.  This directs the plugin to use
+# robovm-home/ as the extraction base: AbstractRoboVMMojo.unpackRoboVMDist()
+# calls unpack(distTarFile, home) which skips extraction when the target
+# directory already exists (for non-SNAPSHOT versions).  The plugin then uses
+# robovm-home/robovm-2.3.23/ as the Config.Home directory.
+#
+# This avoids any direct manipulation of ~/.m2 for the dist content.  Maven
+# still resolves and caches the standard MobiVM 2.3.23 nocompiler dist
+# tarball in ~/.m2 via normal artifact resolution (so the plugin's
+# resolveRoboVMDistArtifact() call succeeds), but that tarball is never
+# extracted since robovm-home/ already exists.
 #
 # Usage:  bash scripts/install-robovmx.sh
 #
 # The script is idempotent:
 #   • Compiler: .forge-built marker (script hash) in local-repo
-#   • Dist:     lib/vm/ios/arm64/librobovm-bro.a presence (unique to robovmx,
-#               not present in standard MobiVM dists)
+#   • Dist:     robovm-home/robovm-2.3.23/lib/robovm-bro-bridge.jar
+#               (robovm-bro-bridge.jar is unique to the robovmx dist;
+#                it is absent from the standard MobiVM 2.3.23 dist)
 
 set -euo pipefail
 
@@ -92,12 +100,12 @@ LOCAL_REPO="$REPO_ROOT/forge-gui-ios/local-repo"
 DEST_DIR="$LOCAL_REPO/${GROUP_PATH}/${VERSION}"
 MARKER="$DEST_DIR/.forge-built"
 
-# Maven dist paths
-M2_REPO="${HOME}/.m2/repository"
-_DIST_UNPACKED="${M2_REPO}/com/mobidevelop/robovm/robovm-dist/${ROBOVM_VERSION}/unpacked/robovm-${ROBOVM_VERSION}"
-# librobovm-bro.a is unique to the robovmx dist (absent from standard MobiVM).
-# Its presence indicates the robovmx libcore12 dist is already installed.
-_DIST_MARKER="${_DIST_UNPACKED}/lib/vm/ios/arm64/librobovm-bro.a"
+# Project-local robovmx home directory (gitignored; populated by Step 4).
+# robovm-maven-plugin's <home> points here; it uses the robovm-2.3.23/ subdir.
+ROBOVM_HOME="$REPO_ROOT/forge-gui-ios/robovm-home"
+# robovm-bro-bridge.jar is present in the robovmx dist but NOT in the standard
+# MobiVM 2.3.23 dist.  Its presence confirms the robovmx content is installed.
+_DIST_MARKER="${ROBOVM_HOME}/robovm-${ROBOVM_VERSION}/lib/robovm-bro-bridge.jar"
 
 _script_hash() {
     if command -v sha1sum >/dev/null 2>&1; then
@@ -272,24 +280,30 @@ echo "$SCRIPT_HASH" > "$MARKER"
 fi  # _NEED_COMPILER_INSTALL
 
 # ---------------------------------------------------------------------------
-# Step 4 – Install robovmx libcore12 dist to ~/.m2 unpacked directory.
+# Step 4 – Populate forge-gui-ios/robovm-home/ with the robovmx libcore12 dist.
 #
-# robovm-maven-plugin resolves com.mobidevelop.robovm:robovm-dist:tar.gz:
-# nocompiler:2.3.23 (the standard MobiVM dist) for artifact resolution, then
-# calls unpack() which extracts the tarball to:
+# robovm-maven-plugin's AbstractRoboVMMojo supports a <home> configuration
+# parameter (Maven property: robovm.home).  When set, unpackRoboVMDist() uses
+# it as the extraction base directory (unpackBaseDir) and calls:
 #
-#   ~/.m2/.../robovm-dist/2.3.23/unpacked/
+#   unpack(distTarFile, unpackBaseDir)  ← skipped if unpackBaseDir exists
+#   return new File(unpackBaseDir, "robovm-" + getRoboVMVersion())
 #
-# Critically, unpack() is a no-op if the "unpacked/" directory already exists.
-# We exploit this by pre-populating it with the robovmx libcore12 dist BEFORE
-# Maven runs.  The plugin then skips extraction and uses our robovmx content.
+# forge-gui-ios/pom.xml sets <home>${project.basedir}/robovm-home</home>.
+# We pre-populate robovm-home/ here so unpack() finds it already present and
+# skips extraction.  The plugin then uses robovm-home/robovm-2.3.23/ as the
+# Config.Home directory.
 #
-# The robovmx dist is embedded in instrumented-idea-10.2.2.4-SNAPSHOT.jar
-# (inside the IDEA plugin zip) as a gzip file named "robovm-dist".  We
-# extract this dist, rename its root from "robovm-10.2.2.4-SNAPSHOT" to
-# "robovm-2.3.23" (matching the patched version.properties), and patch the
-# rt.jar's Implementation-Version to "2.3.23" so that Config$Home.validate()'s
-# version check passes.
+# This replaces the previous approach that wrote directly to
+# ~/.m2/.../robovm-dist/2.3.23/unpacked/robovm-2.3.23/ — that approach was
+# fragile because it manipulated Maven's own cache structure.  The robovm-home/
+# directory lives in the project tree (like local-repo/), is gitignored, and
+# is never written to by Maven itself.
+#
+# Maven still resolves and downloads the standard MobiVM 2.3.23 nocompiler dist
+# tarball to ~/.m2 (via robovm-maven-plugin's resolveRoboVMDistArtifact()) but
+# never extracts it since robovm-home/ already exists.  This is normal Maven
+# artifact resolution behavior, not cache manipulation.
 #
 # Why the robovmx dist is needed (not the standard MobiVM dist):
 #   • The robovmx compiler's ROOT_CLASSES list includes libcore12-specific
@@ -302,7 +316,7 @@ fi  # _NEED_COMPILER_INSTALL
 #     the Config$Home.validate() check that causes "../.. missing or invalid".
 # ---------------------------------------------------------------------------
 if [ "${_NEED_DIST_SETUP}" = true ]; then
-    echo "[install-robovmx] Step 4: installing robovmx libcore12 dist..."
+    echo "[install-robovmx] Step 4: populating forge-gui-ios/robovm-home/ ..."
 
     # Extract instrumented-idea.jar from the IDEA zip.
     echo "[install-robovmx]   Extracting ${ROBOVMX_IDEA_JAR} from zip..."
@@ -334,14 +348,15 @@ if [ "${_NEED_DIST_SETUP}" = true ]; then
     (cd "$WORK_DIR/rt-manifest" && zip -u "$RT_JAR" META-INF/MANIFEST.MF)
     echo "[install-robovmx]   rt.jar manifest patched."
 
-    # Replace any existing unpacked/ content with the robovmx dist, renaming
-    # the root directory from "robovm-10.2.2.4-SNAPSHOT" to "robovm-2.3.23".
-    DIST_BASE="${M2_REPO}/com/mobidevelop/robovm/robovm-dist/${ROBOVM_VERSION}"
-    echo "[install-robovmx]   Installing to ${DIST_BASE}/unpacked/robovm-${ROBOVM_VERSION}/ ..."
-    rm -rf "${DIST_BASE}/unpacked"
-    mkdir -p "${DIST_BASE}/unpacked"
-    cp -r "${ROBOVMX_ROOT}" "${DIST_BASE}/unpacked/robovm-${ROBOVM_VERSION}"
-    echo "[install-robovmx]   Robovmx libcore12 dist installed."
+    # Copy the robovmx dist to robovm-home/robovm-2.3.23/.
+    # The directory name robovm-2.3.23 matches getRoboVMVersion() ("2.3.23" from
+    # the patched version.properties), which is what unpackRoboVMDist() expects
+    # as the subdirectory of unpackBaseDir (= robovm-home/).
+    DEST_HOME="${ROBOVM_HOME}/robovm-${ROBOVM_VERSION}"
+    rm -rf "${DEST_HOME}"
+    mkdir -p "${DEST_HOME}"
+    cp -r "${ROBOVMX_ROOT}/." "${DEST_HOME}/"
+    echo "[install-robovmx]   Robovmx libcore12 dist installed to ${DEST_HOME}."
 fi
 
 echo "[install-robovmx] Done. ${GROUP_ID}:${ARTIFACT_ID}:${VERSION} installed to local-repo."

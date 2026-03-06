@@ -2,3 +2,6 @@
 # scripts/build-java-stubs.sh. Contains the patched robovm-dist-compiler jar
 # and the java-stubs jar; never committed.
 local-repo/
+# Project-local robovmx home directory populated by scripts/install-robovmx.sh.
+# Used as the robovm-maven-plugin <home> directory; never committed.
+robovm-home/

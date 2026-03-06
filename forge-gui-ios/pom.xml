@@ -181,14 +181,11 @@
             <id>ios-device</id>
             <build>
                 <plugins>
-                    <!-- Ensure the robovmx libcore12 dist is installed in ~/.m2/...
-                         /robovm-dist/2.3.23/unpacked/robovm-2.3.23/.  This delegates to
-                         scripts/install-robovmx.sh which extracts the robovmx dist from
-                         the IDEA plugin zip and pre-populates the unpacked/ directory so
-                         robovm-maven-plugin skips re-extraction.  Fixes both:
-                           • "../.. missing or invalid" (Config$Home.validate bro-bridge check)
-                           • "Root class Inet6Address$Inet6AddressHolder not found" (libcore12)
-                         See scripts/install-robovmx.sh Step 4 for full rationale. -->
+                    <!-- Ensure forge-gui-ios/robovm-home/ is populated with the robovmx
+                         libcore12 dist before the robovm-maven-plugin runs.  The <home>
+                         configuration below directs the plugin to use robovm-home/ as its
+                         unpack base; AbstractRoboVMMojo.unpackRoboVMDist() skips extraction
+                         when that directory already exists.  See install-robovmx.sh Step 4. -->
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>exec-maven-plugin</artifactId>
@@ -216,7 +213,7 @@
                              robovmx replaces MobiVM's Android 4.4-era runtime with Android 12's
                              libcore12, providing native Java 8+ support.  The -robovmx version
                              is never published to Maven Central so Maven always resolves it from
-                             forge-local (populated by scripts/install-robovmx.sh). -->
+                            forge-local (populated by scripts/install-robovmx.sh). -->
                         <dependencies>
                             <dependency>
                                 <groupId>com.mobidevelop.robovm</groupId>
@@ -234,6 +231,11 @@
                             </execution>
                         </executions>
                         <configuration>
+                            <!-- Point to the project-local robovmx home directory populated by
+                                 scripts/install-robovmx.sh.  This causes unpackRoboVMDist() to
+                                 use robovm-home/ as the unpack base and skip extraction since
+                                 the directory already exists (non-SNAPSHOT version). -->
+                            <home>${project.basedir}/robovm-home</home>
                             <propertiesFile>robovm.properties</propertiesFile>
                             <configFile>robovm.xml</configFile>
                             <arch>arm64</arch>
@@ -246,7 +248,7 @@
             <id>ios-simulator</id>
             <build>
                 <plugins>
-                    <!-- Ensure the robovmx libcore12 dist is installed in ~/.m2 unpacked/.
+                    <!-- Ensure forge-gui-ios/robovm-home/ is populated with the robovmx dist.
                          See ios-device profile comment above for rationale. -->
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
@@ -272,7 +274,7 @@
                         <artifactId>robovm-maven-plugin</artifactId>
                         <version>${robovm.version}</version>
                         <!-- Override the bundled robovm-dist-compiler with the robovmx build.
-                             See ios-device profile comment above for rationale. -->
+                            See ios-device profile comment above for rationale. -->
                         <dependencies>
                             <dependency>
                                 <groupId>com.mobidevelop.robovm</groupId>
@@ -290,6 +292,9 @@
                             </execution>
                         </executions>
                         <configuration>
+                            <!-- Same home directory as the ios-device profile.
+                                 See ios-device profile comment for rationale. -->
+                            <home>${project.basedir}/robovm-home</home>
                             <propertiesFile>robovm.properties</propertiesFile>
                             <configFile>robovm.xml</configFile>
                             <arch>${ios.simulator.arch}</arch>
