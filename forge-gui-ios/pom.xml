@@ -181,6 +181,29 @@
             <id>ios-device</id>
             <build>
                 <plugins>
+                    <!-- Ensure robovm-bro-bridge.jar exists in the unpacked MobiVM dist.
+                         robovmx 10.2.2.4-SNAPSHOT (build #13) validates for this file in
+                         Config$Home.validate(); it is absent from the standard MobiVM 2.3.23
+                         dist. See scripts/ensure-robovm-bro-bridge.sh for details. -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>ensure-robovm-bro-bridge-device</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>bash</executable>
+                                    <arguments>
+                                        <argument>${project.basedir}/../scripts/ensure-robovm-bro-bridge.sh</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
                     <plugin>
                         <groupId>com.mobidevelop.robovm</groupId>
                         <artifactId>robovm-maven-plugin</artifactId>
@@ -219,6 +242,27 @@
             <id>ios-simulator</id>
             <build>
                 <plugins>
+                    <!-- Ensure robovm-bro-bridge.jar exists in the unpacked MobiVM dist.
+                         See ios-device profile comment above for rationale. -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>ensure-robovm-bro-bridge-simulator</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>bash</executable>
+                                    <arguments>
+                                        <argument>${project.basedir}/../scripts/ensure-robovm-bro-bridge.sh</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
                     <plugin>
                         <groupId>com.mobidevelop.robovm</groupId>
                         <artifactId>robovm-maven-plugin</artifactId>

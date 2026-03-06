@@ -84,13 +84,27 @@ _script_hash() {
 }
 SCRIPT_HASH="$(_script_hash)"
 
+# Path that Step 4 will populate with robovm-bro-bridge.jar (see below).
+_M2_BRO_BRIDGE="${HOME}/.m2/repository/com/mobidevelop/robovm/robovm-dist/2.3.23/unpacked/robovm-2.3.23/lib/robovm-bro-bridge.jar"
+
+_NEED_COMPILER_INSTALL=true
+_NEED_BRO_BRIDGE=true
 if [ -n "$SCRIPT_HASH" ] && [ -f "$MARKER" ] && [ "$(cat "$MARKER")" = "$SCRIPT_HASH" ]; then
-    echo "[install-robovmx] Already installed (script unchanged). Skipping."
+    _NEED_COMPILER_INSTALL=false
+fi
+if [ -f "${_M2_BRO_BRIDGE}" ]; then
+    _NEED_BRO_BRIDGE=false
+fi
+
+if [ "${_NEED_COMPILER_INSTALL}" = false ] && [ "${_NEED_BRO_BRIDGE}" = false ]; then
+    echo "[install-robovmx] Already installed (script unchanged, bro-bridge present). Skipping."
     exit 0
 fi
 
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
+
+if [ "${_NEED_COMPILER_INSTALL}" = true ]; then
 
 # ---------------------------------------------------------------------------
 # Step 1 – Download the IDEA plugin zip from the robovmx GitHub release.
@@ -213,43 +227,44 @@ if [ -d "$M2_REPO" ]; then
     echo "[install-robovmx]   ~/.m2 entry updated."
 fi
 
+echo "$SCRIPT_HASH" > "$MARKER"
+
+fi  # _NEED_COMPILER_INSTALL
+
 # ---------------------------------------------------------------------------
-# Step 4 – Clear any stale robovm-dist unpacked directory from ~/.m2.
+# Step 4 – Ensure robovm-bro-bridge.jar exists in the unpacked dist.
 #
-# The robovm-maven-plugin downloads robovm-dist:2.3.23:tar.gz:nocompiler and
-# unpacks it to:
+# The robovmx 10.2.2.4-SNAPSHOT compiler (build #13, Nov 2025, experiment/
+# 2-libcore-10) added a new validation check in Config$Home.validate():
 #
-#   ~/.m2/repository/com/mobidevelop/robovm/robovm-dist/2.3.23/unpacked/
+#   broBridgeJarPath = new File(homeDir, "lib/robovm-bro-bridge.jar")
+#   if (!broBridgeJarPath.exists() || !broBridgeJarPath.isFile())
+#       throw new IllegalArgumentException("../.. missing or invalid")
 #
-# The plugin's unpack() method skips re-extraction if the "unpacked/"
-# directory already exists (it only re-extracts for SNAPSHOT versions).
+# The "../.." in the error is from relativize(homeDir/lib/robovm-bro-bridge.jar,
+# homeDir) — exactly the error reported in the bug:
 #
-# If a previous build run left an empty or partially-extracted "unpacked/"
-# directory (e.g. an aborted build, or a failed download before the
-# version.properties patch was applied), the next build reuses it without
-# re-extracting.  This causes Config.Home.validate() to fail because the
-# expected lib/vm/ subdirectory is absent:
+#   "Path .../unpacked/robovm-2.3.23 is not a valid RoboVM install directory:
+#    ../.. missing or invalid"
 #
-#   "Path .../unpacked/robovm-2.3.23 is not a valid RoboVM install
-#    directory: ../.. missing or invalid"
+# The standard MobiVM 2.3.23 dist does NOT contain robovm-bro-bridge.jar.
+# In MobiVM, the bro-bridge classes (org.robovm.rt.bro.*) live inside
+# robovm-rt.jar.  robovmx separated them into their own artifact because its
+# new libcore12 runtime does not include them.
 #
-# The "../.." in the error comes from the robovmx compiler's validate()
-# method, which uses relativize(libVmDir, homeDir) to describe what's
-# missing — lib/vm/ is two levels down from homeDir, so its relative path
-# back is "../..".
+# Fix: we pre-extract the dist tarball and create robovm-bro-bridge.jar from
+# the org/robovm/rt/bro/** entries already present in robovm-rt.jar.  This
+# makes robovm-maven-plugin's unpack() find the directory already populated
+# (so it skips re-extraction) and Config.Home.validate() passes.
 #
-# Deleting the unpacked/ directory here forces the plugin to do a clean
-# re-extraction of the dist tarball on the very next Maven build invocation.
+# The same logic is also run by the Maven prepare-package hook in
+# forge-gui-ios/pom.xml (scripts/ensure-robovm-bro-bridge.sh) so that a
+# developer who runs 'mvn' directly after 'rm -rf ~/.m2/...' also gets a
+# corrected dist without having to re-run this install script.
 # ---------------------------------------------------------------------------
-M2_DIST_BASE="${HOME}/.m2/repository/com/mobidevelop/robovm/robovm-dist"
-if [ -d "$M2_DIST_BASE" ]; then
-    # Remove all "unpacked/" subdirectories under any robovm-dist version to
-    # ensure a clean re-extraction regardless of which version was attempted.
-    find "$M2_DIST_BASE" -mindepth 2 -maxdepth 2 -name "unpacked" -type d | while read -r UNPACK_DIR; do
-        echo "[install-robovmx] Removing stale dist unpack dir: $UNPACK_DIR"
-        rm -rf "$UNPACK_DIR"
-    done
+if [ "${_NEED_BRO_BRIDGE}" = true ]; then
+    echo "[install-robovmx] Step 4: ensuring robovm-bro-bridge.jar in unpacked dist..."
+    bash "${SCRIPT_DIR}/ensure-robovm-bro-bridge.sh"
 fi
 
-echo "$SCRIPT_HASH" > "$MARKER"
 echo "[install-robovmx] Done. ${GROUP_ID}:${ARTIFACT_ID}:${VERSION} installed to local-repo."
