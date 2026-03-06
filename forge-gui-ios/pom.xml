@@ -181,10 +181,14 @@
             <id>ios-device</id>
             <build>
                 <plugins>
-                    <!-- Ensure robovm-bro-bridge.jar exists in the unpacked MobiVM dist.
-                         robovmx 10.2.2.4-SNAPSHOT (build #13) validates for this file in
-                         Config$Home.validate(); it is absent from the standard MobiVM 2.3.23
-                         dist. See scripts/ensure-robovm-bro-bridge.sh for details. -->
+                    <!-- Ensure the robovmx libcore12 dist is installed in ~/.m2/...
+                         /robovm-dist/2.3.23/unpacked/robovm-2.3.23/.  This delegates to
+                         scripts/install-robovmx.sh which extracts the robovmx dist from
+                         the IDEA plugin zip and pre-populates the unpacked/ directory so
+                         robovm-maven-plugin skips re-extraction.  Fixes both:
+                           • "../.. missing or invalid" (Config$Home.validate bro-bridge check)
+                           • "Root class Inet6Address$Inet6AddressHolder not found" (libcore12)
+                         See scripts/install-robovmx.sh Step 4 for full rationale. -->
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>exec-maven-plugin</artifactId>
@@ -242,7 +246,7 @@
             <id>ios-simulator</id>
             <build>
                 <plugins>
-                    <!-- Ensure robovm-bro-bridge.jar exists in the unpacked MobiVM dist.
+                    <!-- Ensure the robovmx libcore12 dist is installed in ~/.m2 unpacked/.
                          See ios-device profile comment above for rationale. -->
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>

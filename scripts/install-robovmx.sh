@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # install-robovmx.sh
 #
-# Downloads the robovmx IDEA plugin release from GitHub and extracts the
-# robovm-dist-compiler fat JAR, installing it into forge-gui-ios/local-repo/
-# as:
+# Downloads the robovmx IDEA plugin release from GitHub and installs two
+# things needed for the iOS build:
 #
-#     com.mobidevelop.robovm:robovm-dist-compiler:2.3.23-robovmx
+#   1. com.mobidevelop.robovm:robovm-dist-compiler:2.3.23-robovmx
+#        (AOT compiler fat JAR) → forge-gui-ios/local-repo/ and ~/.m2
+#
+#   2. ~/.m2/.../robovm-dist/2.3.23/unpacked/robovm-2.3.23/
+#        (robovmx libcore12 runtime dist, replaces standard MobiVM rt.jar)
 #
 # robovmx is a fork of MobiVM that replaces MobiVM's Android 4.4-era runtime
 # (robovm-rt) with Android 12's libcore (libcore12), giving full Java 8+
@@ -19,45 +22,62 @@
 # is no longer reachable and the snapshots were not carried over to the new
 # central.sonatype.com domain.  The only publicly accessible distribution of
 # robovmx is the GitHub Releases page, which ships an IntelliJ IDEA plugin
-# zip containing the full robovm-dist-compiler fat JAR.
+# zip.  This zip contains:
+#   - robovm-dist-compiler-10.2.2.4-SNAPSHOT.jar  (AOT compiler fat JAR)
+#   - instrumented-idea-10.2.2.4-SNAPSHOT.jar     (IDEA plugin JAR, which
+#       embeds the full robovmx libcore12 dist as "robovm-dist" gzip)
 #
-# We install the fat JAR under MobiVM's Maven coordinates (same groupId and
-# artifactId as the original robovm-dist-compiler) with a new version suffix
-# "-robovmx".  This lets the existing com.mobidevelop.robovm:robovm-maven-plugin
-# (available on Maven Central) pick up the robovmx compiler via its
-# <dependencies> override in forge-gui-ios/pom.xml — the same technique as
-# the old patch-robovm-soot.sh.
-#
-# WHAT IS INSTALLED
-# -----------------
-#   com.mobidevelop.robovm:robovm-dist-compiler:2.3.23-robovmx
-#     <- robovm-dist-compiler-10.2.2.4-SNAPSHOT.jar from
-#        idea-10.2.2.4-SNAPSHOT.zip (GitHub release x2-libcore12-v10.2.2.4-20251120)
-#
-# This shaded fat JAR contains:
-#   - The RoboVM AOT compiler (org.robovm.compiler.*)
-#   - Soot (the bytecode analysis framework; already fixed for Java Record support)
-#   - libcore12: Android 12 class library providing native Java 8+ APIs
-#   - robovm-rt: the RoboVM bootstrap runtime
-#   - All other compiler dependencies shaded into one file
-#
-# INSTALL LOCATION
+# COMPILER INSTALL
 # ----------------
-# forge-gui-ios/local-repo/ is listed in .gitignore so the extracted JAR is
-# never committed.  forge-gui-ios/pom.xml declares forge-local as a repository
-# and references the 2.3.23-robovmx version as a plugin dependency override so
-# that RoboVM's Maven plugin uses the robovmx compiler.
+# The compiler fat JAR is installed under MobiVM's Maven coordinates with a
+# new version suffix "-robovmx".  This lets robovm-maven-plugin:2.3.23 pick
+# it up via the <dependencies> override in forge-gui-ios/pom.xml.
+#
+# version.properties inside the fat JAR is patched from "10.2.2.4-SNAPSHOT"
+# to "2.3.23" so that robovm-maven-plugin downloads the standard MobiVM 2.3.23
+# native dist from Maven Central (the LLVM/linker toolchain is compatible).
+#
+# DIST (RUNTIME) INSTALL — fixes both known failures
+# ---------------------------------------------------
+# The robovmx compiler's ROOT_CLASSES list (AppCompiler.java) references 40
+# classes specific to Android 12's libcore (e.g. java/net/Inet6Address$
+# Inet6AddressHolder, android/system/*, sun/nio/ch/*).  These classes are
+# absent from the standard MobiVM 2.3.23 rt.jar (Android 4.4 era), causing:
+#
+#   CompilerException: Root class java/net/Inet6Address$Inet6AddressHolder not found
+#
+# Additionally, Config$Home.validate() in the robovmx compiler checks for
+# lib/robovm-bro-bridge.jar which the standard MobiVM 2.3.23 dist lacks,
+# causing:
+#
+#   IllegalArgumentException: .../robovm-2.3.23 is not a valid RoboVM
+#   install directory: ../.. missing or invalid
+#
+# Fix: we extract the full robovmx libcore12 dist from the IDEA zip and
+# pre-populate ~/.m2/.../robovm-dist/2.3.23/unpacked/robovm-2.3.23/ with it.
+# robovm-maven-plugin's unpack() skips re-extraction when the unpacked/
+# directory already exists (for non-SNAPSHOT versions), so our robovmx
+# content is used as-is.  We patch the rt.jar's Implementation-Version from
+# "10.2.2.4-SNAPSHOT" to "2.3.23" so that Config$Home.validate()'s version
+# check matches the patched version.properties in the compiler.
 #
 # Usage:  bash scripts/install-robovmx.sh
 #
-# The script is idempotent: a .forge-built marker prevents redundant work.
+# The script is idempotent:
+#   • Compiler: .forge-built marker (script hash) in local-repo
+#   • Dist:     lib/vm/ios/arm64/librobovm-bro.a presence (unique to robovmx,
+#               not present in standard MobiVM dists)
 
 set -euo pipefail
 
 ROBOVMX_RELEASE_TAG="x2-libcore12-v10.2.2.4-20251120"
 ROBOVMX_IDEA_ZIP="idea-10.2.2.4-SNAPSHOT.zip"
+ROBOVMX_IDEA_JAR="instrumented-idea-10.2.2.4-SNAPSHOT.jar"
 ROBOVMX_DIST_JAR="robovm-dist-compiler-10.2.2.4-SNAPSHOT.jar"
 ROBOVMX_IDEA_URL="https://github.com/robovmx/robovmx/releases/download/${ROBOVMX_RELEASE_TAG}/${ROBOVMX_IDEA_ZIP}"
+
+# MobiVM version to patch into the compiler and to match against the dist.
+ROBOVM_VERSION="2.3.23"
 
 # Installed as these MobiVM coordinates so robovm-maven-plugin:2.3.23 picks it up.
 GROUP_ID="com.mobidevelop.robovm"
@@ -72,6 +92,13 @@ LOCAL_REPO="$REPO_ROOT/forge-gui-ios/local-repo"
 DEST_DIR="$LOCAL_REPO/${GROUP_PATH}/${VERSION}"
 MARKER="$DEST_DIR/.forge-built"
 
+# Maven dist paths
+M2_REPO="${HOME}/.m2/repository"
+_DIST_UNPACKED="${M2_REPO}/com/mobidevelop/robovm/robovm-dist/${ROBOVM_VERSION}/unpacked/robovm-${ROBOVM_VERSION}"
+# librobovm-bro.a is unique to the robovmx dist (absent from standard MobiVM).
+# Its presence indicates the robovmx libcore12 dist is already installed.
+_DIST_MARKER="${_DIST_UNPACKED}/lib/vm/ios/arm64/librobovm-bro.a"
+
 _script_hash() {
     if command -v sha1sum >/dev/null 2>&1; then
         sha1sum "${BASH_SOURCE[0]}" | cut -d' ' -f1
@@ -82,41 +109,68 @@ _script_hash() {
         exit 1
     fi
 }
+
+_sha1() {
+    if command -v sha1sum >/dev/null 2>&1; then
+        sha1sum "$1" | cut -d' ' -f1
+    else
+        shasum -a 1 "$1" | cut -d' ' -f1
+    fi
+}
+
+_md5() {
+    if command -v md5sum >/dev/null 2>&1; then
+        md5sum "$1" | cut -d' ' -f1
+    else
+        md5 -q "$1"
+    fi
+}
+
+# Patch Implementation-Version and Specification-Version lines in a JAR
+# MANIFEST.MF file.  Uses only portable shell builtins; avoids sed -i
+# differences between macOS (BSD) and Linux (GNU).
+_patch_version_in_manifest() {
+    local mf="$1" ver="$2" tmp="${1}.tmp"
+    while IFS= read -r line || [ -n "$line" ]; do
+        case "$line" in
+            "Implementation-Version: "*)  echo "Implementation-Version: ${ver}" ;;
+            "Specification-Version: "*)   echo "Specification-Version: ${ver}"  ;;
+            *)                            echo "$line"                           ;;
+        esac
+    done < "$mf" > "$tmp"
+    mv "$tmp" "$mf"
+}
+
 SCRIPT_HASH="$(_script_hash)"
 
-# Path that Step 4 will populate with robovm-bro-bridge.jar (see below).
-_M2_BRO_BRIDGE="${HOME}/.m2/repository/com/mobidevelop/robovm/robovm-dist/2.3.23/unpacked/robovm-2.3.23/lib/robovm-bro-bridge.jar"
-
 _NEED_COMPILER_INSTALL=true
-_NEED_BRO_BRIDGE=true
+_NEED_DIST_SETUP=true
 if [ -n "$SCRIPT_HASH" ] && [ -f "$MARKER" ] && [ "$(cat "$MARKER")" = "$SCRIPT_HASH" ]; then
     _NEED_COMPILER_INSTALL=false
 fi
-if [ -f "${_M2_BRO_BRIDGE}" ]; then
-    _NEED_BRO_BRIDGE=false
+if [ -f "${_DIST_MARKER}" ]; then
+    _NEED_DIST_SETUP=false
 fi
 
-if [ "${_NEED_COMPILER_INSTALL}" = false ] && [ "${_NEED_BRO_BRIDGE}" = false ]; then
-    echo "[install-robovmx] Already installed (script unchanged, bro-bridge present). Skipping."
+if [ "${_NEED_COMPILER_INSTALL}" = false ] && [ "${_NEED_DIST_SETUP}" = false ]; then
+    echo "[install-robovmx] Already installed (script unchanged, robovmx dist present). Skipping."
     exit 0
 fi
 
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
 
-if [ "${_NEED_COMPILER_INSTALL}" = true ]; then
-
 # ---------------------------------------------------------------------------
 # Step 1 – Download the IDEA plugin zip from the robovmx GitHub release.
 #
-# robovmx does not publish to any accessible Maven repository.  Its GitHub
-# Releases page ships the full distribution inside an IntelliJ IDEA plugin
-# zip. We download that zip (once, ~103 MB) and extract only the fat JAR we
-# need.
+# Both the compiler (Step 2) and the dist (Step 4) are extracted from this
+# single zip, so we always download it when any setup step is needed.
 # ---------------------------------------------------------------------------
 echo "[install-robovmx] Downloading robovmx IDEA plugin zip (${ROBOVMX_RELEASE_TAG})..."
 curl -fsSL -L "$ROBOVMX_IDEA_URL" -o "$WORK_DIR/$ROBOVMX_IDEA_ZIP"
 echo "[install-robovmx]   Downloaded: $(du -sh "$WORK_DIR/$ROBOVMX_IDEA_ZIP" | cut -f1)"
+
+if [ "${_NEED_COMPILER_INSTALL}" = true ]; then
 
 # ---------------------------------------------------------------------------
 # Step 2 – Extract robovm-dist-compiler from the zip.
@@ -147,9 +201,10 @@ echo "[install-robovmx]   Verified: AppCompiler class present"
 # to download the native toolchain.  The robovmx compiler ships version
 # "10.2.2.4-SNAPSHOT" here, but that dist tarball does not exist in any
 # public repository.  Patching it to "2.3.23" makes the plugin fetch the
-# standard MobiVM 2.3.23 native dist from Maven Central, which is fully
-# compatible: robovmx only changes the Java runtime (libcore12), not the
-# native LLVM/linker toolchain that robovm-dist provides.
+# standard MobiVM 2.3.23 native dist from Maven Central for artifact
+# resolution.  The actual Java runtime is supplied from the robovmx dist
+# pre-populated in Step 4, since the plugin skips re-extraction when the
+# unpacked/ directory already exists.
 # ---------------------------------------------------------------------------
 echo "[install-robovmx] Patching version.properties to 2.3.23 ..."
 mkdir -p "$WORK_DIR/patch/META-INF/robovm"
@@ -179,20 +234,6 @@ cat > "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom" << POM_EOF
 </project>
 POM_EOF
 
-_sha1() {
-    if command -v sha1sum >/dev/null 2>&1; then
-        sha1sum "$1" | cut -d' ' -f1
-    else
-        shasum -a 1 "$1" | cut -d' ' -f1
-    fi
-}
-_md5() {
-    if command -v md5sum >/dev/null 2>&1; then
-        md5sum "$1" | cut -d' ' -f1
-    else
-        md5 -q "$1"
-    fi
-}
 _sha1 "$DEST_DIR/$JAR_NAME"                         > "$DEST_DIR/$JAR_NAME.sha1"
 _md5  "$DEST_DIR/$JAR_NAME"                         > "$DEST_DIR/$JAR_NAME.md5"
 _sha1 "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom"     > "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom.sha1"
@@ -213,7 +254,6 @@ _md5  "$DEST_DIR/${ARTIFACT_ID}-${VERSION}.pom"     > "$DEST_DIR/${ARTIFACT_ID}-
 # restore but before the Maven build), we ensure Maven always uses the
 # patched version — regardless of whatever the CI cache contains.
 # ---------------------------------------------------------------------------
-M2_REPO="${HOME}/.m2/repository"
 M2_DEST="${M2_REPO}/${GROUP_PATH}/${VERSION}"
 if [ -d "$M2_REPO" ]; then
     echo "[install-robovmx] Overwriting ~/.m2 cache entry with patched JAR ..."
@@ -232,39 +272,76 @@ echo "$SCRIPT_HASH" > "$MARKER"
 fi  # _NEED_COMPILER_INSTALL
 
 # ---------------------------------------------------------------------------
-# Step 4 – Ensure robovm-bro-bridge.jar exists in the unpacked dist.
+# Step 4 – Install robovmx libcore12 dist to ~/.m2 unpacked directory.
 #
-# The robovmx 10.2.2.4-SNAPSHOT compiler (build #13, Nov 2025, experiment/
-# 2-libcore-10) added a new validation check in Config$Home.validate():
+# robovm-maven-plugin resolves com.mobidevelop.robovm:robovm-dist:tar.gz:
+# nocompiler:2.3.23 (the standard MobiVM dist) for artifact resolution, then
+# calls unpack() which extracts the tarball to:
 #
-#   broBridgeJarPath = new File(homeDir, "lib/robovm-bro-bridge.jar")
-#   if (!broBridgeJarPath.exists() || !broBridgeJarPath.isFile())
-#       throw new IllegalArgumentException("../.. missing or invalid")
+#   ~/.m2/.../robovm-dist/2.3.23/unpacked/
 #
-# The "../.." in the error is from relativize(homeDir/lib/robovm-bro-bridge.jar,
-# homeDir) — exactly the error reported in the bug:
+# Critically, unpack() is a no-op if the "unpacked/" directory already exists.
+# We exploit this by pre-populating it with the robovmx libcore12 dist BEFORE
+# Maven runs.  The plugin then skips extraction and uses our robovmx content.
 #
-#   "Path .../unpacked/robovm-2.3.23 is not a valid RoboVM install directory:
-#    ../.. missing or invalid"
+# The robovmx dist is embedded in instrumented-idea-10.2.2.4-SNAPSHOT.jar
+# (inside the IDEA plugin zip) as a gzip file named "robovm-dist".  We
+# extract this dist, rename its root from "robovm-10.2.2.4-SNAPSHOT" to
+# "robovm-2.3.23" (matching the patched version.properties), and patch the
+# rt.jar's Implementation-Version to "2.3.23" so that Config$Home.validate()'s
+# version check passes.
 #
-# The standard MobiVM 2.3.23 dist does NOT contain robovm-bro-bridge.jar.
-# In MobiVM, the bro-bridge classes (org.robovm.rt.bro.*) live inside
-# robovm-rt.jar.  robovmx separated them into their own artifact because its
-# new libcore12 runtime does not include them.
-#
-# Fix: we pre-extract the dist tarball and create robovm-bro-bridge.jar from
-# the org/robovm/rt/bro/** entries already present in robovm-rt.jar.  This
-# makes robovm-maven-plugin's unpack() find the directory already populated
-# (so it skips re-extraction) and Config.Home.validate() passes.
-#
-# The same logic is also run by the Maven prepare-package hook in
-# forge-gui-ios/pom.xml (scripts/ensure-robovm-bro-bridge.sh) so that a
-# developer who runs 'mvn' directly after 'rm -rf ~/.m2/...' also gets a
-# corrected dist without having to re-run this install script.
+# Why the robovmx dist is needed (not the standard MobiVM dist):
+#   • The robovmx compiler's ROOT_CLASSES list includes libcore12-specific
+#     inner classes (e.g. java/net/Inet6Address$Inet6AddressHolder) absent
+#     from the Android 4.4-era standard MobiVM rt.jar.  Without them, the
+#     compiler throws:
+#       CompilerException: Root class java/net/Inet6Address$Inet6AddressHolder
+#       not found
+#   • The robovmx dist also includes lib/robovm-bro-bridge.jar, satisfying
+#     the Config$Home.validate() check that causes "../.. missing or invalid".
 # ---------------------------------------------------------------------------
-if [ "${_NEED_BRO_BRIDGE}" = true ]; then
-    echo "[install-robovmx] Step 4: ensuring robovm-bro-bridge.jar in unpacked dist..."
-    bash "${SCRIPT_DIR}/ensure-robovm-bro-bridge.sh"
+if [ "${_NEED_DIST_SETUP}" = true ]; then
+    echo "[install-robovmx] Step 4: installing robovmx libcore12 dist..."
+
+    # Extract instrumented-idea.jar from the IDEA zip.
+    echo "[install-robovmx]   Extracting ${ROBOVMX_IDEA_JAR} from zip..."
+    mkdir -p "$WORK_DIR/idea-jar"
+    unzip -j "$WORK_DIR/$ROBOVMX_IDEA_ZIP" "idea/lib/${ROBOVMX_IDEA_JAR}" \
+        -d "$WORK_DIR/idea-jar"
+
+    # Extract the embedded robovm-dist gzip from instrumented-idea.jar.
+    echo "[install-robovmx]   Extracting embedded robovm-dist tarball..."
+    mkdir -p "$WORK_DIR/dist-gz"
+    unzip -j "$WORK_DIR/idea-jar/${ROBOVMX_IDEA_JAR}" "robovm-dist" \
+        -d "$WORK_DIR/dist-gz"
+
+    # Extract the robovmx dist tarball (root: robovm-10.2.2.4-SNAPSHOT/).
+    echo "[install-robovmx]   Extracting robovmx dist content..."
+    mkdir -p "$WORK_DIR/dist-content"
+    tar -xzf "$WORK_DIR/dist-gz/robovm-dist" -C "$WORK_DIR/dist-content"
+    ROBOVMX_ROOT="$WORK_DIR/dist-content/robovm-10.2.2.4-SNAPSHOT"
+
+    # Patch robovm-rt.jar: change Implementation-Version and Specification-Version
+    # from "10.2.2.4-SNAPSHOT" to "2.3.23" so Config$Home.validate()'s version
+    # check (compiler version.properties vs rt.jar manifest) passes.
+    echo "[install-robovmx]   Patching robovm-rt.jar manifest (version → ${ROBOVM_VERSION})..."
+    RT_JAR="${ROBOVMX_ROOT}/lib/robovm-rt.jar"
+    mkdir -p "$WORK_DIR/rt-manifest/META-INF"
+    unzip -p "$RT_JAR" META-INF/MANIFEST.MF > "$WORK_DIR/rt-manifest/META-INF/MANIFEST.MF"
+    _patch_version_in_manifest \
+        "$WORK_DIR/rt-manifest/META-INF/MANIFEST.MF" "${ROBOVM_VERSION}"
+    (cd "$WORK_DIR/rt-manifest" && zip -u "$RT_JAR" META-INF/MANIFEST.MF)
+    echo "[install-robovmx]   rt.jar manifest patched."
+
+    # Replace any existing unpacked/ content with the robovmx dist, renaming
+    # the root directory from "robovm-10.2.2.4-SNAPSHOT" to "robovm-2.3.23".
+    DIST_BASE="${M2_REPO}/com/mobidevelop/robovm/robovm-dist/${ROBOVM_VERSION}"
+    echo "[install-robovmx]   Installing to ${DIST_BASE}/unpacked/robovm-${ROBOVM_VERSION}/ ..."
+    rm -rf "${DIST_BASE}/unpacked"
+    mkdir -p "${DIST_BASE}/unpacked"
+    cp -r "${ROBOVMX_ROOT}" "${DIST_BASE}/unpacked/robovm-${ROBOVM_VERSION}"
+    echo "[install-robovmx]   Robovmx libcore12 dist installed."
 fi
 
 echo "[install-robovmx] Done. ${GROUP_ID}:${ARTIFACT_ID}:${VERSION} installed to local-repo."
