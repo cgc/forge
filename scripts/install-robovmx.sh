@@ -5,7 +5,7 @@
 # things needed for the iOS build:
 #
 #   1. com.mobidevelop.robovm:robovm-dist-compiler:2.3.23-robovmx
-#        (AOT compiler fat JAR) → forge-gui-ios/local-repo/ and ~/.m2
+#        (AOT compiler fat JAR with soot patches) → forge-gui-ios/local-repo/ and ~/.m2
 #
 #   2. forge-gui-ios/robovm-home/robovm-2.3.23/
 #        (merged dist; used as the robovm <home> directory)
@@ -37,6 +37,21 @@
 # version.properties inside the fat JAR is patched from "10.2.2.4-SNAPSHOT"
 # to "2.3.23" so that robovm-maven-plugin downloads the standard MobiVM 2.3.23
 # native dist from Maven Central (the LLVM/linker toolchain is compatible).
+#
+# SOOT PATCHES (Step 2c)
+# ----------------------
+# The robovmx compiler embeds the same buggy soot as the standard MobiVM
+# 2.3.23 compiler.  The patches in patches/robovm-soot/ fix four crash bugs:
+#
+#   0001: CONSTANT_Fieldref_info – add replace('/', '.') on className, fixing:
+#           RuntimeException: Attempt to create RefType containing a /
+#         (e.g. "forge/util/HWInfo" used as a class name with slashes)
+#   0002: CONSTANT_MethodHandle_info – handle field-ref MethodHandle kinds 1-4
+#         without casting to InvokeExpr (fixes invokedynamic with field handles)
+#   0003: JDynamicInvokeExpr – accept any RefType as bootstrap method return type
+#         (not just CallSite), fixing Java Record invokedynamic crashes
+#   0004: AugEvalFunction – return Throwable instead of crashing when the
+#         exception ref is null in the typing phase
 #
 # DIST INSTALL — fixes both known failures
 # -----------------------------------------
@@ -232,7 +247,72 @@ echo "version=2.3.23" > "$WORK_DIR/patch/META-INF/robovm/version.properties"
 # path inside the archive is preserved as META-INF/robovm/version.properties.
 (cd "$WORK_DIR/patch" && zip -u "$EXTRACTED_JAR" META-INF/robovm/version.properties)
 echo "[install-robovmx]   Patched version.properties → 2.3.23"
+
+# ---------------------------------------------------------------------------
+# Step 2c – Apply soot patches to the robovmx compiler.
 #
+# The four patches in patches/robovm-soot/ fix soot bugs that crash AOT
+# compilation:
+#   0001: CONSTANT_Fieldref_info.java – replace('/', '.') on className to
+#         fix "Attempt to create RefType containing a /" crash (e.g. when
+#         processing forge/util/HWInfo)
+#   0002: CONSTANT_MethodHandle_info.java – handle field-ref MethodHandle kinds
+#         1-4 without casting to InvokeExpr
+#   0003: JDynamicInvokeExpr.java – relax bootstrap method return-type check to
+#         accept any RefType (not just CallSite), fixing invokedynamic crashes
+#   0004: AugEvalFunction.java – return Throwable instead of crashing when
+#         exception ref is null in typing
+#
+# These patches were originally applied to robovm-dist-compiler:2.3.23 by
+# patch-robovm-soot.sh.  The robovmx compiler (now used instead of the standard
+# MobiVM compiler) embeds the same buggy soot, so we apply the same fixes here.
+# ---------------------------------------------------------------------------
+SOOT_ARTIFACT_ID="robovm-soot"
+SOOT_VERSION="2.5.0-9"
+SOOT_SOURCES_URL="https://repo1.maven.org/maven2/com/mobidevelop/robovm/${SOOT_ARTIFACT_ID}/${SOOT_VERSION}/${SOOT_ARTIFACT_ID}-${SOOT_VERSION}-sources.jar"
+
+echo "[install-robovmx] Step 2c: applying soot patches to robovmx compiler..."
+echo "[install-robovmx]   Downloading ${SOOT_ARTIFACT_ID}-${SOOT_VERSION} sources..."
+curl -fsSL "$SOOT_SOURCES_URL" -o "$WORK_DIR/robovm-soot-sources.jar"
+
+# Extract sources for patching.
+mkdir -p "$WORK_DIR/soot-src"
+(cd "$WORK_DIR/soot-src" && jar xf "../robovm-soot-sources.jar")
+
+# Normalize line endings (sources may have Windows CRLF).
+if [ "$(uname)" = "Darwin" ]; then
+    find "$WORK_DIR/soot-src" -name "*.java" -exec sed -i '' 's/\r$//' {} +
+else
+    find "$WORK_DIR/soot-src" -name "*.java" -exec sed -i 's/\r$//' {} +
+fi
+
+# Apply the four patches.
+for _patch in "${REPO_ROOT}/patches/robovm-soot"/0*.patch; do
+    echo "[install-robovmx]   Applying $(basename "$_patch") ..."
+    (cd "$WORK_DIR/soot-src" && patch --no-backup-if-mismatch -p1 < "$_patch")
+done
+
+# Compile the four patched source files against the robovmx compiler JAR
+# (for its soot and RoboVM dependencies on the classpath).
+mkdir -p "$WORK_DIR/soot-patched"
+javac \
+    -source 8 -target 8 \
+    -cp "$EXTRACTED_JAR" \
+    -d  "$WORK_DIR/soot-patched" \
+    "$WORK_DIR/soot-src/soot/coffi/CONSTANT_Fieldref_info.java" \
+    "$WORK_DIR/soot-src/soot/coffi/CONSTANT_MethodHandle_info.java" \
+    "$WORK_DIR/soot-src/soot/jimple/internal/JDynamicInvokeExpr.java" \
+    "$WORK_DIR/soot-src/soot/jimple/toolkits/typing/fast/AugEvalFunction.java"
+
+# Inject patched .class files into the robovmx compiler JAR.
+(cd "$WORK_DIR/soot-patched" && zip -u "$EXTRACTED_JAR" \
+    soot/coffi/CONSTANT_Fieldref_info.class \
+    soot/coffi/CONSTANT_MethodHandle_info.class \
+    "soot/jimple/internal/JDynamicInvokeExpr.class" \
+    "soot/jimple/toolkits/typing/fast/AugEvalFunction.class")
+echo "[install-robovmx]   Soot patches applied."
+
+# ---------------------------------------------------------------------------
 # Using com.mobidevelop.robovm:robovm-dist-compiler:2.3.23-robovmx (same
 # groupId/artifactId as the original, new version suffix) ensures that the
 # robovm-maven-plugin:2.3.23 plugin dependency override in pom.xml replaces
