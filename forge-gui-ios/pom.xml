@@ -57,6 +57,34 @@
                 </configuration>
             </plugin>
             <!--
+              Override the root-pom RequirePluginVersions enforcer rule to exempt
+              com.robovmx:robovm-maven-plugin.  robovmx only publishes SNAPSHOT
+              artifacts; the project-wide policy that disallows SNAPSHOT plugin
+              versions cannot be satisfied for this iOS-only plugin.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-versions</id>
+                        <configuration>
+                            <rules>
+                                <requireMavenVersion>
+                                    <version>[3.8.1,)</version>
+                                </requireMavenVersion>
+                                <requireJavaVersion>
+                                    <version>17</version>
+                                </requireJavaVersion>
+                                <requirePluginVersions>
+                                    <unCheckedPluginList>com.robovmx:robovm-maven-plugin</unCheckedPluginList>
+                                </requirePluginVersions>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!--
               BreakIterator desugaring: robovmx's robovm-rt includes full Java 8 APIs,
               so the only remaining bytecode rewrite is:
                 • BreakIterator.getLineInstance(Locale) → IosUtil.getLineBreakIterator(Locale)
