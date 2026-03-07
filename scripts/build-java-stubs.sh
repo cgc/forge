@@ -58,6 +58,9 @@ set -euo pipefail
 
 GROUP_ID="forge"
 ARTIFACT_ID="java-stubs"
+# Version 3.0: minimal Record-only stub that replaces version 2.2 (full Java 8 stubs).
+# The version bump ensures Maven fetches the new artifact instead of using its permanently
+# cached copy of 2.2 from ~/.m2.
 VERSION="3.0"
 GROUP_PATH="forge/java-stubs"
 

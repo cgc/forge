@@ -55,7 +55,7 @@ set -euo pipefail
 ROBOVMX_BRANCH="experiment/2-libcore-10"
 ROBOVMX_REPO="https://github.com/robovmx/robovmx.git"
 ROBOVMX_VERSION="10.2.2.4-SNAPSHOT"
-CLONE_DIR="${ROBOVMX_CLONE_DIR:-/tmp/robovmx-build}"
+CLONE_DIR="${ROBOVMX_CLONE_DIR:-$HOME/.robovmx-build}"
 
 RT_M2="$HOME/.m2/repository/com/robovmx/robovm-rt/${ROBOVMX_VERSION}/robovm-rt-${ROBOVMX_VERSION}.jar"
 
@@ -96,13 +96,17 @@ else
     echo "[install-robovmx] Attempting full robovmx build (compiler + maven-plugin) ..."
     echo "[install-robovmx] NOTE: This requires LLVM and native build tools."
     echo "[install-robovmx]       It will be skipped if network/tools are unavailable."
-    if (cd "$CLONE_DIR" && mvn -T 4 clean install -DskipTests -q 2>/dev/null); then
+    FULL_BUILD_LOG="$(mktemp)"
+    if (cd "$CLONE_DIR" && mvn -T 4 clean install -DskipTests -q 2>"$FULL_BUILD_LOG"); then
         echo "[install-robovmx] Full robovmx build complete."
     else
         echo "[install-robovmx] Full build not available (LLVM/soot dependencies missing)."
         echo "[install-robovmx] robovm-rt is installed; compile-only builds will work."
         echo "[install-robovmx] IPA production requires a full robovmx installation."
+        echo "[install-robovmx] Build output:"
+        cat "$FULL_BUILD_LOG" >&2
     fi
+    rm -f "$FULL_BUILD_LOG"
 fi
 
 echo "[install-robovmx] Done."
