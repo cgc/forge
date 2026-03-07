@@ -116,16 +116,38 @@ public class Main extends IOSApplication.Delegate {
         // this to None for the same reason.
         config.depthFormat = GLKViewDrawableDepthFormat.None;
         // Audio intentionally disabled while startup is being stabilised.
-        // Root cause of audio crash: IOSGraphics.requestRendering() → viewController.setPaused(false)
-        // is an ObjC UIKit call that must happen on the main thread.  The ObjectAL audio-init
-        // thread called it from a background thread, causing a null-trampoline crash (pc=0x0)
-        // on the simulator.  That same background-thread violation also caused a permanent
-        // hang on physical devices: setPaused silently no-ops off the main thread, leaving the
-        // GL render loop paused, so any WaitRunnable.invokeAndWait() call deadlocks.
-        // The root fix is in Forge.create(): startContinuousRendering() is now called before
-        // the background DB-load thread starts, keeping isContinuous=true so requestRendering()
-        // never reaches the setPaused path.  Re-enable audio here once the app is confirmed
-        // to launch stably on a physical device with that fix in place.
+        //
+        // Background — robovmx and direct function-pointer dispatch:
+        // robovmx 10.x compiles ObjC bridge calls to direct function-pointer (IMP) calls
+        // rather than going through objc_msgSend's thread-agnostic dispatch table.  This is
+        // faster, but it means robovmx no longer silently marshals UIKit calls to the main
+        // thread the way MobiVM 2.3.23 did.  Any ObjC UIKit method called from a background
+        // thread now either crashes (simulator: null trampoline → pc=0x0) or silently fails
+        // (device: UIKit checks the thread internally and aborts the operation).
+        //
+        // Scope assessment — what robovmx's direct dispatch impacts in Forge:
+        //   • The only Forge bg-thread UIKit call path is:
+        //       bg thread → Gdx.app.postRunnable() → IOSApplication.postRunnable()
+        //           → IOSGraphics.requestRendering()
+        //           → (when isContinuous==false) viewController.setPaused(false)  ← UIKit
+        //     This is the crash/hang that was new to this branch.
+        //   • All other ObjC calls in Forge happen on the main thread:
+        //       Foundation.log/NSLog, NSBundle, UIScreen, UIApplication, UIPasteboard,
+        //       IOSFiles static init, computeBounds(), lifecycle callbacks.
+        //   • Foundation.log() (NSLog) is thread-safe per Apple documentation. ✓
+        //   • setupAccelerometer() and setupCompass() are overridden to no-ops below. ✓
+        //
+        // The root fix is in Forge.create(): startContinuousRendering() is called before
+        // the background DB-load thread starts, keeping isContinuous=true so that
+        // requestRendering() never reaches the viewController.setPaused() path.  During
+        // normal gameplay the continuous-rendering count is always ≥ 1 (screens call
+        // startContinuousRendering in onActivate), so the ObjC UIKit call is never reached.
+        //
+        // Audio re-enable: ObjectAL's audio-init thread calls postRunnable → requestRendering
+        // to sync with the GL loop.  With the startContinuousRendering() guard in place,
+        // isContinuous=true during the window when OALIOSAudio initialises, so the
+        // background-thread UIKit violation is prevented.  Re-enable audio once the app is
+        // confirmed to launch stably on a physical device with that fix in place.
         config.useAudio = false;
         boolean isLandscape = false;
         nslog("createApplication: calling Forge.getApp()");
