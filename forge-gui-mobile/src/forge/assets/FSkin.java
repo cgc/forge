@@ -235,10 +235,10 @@ public class FSkin {
                         splashScreen.setSplashBGTexture(advBG);
                     }
                 }
-                FProgressBar.BACK_COLOR = new Color(pxSplash.getPixel(25, h - 75));
-                FProgressBar.FORE_COLOR = new Color(pxSplash.getPixel(75, h - 75));
-                FProgressBar.SEL_BACK_COLOR = new Color(pxSplash.getPixel(25, h - 25));
-                FProgressBar.SEL_FORE_COLOR = new Color(pxSplash.getPixel(75, h - 25));
+                FProgressBar.BACK_COLOR = colorFromPixmap(pxSplash, 25, h - 75);
+                FProgressBar.FORE_COLOR = colorFromPixmap(pxSplash, 75, h - 75);
+                FProgressBar.SEL_BACK_COLOR = colorFromPixmap(pxSplash, 25, h - 25);
+                FProgressBar.SEL_FORE_COLOR = colorFromPixmap(pxSplash, 75, h - 25);
             }
             catch (final Exception e) {
                 //e.printStackTrace();
@@ -362,9 +362,9 @@ public class FSkin {
             //update colors
             for (final FSkinColor.Colors c : FSkinColor.Colors.values()) {
                 if (c.toString().startsWith("ADV_CLR"))
-                    c.setColor(new Color(adventureButtons.getPixel(c.getX(), c.getY())));
+                    c.setColor(colorFromPixmap(adventureButtons, c.getX(), c.getY()));
                 else
-                    c.setColor(new Color(preferredIcons.getPixel(c.getX(), c.getY())));
+                    c.setColor(colorFromPixmap(preferredIcons, c.getX(), c.getY()));
             }
 
             //load images
@@ -420,7 +420,7 @@ public class FSkin {
                 for (int j = 0; j < ph; j += 100) {
                     for (int i = 0; i < pw; i += 100) {
                         if (i == 0 && j == 0) { continue; }
-                        pxTest = new Color(pxPreferredAvatars.getPixel(i + 50, j + 50));
+                        pxTest = colorFromPixmap(pxPreferredAvatars, i + 50, j + 50);
                         if (pxTest.a == 0) { continue; }
                         Forge.getAssets().avatars().put(counter++, new TextureRegion(Forge.getAssets().getTexture(f5), i, j, 100, 100));
                     }
@@ -435,7 +435,7 @@ public class FSkin {
                 for (int j = 0; j < ph; j += 100) {
                     for (int i = 0; i < pw; i += 100) {
                         if (i == 0 && j == 0) { continue; }
-                        pxTest = new Color(pxDefaultAvatars.getPixel(i + 50, j + 50));
+                        pxTest = colorFromPixmap(pxDefaultAvatars, i + 50, j + 50);
                         if (pxTest.a == 0) { continue; }
                         Forge.getAssets().avatars().put(counter++, new TextureRegion(Forge.getAssets().getTexture(f4), i, j, 100, 100));
                     }
@@ -451,7 +451,7 @@ public class FSkin {
 
                 for (int j = 0; j < sh; j += 500) {
                     for (int i = 0; i < sw; i += 360) {
-                        pxTest = new Color(pxPreferredSleeves.getPixel(i + 180, j + 250));
+                        pxTest = colorFromPixmap(pxPreferredSleeves, i + 180, j + 250);
                         if (pxTest.a == 0) { continue; }
                         Forge.getAssets().sleeves().put(scount++, new TextureRegion(Forge.getAssets().getTexture(f20), i, j, 360, 500));
                     }
@@ -463,7 +463,7 @@ public class FSkin {
 
                 for (int j = 0; j < sh; j += 500) {
                     for (int i = 0; i < sw; i += 360) {
-                        pxTest = new Color(pxDefaultSleeves.getPixel(i + 180, j + 250));
+                        pxTest = colorFromPixmap(pxDefaultSleeves, i + 180, j + 250);
                         if (pxTest.a == 0) { continue; }
                         Forge.getAssets().sleeves().put(scount++, new TextureRegion(Forge.getAssets().getTexture(f8), i, j, 360, 500));
                     }
@@ -478,7 +478,7 @@ public class FSkin {
 
                 for (int j = 0; j < sh; j += 500) {
                     for (int i = 0; i < sw; i += 360) {
-                        pxTest = new Color(pxPreferredSleeves.getPixel(i + 180, j + 250));
+                        pxTest = colorFromPixmap(pxPreferredSleeves, i + 180, j + 250);
                         if (pxTest.a == 0) { continue; }
                         Forge.getAssets().sleeves().put(scount++, new TextureRegion(Forge.getAssets().getTexture(f21), i, j, 360, 500));
                     }
@@ -494,7 +494,7 @@ public class FSkin {
 
                 for (int j = 0; j < sh2; j += 500) {
                     for (int i = 0; i < sw2; i += 360) {
-                        pxTest = new Color(pxDefaultSleeves.getPixel(i + 180, j + 250));
+                        pxTest = colorFromPixmap(pxDefaultSleeves, i + 180, j + 250);
                         if (pxTest.a == 0) { continue; }
                         Forge.getAssets().sleeves().put(scount++, new TextureRegion(Forge.getAssets().getTexture(f9), i, j, 360, 500));
                     }
@@ -529,10 +529,10 @@ public class FSkin {
 
             Forge.setCursor(Forge.getAssets().cursor().get(0), "0");
             //set adv_progress bar colors
-            FProgressBar.ADV_BACK_COLOR = new Color(adventureButtons.getPixel(FSkinColor.Colors.ADV_CLR_BORDERS.getX(), FSkinColor.Colors.ADV_CLR_BORDERS.getY()));
-            FProgressBar.ADV_FORE_COLOR = new Color(adventureButtons.getPixel(FSkinColor.Colors.ADV_CLR_THEME.getX(), FSkinColor.Colors.ADV_CLR_THEME.getY()));
-            FProgressBar.ADV_SEL_BACK_COLOR = new Color(adventureButtons.getPixel(FSkinColor.Colors.ADV_CLR_ACTIVE.getX(), FSkinColor.Colors.ADV_CLR_ACTIVE.getY()));
-            FProgressBar.ADV_SEL_FORE_COLOR = new Color(adventureButtons.getPixel(FSkinColor.Colors.ADV_CLR_BORDERS.getX(), FSkinColor.Colors.ADV_CLR_BORDERS.getY()));
+            FProgressBar.ADV_BACK_COLOR = colorFromPixmap(adventureButtons, FSkinColor.Colors.ADV_CLR_BORDERS.getX(), FSkinColor.Colors.ADV_CLR_BORDERS.getY());
+            FProgressBar.ADV_FORE_COLOR = colorFromPixmap(adventureButtons, FSkinColor.Colors.ADV_CLR_THEME.getX(), FSkinColor.Colors.ADV_CLR_THEME.getY());
+            FProgressBar.ADV_SEL_BACK_COLOR = colorFromPixmap(adventureButtons, FSkinColor.Colors.ADV_CLR_ACTIVE.getX(), FSkinColor.Colors.ADV_CLR_ACTIVE.getY());
+            FProgressBar.ADV_SEL_FORE_COLOR = colorFromPixmap(adventureButtons, FSkinColor.Colors.ADV_CLR_BORDERS.getX(), FSkinColor.Colors.ADV_CLR_BORDERS.getY());
 
             preferredIcons.dispose();
             pxDefaultAvatars.dispose();
@@ -554,6 +554,37 @@ public class FSkin {
         if (splashScreen != null) {
             CardFaceSymbols.loadImages();
         }
+    }
+
+    /**
+     * Reads a pixel from {@code px} at (x, y) and returns the corresponding
+     * {@link Color}.
+     *
+     * <p>On iOS, libGDX's RoboVM backend returns Pixmap pixels with the red and
+     * blue channels swapped (the underlying Metal/OpenGL-ES implementation stores
+     * pixel data in BGRA8888 order but the value is interpreted as RGBA8888 by
+     * {@link Pixmap#getPixel}).  The swap affects skin colour swatches loaded
+     * from sprite_icons.png / bg_splash.png, which causes the UI colour scheme to
+     * show blue/teal tones as gold/yellow and vice-versa.
+     *
+     * <p>This helper corrects the channel order on iOS so that all {@link Color}
+     * objects created from sprite pixel data have the expected hue on every
+     * platform.
+     */
+    private static Color colorFromPixmap(Pixmap px, int x, int y) {
+        int packed = px.getPixel(x, y);
+        if (GuiBase.isIOS()) {
+            // Pixmap.getPixel() returns the raw bytes in memory order.  On iOS
+            // those bytes are B, G, R, A (BGRA) but are packed into the int as
+            // if they were R, G, B, A.  Swap the R (bits 31–24) and B (bits 15–8)
+            // to recover the correct RGBA8888 value.
+            int r = (packed >>> 24) & 0xFF;
+            int g = (packed >>> 16) & 0xFF;
+            int b = (packed >>>  8) & 0xFF;
+            int a =  packed         & 0xFF;
+            packed = (b << 24) | (g << 16) | (r << 8) | a;
+        }
+        return new Color(packed);
     }
 
     /**

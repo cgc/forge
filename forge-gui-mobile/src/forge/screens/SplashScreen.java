@@ -16,6 +16,8 @@ import forge.assets.FSkinTexture;
 import forge.toolbox.FButton;
 import forge.toolbox.FContainer;
 import forge.toolbox.FProgressBar;
+import forge.model.FModel;
+import forge.localinstance.properties.ForgePreferences.FPref;
 
 public class SplashScreen extends FContainer {
     private TextureRegion splashTexture;
@@ -292,6 +294,9 @@ public class SplashScreen extends FContainer {
             btnAdventure = new FButton(Forge.getLocalizer().getMessageorUseDefault("lblAdventureMode", "Adventure Mode"));
             btnHome = new FButton(Forge.getLocalizer().getMessageorUseDefault("lblClassicMode", "Classic Mode"));
             btnAdventure.setCommand(e -> {
+                // Persist the mode choice so subsequent launches skip this selector.
+                FModel.getPreferences().setPref(FPref.UI_SELECTOR_MODE, "Adventure");
+                FModel.getPreferences().save();
                 if (FSkin.getLogo() == null) {
                     hideBG = true;
                     hideBtn = true;
@@ -305,6 +310,9 @@ public class SplashScreen extends FContainer {
                 }
             });
             btnHome.setCommand(e -> {
+                // Persist the mode choice so subsequent launches skip this selector.
+                FModel.getPreferences().setPref(FPref.UI_SELECTOR_MODE, "Classic");
+                FModel.getPreferences().save();
                 if (FSkin.getLogo() == null) {
                     hideBG = true;
                     hideBtn = true;

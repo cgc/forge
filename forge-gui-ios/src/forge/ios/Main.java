@@ -29,6 +29,7 @@ import com.badlogic.gdx.backends.iosrobovm.IOSFiles;
 import com.badlogic.gdx.backends.iosrobovm.IOSInput;
 import com.badlogic.gdx.backends.iosrobovm.IOSScreenBounds;
 import org.robovm.apple.glkit.GLKViewDrawableDepthFormat;
+import org.robovm.apple.glkit.GLKViewDrawableMultisample;
 
 import forge.Forge;
 import forge.gui.GuiBase;
@@ -115,6 +116,16 @@ public class Main extends IOSApplication.Delegate {
         // transparent.  Shattered Pixel Dungeon (another libGDX/iOS title) sets
         // this to None for the same reason.
         config.depthFormat = GLKViewDrawableDepthFormat.None;
+        // Enable 4× MSAA to reduce edge aliasing on UI geometry and card art.
+        // On Metal-backed OpenGL ES the cost is modest; Shattered Pixel Dungeon
+        // uses the same setting for the same reason.
+        config.multisample = GLKViewDrawableMultisample._4X;
+        // Enable OpenGL ES 3.0 when the device supports it (all Apple A7+ devices,
+        // i.e. every iOS 12-capable device).  ES 3.0 is more efficient than ES 2.0
+        // for the Metal translation layer and allows the driver to use better
+        // internal formats.  libGDX automatically falls back to ES 2.0 when ES 3.0
+        // is not available.
+        config.useGL30 = true;
         // Audio is enabled; OpenAL, AudioToolbox, and AVFoundation are all listed as
         // frameworks in robovm.xml.  AudioClip and AudioMusic null-check the result
         // of Gdx.audio.newSound/newMusic, so a missing sound file or transient OpenAL

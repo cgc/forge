@@ -478,6 +478,15 @@ public class FSkinFont {
         parameter.characters = getCharacterSet(Forge.locale);
         parameter.size = fontSize;
         parameter.packer = packer;
+        // On iOS Retina displays (2× / 3× scale) the default AutoMedium hinting
+        // aggressively snaps glyph stems to the pixel grid.  At high pixel density
+        // that snapping is unnecessary and introduces visible unevenness.  AutoSlight
+        // preserves stem-width hints while allowing fractional positioning, giving
+        // smoother curves at the cost of a tiny amount of crispness that Retina
+        // displays make imperceptible anyway.
+        if (GuiBase.isIOS()) {
+            parameter.hinting = FreeTypeFontGenerator.Hinting.AutoSlight;
+        }
         final FreeTypeFontGenerator.FreeTypeBitmapFontData fontData = generator.generateData(parameter);
         final Array<PixmapPacker.Page> pages = packer.getPages();
 
