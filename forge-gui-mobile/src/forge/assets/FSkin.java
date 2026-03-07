@@ -574,14 +574,17 @@ public class FSkin {
     private static Color colorFromPixmap(Pixmap px, int x, int y) {
         int packed = px.getPixel(x, y);
         if (GuiBase.isIOS()) {
-            // Pixmap.getPixel() returns the raw bytes in memory order.  On iOS
-            // those bytes are B, G, R, A (BGRA) but are packed into the int as
-            // if they were R, G, B, A.  Swap the R (bits 31–24) and B (bits 15–8)
-            // to recover the correct RGBA8888 value.
-            int r = (packed >>> 24) & 0xFF;
-            int g = (packed >>> 16) & 0xFF;
-            int b = (packed >>>  8) & 0xFF;
-            int a =  packed         & 0xFF;
+            // Pixmap.getPixel() returns raw bytes in memory order.  On iOS
+            // those bytes are stored as B, G, R, A (BGRA8888) but the int is
+            // interpreted as R, G, B, A (RGBA8888) by new Color(int).
+            // Unpack each 8-bit channel, then repack with R and B swapped to
+            // recover the correct RGBA8888 representation.
+            //   packed layout:  bits[31:24]=B  bits[23:16]=G  bits[15:8]=R  bits[7:0]=A
+            //   desired layout: bits[31:24]=R  bits[23:16]=G  bits[15:8]=B  bits[7:0]=A
+            int r = (packed >>> 24) & 0xFF; // actually holds B
+            int g = (packed >>> 16) & 0xFF; // holds G (no swap needed)
+            int b = (packed >>>  8) & 0xFF; // actually holds R
+            int a =  packed         & 0xFF; // holds A (no swap needed)
             packed = (b << 24) | (g << 16) | (r << 8) | a;
         }
         return new Color(packed);
