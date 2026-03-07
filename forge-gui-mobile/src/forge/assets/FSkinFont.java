@@ -407,14 +407,9 @@ public class FSkinFont {
             fontName += Forge.locale;
         }
         FileHandle fontFile = Gdx.files.absolute(ForgeConstants.FONTS_DIR + fontName + ".fnt");
+        final boolean[] found = {false};
         if (fontFile != null && fontFile.exists()) {
-            // Font is cached on disk.  Schedule the load on the UI thread and return
-            // without regenerating.  Using a direct early-return here (rather than the
-            // old found[0] flag) is important: invokeInEdtNowOrLater is asynchronous
-            // when called from a background thread, so found[0] would always be false
-            // by the time it was checked, causing fonts to be regenerated on every
-            // startup even when they already exist in the cache.
-            FThreads.invokeInEdtNowOrLater(() -> { //font must be initialized on UI thread
+            FThreads.invokeInEdtAndWait(() -> { //font must be initialized on UI thread; wait so found[0] is set before we decide whether to regenerate
                 try {
                     font = Forge.getAssets().manager().get(fontFile.path(), BitmapFont.class, false);
                     if (font == null && fontFile.toString().endsWith(".fnt")) {
@@ -423,12 +418,15 @@ public class FSkinFont {
                         font = Forge.getAssets().manager().get(fontFile.path(), BitmapFont.class, false);
                         applyFontFilter(font);
                     }
+                    if (font != null)
+                        found[0] = true;
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             });
-            return;
         }
+        if (found[0])
+            return;
         //not found in cache — generate from TTF
         if (Forge.locale.equals("zh-CN") || Forge.locale.equals("ja-JP") && !Forge.forcedEnglishonCJKMissing) {
             String ttfName = Forge.CJK_Font;

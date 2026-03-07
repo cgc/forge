@@ -51,14 +51,6 @@ public class ForgeProfileProperties {
     private static final String DECKS_DIR_KEY      = "decksDir";
     private static final String DECKS_CONSTRUCTED_DIR_KEY = "decksConstructedDir";
 
-    /**
-     * Unique path fragment present in the iOS Data container's HOME path.
-     * iOS 8+ places the writable Data container under a path containing this
-     * fragment, separate from the read-only Bundle container.  Used to detect
-     * at runtime whether the process is running inside an iOS app sandbox.
-     */
-    private static final String IOS_DATA_CONTAINER_PATH = "/Containers/Data/Application/";
-
 
     private ForgeProfileProperties() {
         //prevent initializing static class
@@ -179,7 +171,7 @@ public class ForgeProfileProperties {
             // Caches directories inside the Data container.
             final String home = System.getenv("HOME");
             if (home != null
-                    && home.contains(IOS_DATA_CONTAINER_PATH)
+                    && home.contains("/Containers/Data/Application/")
                     && !assetsDir.startsWith(home)) {
                 return Pair.of(
                         home + File.separator + "Documents" + File.separator + "forge" + File.separator,
