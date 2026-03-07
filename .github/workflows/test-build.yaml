@@ -27,3 +27,29 @@ jobs:
           export DISPLAY=":1"
           Xvfb :1 -screen 0 800x600x8 &
           mvn -U -B clean test
+
+  build-ios:
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    name: Test iOS build with Java 17
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Clone robovmx
+        run: git clone --depth 1 --branch experiment/2-libcore-10 https://github.com/robovmx/robovmx.git robovmx
+
+      - name: Install robovmx to local Maven repository
+        run: |
+          cd robovmx
+          mvn install -Dmaven.test.skip=true
+
+      - name: Build forge-gui-ios
+        run: mvn -U -B -pl forge-gui-ios -am install -Dmaven.test.skip=true

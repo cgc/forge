@@ -28,6 +28,15 @@
                     <target>17</target>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>com.robovmx</groupId>
+                <artifactId>robovm-maven-plugin</artifactId>
+                <version>10.2.2.4-SNAPSHOT</version>
+                <configuration>
+                    <propertiesFile>robovm.properties</propertiesFile>
+                    <configFile>robovm.xml</configFile>
+                </configuration>
+            </plugin>
         </plugins>
         <resources>
             <resource>
@@ -70,36 +79,18 @@
             <version>1.13.5</version>
         </dependency>
     </dependencies>
+    <pluginRepositories>
+        <pluginRepository>
+            <id>sonatype-nexus-snapshots</id>
+            <name>Sonatype Nexus Snapshots</name>
+            <url>https://central.sonatype.com/repository/maven-snapshots</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+        </pluginRepository>
+    </pluginRepositories>
 
-    <profiles>
-        <profile>
-            <id>ios-build</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>com.robovmx</groupId>
-                        <artifactId>robovm-maven-plugin</artifactId>
-                        <version>10.2.2.4-SNAPSHOT</version>
-                        <configuration>
-                            <propertiesFile>robovm.properties</propertiesFile>
-                            <configFile>robovm.xml</configFile>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-            <pluginRepositories>
-                <pluginRepository>
-                    <id>sonatype-nexus-snapshots</id>
-                    <name>Sonatype Nexus Snapshots</name>
-                    <url>https://central.sonatype.com/repository/maven-snapshots</url>
-                    <snapshots>
-                        <enabled>true</enabled>
-                    </snapshots>
-                    <releases>
-                        <enabled>false</enabled>
-                    </releases>
-                </pluginRepository>
-            </pluginRepositories>
-        </profile>
-    </profiles>
 </project>
