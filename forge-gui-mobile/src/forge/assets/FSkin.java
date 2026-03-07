@@ -235,10 +235,10 @@ public class FSkin {
                         splashScreen.setSplashBGTexture(advBG);
                     }
                 }
-                FProgressBar.BACK_COLOR = colorFromPixmap(pxSplash, 25, h - 75);
-                FProgressBar.FORE_COLOR = colorFromPixmap(pxSplash, 75, h - 75);
-                FProgressBar.SEL_BACK_COLOR = colorFromPixmap(pxSplash, 25, h - 25);
-                FProgressBar.SEL_FORE_COLOR = colorFromPixmap(pxSplash, 75, h - 25);
+                FProgressBar.BACK_COLOR = new Color(pxSplash.getPixel(25, h - 75));
+                FProgressBar.FORE_COLOR = new Color(pxSplash.getPixel(75, h - 75));
+                FProgressBar.SEL_BACK_COLOR = new Color(pxSplash.getPixel(25, h - 25));
+                FProgressBar.SEL_FORE_COLOR = new Color(pxSplash.getPixel(75, h - 25));
             }
             catch (final Exception e) {
                 //e.printStackTrace();
@@ -362,9 +362,9 @@ public class FSkin {
             //update colors
             for (final FSkinColor.Colors c : FSkinColor.Colors.values()) {
                 if (c.toString().startsWith("ADV_CLR"))
-                    c.setColor(colorFromPixmap(adventureButtons, c.getX(), c.getY()));
+                    c.setColor(new Color(adventureButtons.getPixel(c.getX(), c.getY())));
                 else
-                    c.setColor(colorFromPixmap(preferredIcons, c.getX(), c.getY()));
+                    c.setColor(new Color(preferredIcons.getPixel(c.getX(), c.getY())));
             }
 
             //load images
@@ -420,7 +420,7 @@ public class FSkin {
                 for (int j = 0; j < ph; j += 100) {
                     for (int i = 0; i < pw; i += 100) {
                         if (i == 0 && j == 0) { continue; }
-                        pxTest = colorFromPixmap(pxPreferredAvatars, i + 50, j + 50);
+                        pxTest = new Color(pxPreferredAvatars.getPixel(i + 50, j + 50));
                         if (pxTest.a == 0) { continue; }
                         Forge.getAssets().avatars().put(counter++, new TextureRegion(Forge.getAssets().getTexture(f5), i, j, 100, 100));
                     }
@@ -435,7 +435,7 @@ public class FSkin {
                 for (int j = 0; j < ph; j += 100) {
                     for (int i = 0; i < pw; i += 100) {
                         if (i == 0 && j == 0) { continue; }
-                        pxTest = colorFromPixmap(pxDefaultAvatars, i + 50, j + 50);
+                        pxTest = new Color(pxDefaultAvatars.getPixel(i + 50, j + 50));
                         if (pxTest.a == 0) { continue; }
                         Forge.getAssets().avatars().put(counter++, new TextureRegion(Forge.getAssets().getTexture(f4), i, j, 100, 100));
                     }
@@ -451,7 +451,7 @@ public class FSkin {
 
                 for (int j = 0; j < sh; j += 500) {
                     for (int i = 0; i < sw; i += 360) {
-                        pxTest = colorFromPixmap(pxPreferredSleeves, i + 180, j + 250);
+                        pxTest = new Color(pxPreferredSleeves.getPixel(i + 180, j + 250));
                         if (pxTest.a == 0) { continue; }
                         Forge.getAssets().sleeves().put(scount++, new TextureRegion(Forge.getAssets().getTexture(f20), i, j, 360, 500));
                     }
@@ -463,7 +463,7 @@ public class FSkin {
 
                 for (int j = 0; j < sh; j += 500) {
                     for (int i = 0; i < sw; i += 360) {
-                        pxTest = colorFromPixmap(pxDefaultSleeves, i + 180, j + 250);
+                        pxTest = new Color(pxDefaultSleeves.getPixel(i + 180, j + 250));
                         if (pxTest.a == 0) { continue; }
                         Forge.getAssets().sleeves().put(scount++, new TextureRegion(Forge.getAssets().getTexture(f8), i, j, 360, 500));
                     }
@@ -478,7 +478,7 @@ public class FSkin {
 
                 for (int j = 0; j < sh; j += 500) {
                     for (int i = 0; i < sw; i += 360) {
-                        pxTest = colorFromPixmap(pxPreferredSleeves, i + 180, j + 250);
+                        pxTest = new Color(pxPreferredSleeves.getPixel(i + 180, j + 250));
                         if (pxTest.a == 0) { continue; }
                         Forge.getAssets().sleeves().put(scount++, new TextureRegion(Forge.getAssets().getTexture(f21), i, j, 360, 500));
                     }
@@ -494,7 +494,7 @@ public class FSkin {
 
                 for (int j = 0; j < sh2; j += 500) {
                     for (int i = 0; i < sw2; i += 360) {
-                        pxTest = colorFromPixmap(pxDefaultSleeves, i + 180, j + 250);
+                        pxTest = new Color(pxDefaultSleeves.getPixel(i + 180, j + 250));
                         if (pxTest.a == 0) { continue; }
                         Forge.getAssets().sleeves().put(scount++, new TextureRegion(Forge.getAssets().getTexture(f9), i, j, 360, 500));
                     }
@@ -529,10 +529,10 @@ public class FSkin {
 
             Forge.setCursor(Forge.getAssets().cursor().get(0), "0");
             //set adv_progress bar colors
-            FProgressBar.ADV_BACK_COLOR = colorFromPixmap(adventureButtons, FSkinColor.Colors.ADV_CLR_BORDERS.getX(), FSkinColor.Colors.ADV_CLR_BORDERS.getY());
-            FProgressBar.ADV_FORE_COLOR = colorFromPixmap(adventureButtons, FSkinColor.Colors.ADV_CLR_THEME.getX(), FSkinColor.Colors.ADV_CLR_THEME.getY());
-            FProgressBar.ADV_SEL_BACK_COLOR = colorFromPixmap(adventureButtons, FSkinColor.Colors.ADV_CLR_ACTIVE.getX(), FSkinColor.Colors.ADV_CLR_ACTIVE.getY());
-            FProgressBar.ADV_SEL_FORE_COLOR = colorFromPixmap(adventureButtons, FSkinColor.Colors.ADV_CLR_BORDERS.getX(), FSkinColor.Colors.ADV_CLR_BORDERS.getY());
+            FProgressBar.ADV_BACK_COLOR = new Color(adventureButtons.getPixel(FSkinColor.Colors.ADV_CLR_BORDERS.getX(), FSkinColor.Colors.ADV_CLR_BORDERS.getY()));
+            FProgressBar.ADV_FORE_COLOR = new Color(adventureButtons.getPixel(FSkinColor.Colors.ADV_CLR_THEME.getX(), FSkinColor.Colors.ADV_CLR_THEME.getY()));
+            FProgressBar.ADV_SEL_BACK_COLOR = new Color(adventureButtons.getPixel(FSkinColor.Colors.ADV_CLR_ACTIVE.getX(), FSkinColor.Colors.ADV_CLR_ACTIVE.getY()));
+            FProgressBar.ADV_SEL_FORE_COLOR = new Color(adventureButtons.getPixel(FSkinColor.Colors.ADV_CLR_BORDERS.getX(), FSkinColor.Colors.ADV_CLR_BORDERS.getY()));
 
             preferredIcons.dispose();
             pxDefaultAvatars.dispose();
@@ -554,40 +554,6 @@ public class FSkin {
         if (splashScreen != null) {
             CardFaceSymbols.loadImages();
         }
-    }
-
-    /**
-     * Reads a pixel from {@code px} at (x, y) and returns the corresponding
-     * {@link Color}.
-     *
-     * <p>On iOS, libGDX's RoboVM backend returns Pixmap pixels with the red and
-     * blue channels swapped (the underlying Metal/OpenGL-ES implementation stores
-     * pixel data in BGRA8888 order but the value is interpreted as RGBA8888 by
-     * {@link Pixmap#getPixel}).  The swap affects skin colour swatches loaded
-     * from sprite_icons.png / bg_splash.png, which causes the UI colour scheme to
-     * show blue/teal tones as gold/yellow and vice-versa.
-     *
-     * <p>This helper corrects the channel order on iOS so that all {@link Color}
-     * objects created from sprite pixel data have the expected hue on every
-     * platform.
-     */
-    private static Color colorFromPixmap(Pixmap px, int x, int y) {
-        int packed = px.getPixel(x, y);
-        if (GuiBase.isIOS()) {
-            // Pixmap.getPixel() returns raw bytes in memory order.  On iOS
-            // those bytes are stored as B, G, R, A (BGRA8888) but the int is
-            // interpreted as R, G, B, A (RGBA8888) by new Color(int).
-            // Unpack each 8-bit channel, then repack with R and B swapped to
-            // recover the correct RGBA8888 representation.
-            //   packed layout:  bits[31:24]=B  bits[23:16]=G  bits[15:8]=R  bits[7:0]=A
-            //   desired layout: bits[31:24]=R  bits[23:16]=G  bits[15:8]=B  bits[7:0]=A
-            int r = (packed >>> 24) & 0xFF; // actually holds B
-            int g = (packed >>> 16) & 0xFF; // holds G (no swap needed)
-            int b = (packed >>>  8) & 0xFF; // actually holds R
-            int a =  packed         & 0xFF; // holds A (no swap needed)
-            packed = (b << 24) | (g << 16) | (r << 8) | a;
-        }
-        return new Color(packed);
     }
 
     /**

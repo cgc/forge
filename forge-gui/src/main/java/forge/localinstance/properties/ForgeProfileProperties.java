@@ -101,29 +101,6 @@ public class ForgeProfileProperties {
     public static String getCacheDir() {
         return cacheDir;
     }
-
-    /**
-     * Returns the directory where generated bitmap fonts (.fnt files) should be
-     * stored.  On most platforms this is {@code cacheDir + "fonts/"}.
-     *
-     * <p>On iOS, {@code Library/Caches} is a <em>volatile</em> directory: iOS
-     * may silently evict it when the device is low on disk space, which forces
-     * all fonts to be regenerated from the embedded TTF on the next launch and
-     * significantly slows startup.  To prevent this, iOS redirects fonts to
-     * {@code Library/Application Support/forge/fonts/}, which is a persistent
-     * directory that iOS never clears automatically.
-     */
-    public static String getFontsDir() {
-        final String home = System.getenv("HOME");
-        if (home != null && home.contains(IOS_DATA_CONTAINER_PATH)) {
-            // iOS data container — use Application Support so iOS cannot evict fonts.
-            return home + File.separator + "Library" + File.separator
-                    + "Application Support" + File.separator
-                    + "forge" + File.separator + "fonts" + File.separator;
-        }
-        return cacheDir + "fonts" + File.separator;
-    }
-
     public static void setCacheDir(final String cacheDir0) {
         final int idx = cardPicsDir.indexOf(cacheDir); //ensure card pics directory is updated too if within cache directory
         if (idx != -1) {

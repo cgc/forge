@@ -288,7 +288,7 @@ public final class ForgeConstants {
     // data that is only in the cached dir
     private static final String PICS_DIR                     = CACHE_DIR + "pics" + PATH_SEPARATOR;
     public static final String DB_DIR                        = CACHE_DIR + "db" + PATH_SEPARATOR;
-    public static final String FONTS_DIR                     = ForgeProfileProperties.getFontsDir();
+    public static final String FONTS_DIR                     = CACHE_DIR + "fonts" + PATH_SEPARATOR;
     public static final String CACHE_SKINS_DIR               = CACHE_DIR + "skins" + PATH_SEPARATOR;
     public static final String CACHE_TOKEN_PICS_DIR          = PICS_DIR + "tokens" + PATH_SEPARATOR;
     public static final String CACHE_ICON_PICS_DIR           = PICS_DIR + "icons" + PATH_SEPARATOR;
