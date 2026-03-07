@@ -15,7 +15,6 @@ import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Clipboard;
 import forge.adventure.scene.*;
@@ -60,7 +59,6 @@ public class Forge implements ApplicationListener {
     static Array<Scene> lastScene = new Array<>();
     private static float animationTimeout;
     static Batch animationBatch;
-    private static ShaderProgram animBgraShader; // non-null on iOS only
     static TextureRegion lastScreenTexture;
     private static boolean sceneWasSwapped = false;
     public static boolean advFreezePlayerControls = false;
@@ -220,12 +218,7 @@ public class Forge implements ApplicationListener {
         graphics = new Graphics();
         splashScreen = new SplashScreen();
         frameRate = new FrameRate();
-        if (GuiBase.isIOS()) {
-            animBgraShader = new ShaderProgram(Shaders.vertexShader, Shaders.bgraFixFrag);
-            animationBatch = new SpriteBatch(1000, animBgraShader);
-        } else {
-            animationBatch = new SpriteBatch();
-        }
+        animationBatch = new SpriteBatch();
         inputProcessor = new MainInputProcessor();
         //screenWidth and screenHeight should be set initially and only change upon restarting the app
         screenWidth = Gdx.app.getGraphics().getWidth();
@@ -1160,10 +1153,6 @@ public class Forge implements ApplicationListener {
         FOverlay.hideAll();
         Dscreens.clear();
         graphics.dispose();
-        if (animBgraShader != null) {
-            animBgraShader.dispose();
-            animBgraShader = null;
-        }
         SoundSystem.instance.dispose();
         MapStage.getInstance().disposeWorld();
         try {

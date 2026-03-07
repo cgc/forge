@@ -28,6 +28,7 @@ import com.badlogic.gdx.backends.iosrobovm.IOSApplicationConfiguration;
 import com.badlogic.gdx.backends.iosrobovm.IOSFiles;
 import com.badlogic.gdx.backends.iosrobovm.IOSInput;
 import com.badlogic.gdx.backends.iosrobovm.IOSScreenBounds;
+import org.robovm.apple.glkit.GLKViewDrawableColorFormat;
 import org.robovm.apple.glkit.GLKViewDrawableDepthFormat;
 import org.robovm.apple.glkit.GLKViewDrawableMultisample;
 
@@ -109,6 +110,26 @@ public class Main extends IOSApplication.Delegate {
         final IOSApplicationConfiguration config = new IOSApplicationConfiguration();
         config.useAccelerometer = false;
         config.useCompass = false;
+        // Explicitly request RGBA8888 as the drawable color format.
+        //
+        // On physical iOS devices the GLKit/Metal translation layer defaults to
+        // BGRAFormatPixel32 (BGRA byte order) for the color renderbuffer.  OpenGL
+        // textures uploaded as GL_RGBA are stored with the correct RGBA byte order
+        // in the GPU, but when they are blitted to the BGRA drawable surface the
+        // red and blue channels are swapped — making blue UI elements appear as
+        // orange/gold and vice-versa.  The iOS Simulator does not exhibit this bug
+        // because macOS uses the x86/ARM host byte order for the drawable surface.
+        //
+        // Setting colorFormat to RGBA8888 tells GLKit to allocate the renderbuffer
+        // as MTLPixelFormatRGBA8Unorm, matching the byte order of GL_RGBA texture
+        // uploads and eliminating the channel swap across the entire rendering
+        // pipeline without any per-texture or per-shader workarounds.
+        //
+        // This is the same configuration that Shattered Pixel Dungeon
+        // (another libGDX/MobiVM title) uses to solve the identical problem
+        // (their MGLDrawableColorFormat.RGBA8888 maps to the same underlying
+        // Metal pixel format via their MetalANGLE backend).
+        config.colorFormat = GLKViewDrawableColorFormat.RGBA8888;
         // Disable the depth buffer: Forge is a pure-2D app and never uses depth
         // testing, so allocating a 16-bit depth renderbuffer (the GLKit default)
         // wastes VRAM and — on some iOS/Metal driver combinations — can cause the
