@@ -282,8 +282,9 @@ public class Forge implements ApplicationListener {
             // thread it resolves to a null trampoline on the iOS simulator (pc=0x0
             // crash) and silently no-ops on device, leaving the GL loop paused so
             // that any WaitRunnable.invokeAndWait() deadlocks permanently.
-            // The matching stopContinuousRendering() is in openHomeDefault() /
-            // openAdventure(), called once the home screen is shown.
+            // The matching stopContinuousRendering() is in afterDbLoaded(), called
+            // from the EDT once FSkin, drafts, and adventure resources are loaded,
+            // just before the final transition screen is shown.
             startContinuousRendering();
 
             Runnable runnable = () -> {
@@ -521,6 +522,12 @@ public class Forge implements ApplicationListener {
                         loadAdventureResources(false);
                         isMobileAdventureMode = true;
                     }
+                    // Balance the startContinuousRendering() added in create() to guard
+                    // against background-thread requestRendering() → setPaused() during
+                    // loading.  All background loading threads are now done; decrement
+                    // the count so that the subsequent openHomeDefault() call can drive
+                    // it to zero and correctly disable continuous rendering on iOS.
+                    stopContinuousRendering();
                     //selection transition
                     setTransitionScreen(new TransitionScreen(() -> {
                         if (createNewAdventureMap) {
