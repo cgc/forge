@@ -1,0 +1,38 @@
+name: Test iOS build
+
+on:
+  workflow_dispatch:
+  push:
+    paths: [ 'forge-gui-ios/**' ]
+  pull_request:
+    paths: [ 'forge-gui-ios/**' ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        java: [ '17' ]
+    name: Test iOS build with Java ${{ matrix.java }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Clone robovmx
+        run: git clone --depth 1 --branch experiment/2-libcore-10 https://github.com/robovmx/robovmx.git robovmx
+
+      - name: Install robovmx to local Maven repository
+        run: |
+          cd robovmx
+          mvn install -Dmaven.test.skip=true
+
+      - name: Build forge-gui-ios
+        run: mvn -U -B -pl forge-gui-ios -am install -P ios-build -Dmaven.test.skip=true

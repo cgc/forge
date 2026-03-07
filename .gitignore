@@ -97,3 +97,6 @@ __pycache__
 
 # Ignore Claude configuration
 .claude
+
+# Ignore locally cloned robovmx repository
+robovmx/
