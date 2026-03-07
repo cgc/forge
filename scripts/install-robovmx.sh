@@ -409,7 +409,10 @@ git clone \
     "$ROBOVMX_REPO" \
     "$CLONE_DIR"
 
-(cd "$CLONE_DIR" && git sparse-checkout set "plugins/maven")
+# Include parent POMs in the sparse checkout so Maven can resolve the parent chain:
+#   plugins/maven/pom.xml  →parent→  plugins/pom.xml  →parent→  pom.xml (root)
+# All three must be present and version-patched before Maven can build the plugin.
+(cd "$CLONE_DIR" && git sparse-checkout set "pom.xml" "plugins/pom.xml" "plugins/maven")
 
 echo "[install-robovmx] Building robovm-maven-plugin from source ..."
 MAVEN_PLUGIN_DIR="$CLONE_DIR/plugins/maven"
@@ -431,18 +434,28 @@ if [ -z "$MAVEN_PLUGIN_DIR" ] || [ ! -d "$MAVEN_PLUGIN_DIR" ]; then
     exit 1
 fi
 
-# Patch the version to our local qualifier to prevent ~/.m2 cache conflicts
-# with any future official publication of 10.2.2.4-SNAPSHOT.
-echo "[install-robovmx]   patching version to ${LOCAL_VERSION} ..."
+# Patch the version to our local qualifier in ALL checked-out POMs (root, plugins/,
+# plugins/maven/) so the entire parent chain resolves to the same LOCAL_VERSION.
+echo "[install-robovmx]   patching version to ${LOCAL_VERSION} in all POMs ..."
 if sed --version 2>/dev/null | grep -q GNU; then
-    find "$MAVEN_PLUGIN_DIR" -name "pom.xml" -exec sed -i \
+    find "$CLONE_DIR" -name "pom.xml" -exec sed -i \
         "s|${ROBOVMX_VERSION}|${LOCAL_VERSION}|g" {} +
 else
-    find "$MAVEN_PLUGIN_DIR" -name "pom.xml" -exec sed -i '' \
+    find "$CLONE_DIR" -name "pom.xml" -exec sed -i '' \
         "s|${ROBOVMX_VERSION}|${LOCAL_VERSION}|g" {} +
 fi
 
-echo "[install-robovmx]   running: mvn install -DskipTests ..."
+# Install parent POMs first (non-recursive: -N) so Maven can resolve the chain
+# before building plugins/maven which has compile dependencies on robovm artifacts.
+echo "[install-robovmx]   installing root POM (non-recursive) ..."
+(cd "$CLONE_DIR" && \
+    mvn --batch-mode --no-transfer-progress -N install 2>&1 | tail -10)
+
+echo "[install-robovmx]   installing plugins/ aggregator POM (non-recursive) ..."
+(cd "$CLONE_DIR/plugins" && \
+    mvn --batch-mode --no-transfer-progress -N install 2>&1 | tail -10)
+
+echo "[install-robovmx]   running: mvn install -DskipTests (plugins/maven) ..."
 (cd "$MAVEN_PLUGIN_DIR" && \
     mvn --batch-mode --no-transfer-progress \
         -DskipTests \
