@@ -2216,4 +2216,28 @@ public class Shaders {
             "    v_texCoords = a_texCoord0;\n" +
             "    gl_Position = u_projTrans * a_position;\n" +
             "}";
+
+    /**
+     * Fragment shader that corrects BGRA→RGBA channel order.
+     *
+     * On iOS, CoreGraphics decodes PNG images with the R and B channels swapped
+     * relative to what OpenGL expects for GL_RGBA uploads.  Blue colors therefore
+     * appear as orange/gold and vice-versa.  This shader swaps the R and B
+     * components of every sampled texel, restoring the intended colours.
+     *
+     * Used as the <em>default</em> shader for SpriteBatch on iOS so that every
+     * {@code batch.setShader(null)} call reverts to this correction rather than
+     * the stock libGDX shader that would leave the channels swapped.
+     */
+    public static final String bgraFixFrag =
+            "#ifdef GL_ES\n"
+            + "precision mediump float;\n"
+            + "#endif\n"
+            + "varying vec4 v_color;\n"
+            + "varying vec2 v_texCoords;\n"
+            + "uniform sampler2D u_texture;\n"
+            + "void main() {\n"
+            + "  vec4 c = texture2D(u_texture, v_texCoords);\n"
+            + "  gl_FragColor = v_color * vec4(c.b, c.g, c.r, c.a);\n"
+            + "}\n";
 }

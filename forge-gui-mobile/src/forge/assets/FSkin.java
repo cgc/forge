@@ -23,6 +23,7 @@ import forge.screens.TransitionScreen;
 import forge.toolbox.FProgressBar;
 import forge.util.WordUtil;
 
+import java.nio.ByteBuffer;
 import java.util.Map;
 
 public class FSkin {
@@ -219,7 +220,7 @@ public class FSkin {
                         splashScreen.setSplashTexture(new TextureRegion(Forge.getAssets().getTexture(f), 0, 0, w, h - 100));
                     }
                 }
-                Pixmap pxSplash = new Pixmap(f);
+                Pixmap pxSplash = fixPixmapByteOrder(new Pixmap(f));
                 //override splashscreen startup
                 if (Forge.selector.equals("Adventure")) {
                     if (f3.exists()) {
@@ -227,7 +228,7 @@ public class FSkin {
                         w = advSplash.getWidth();
                         h = advSplash.getHeight();
                         splashScreen.setSplashTexture(new TextureRegion(advSplash, 0, 0, w, h - 100));
-                        pxSplash = new Pixmap(f3);
+                        pxSplash = fixPixmapByteOrder(new Pixmap(f3));
                     }
                     if (f4.exists()) {
                         Texture advBG = Forge.getAssets().getTexture(f4, true, false);
@@ -313,15 +314,15 @@ public class FSkin {
             Forge.getAssets().loadTexture(f1);
             Pixmap adventureButtons;
             if (f23.exists()) {
-                adventureButtons = new Pixmap(f23);
+                adventureButtons = fixPixmapByteOrder(new Pixmap(f23));
             } else {
-                adventureButtons = new Pixmap(f22);
+                adventureButtons = fixPixmapByteOrder(new Pixmap(f22));
             }
 
-            Pixmap preferredIcons = new Pixmap(f1);
+            Pixmap preferredIcons = fixPixmapByteOrder(new Pixmap(f1));
             if (f2.exists()) {
                 Forge.getAssets().loadTexture(f2);
-                preferredIcons = new Pixmap(f2);
+                preferredIcons = fixPixmapByteOrder(new Pixmap(f2));
             }
 
             Forge.getAssets().loadTexture(f3);
@@ -653,4 +654,33 @@ public class FSkin {
     }
 
     public static boolean isLoaded() { return loaded; }
+
+    /**
+     * Corrects the byte order of a Pixmap loaded from a file on iOS.
+     *
+     * On iOS, CoreGraphics decodes PNG files with the R and B channels swapped
+     * relative to what libGDX/OpenGL ES expects for GL_RGBA uploads.  libGDX
+     * marks the resulting Pixmap as RGBA8888 regardless, so the mismatch is
+     * invisible until colours are sampled (getPixel) or the pixmap is uploaded
+     * as a texture without the SpriteBatch BGRA-fix shader.
+     *
+     * This method swaps bytes 0 and 2 (R and B) in every four-byte RGBA group
+     * of the Pixmap's native pixel buffer in-place, restoring the intended
+     * RGB order.  On non-iOS platforms it is a no-op.
+     *
+     * @param pixmap a Pixmap whose pixels may be in BGRA order on iOS
+     * @return the same Pixmap instance, with R↔B bytes corrected on iOS
+     */
+    static Pixmap fixPixmapByteOrder(Pixmap pixmap) {
+        if (!GuiBase.isIOS()) return pixmap;
+        ByteBuffer pixels = pixmap.getPixels();
+        int n = pixels.limit();
+        for (int i = 0; i < n; i += 4) {
+            byte r = pixels.get(i);
+            byte b = pixels.get(i + 2);
+            pixels.put(i, b);
+            pixels.put(i + 2, r);
+        }
+        return pixmap;
+    }
 }

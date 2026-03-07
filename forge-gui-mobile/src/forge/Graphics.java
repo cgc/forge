@@ -24,6 +24,7 @@ import forge.assets.FImage;
 import forge.assets.FSkinColor;
 import forge.assets.FSkinFont;
 import forge.assets.ImageCache;
+import forge.gui.GuiBase;
 import forge.toolbox.FDisplayObject;
 import forge.util.TextBounds;
 import forge.util.Utils;
@@ -35,7 +36,9 @@ public class Graphics {
     private static final int GL_BLEND = GL20.GL_BLEND;
     private static final int GL_LINE_SMOOTH = 2848; //create constant here since not in GL20
 
-    private final Batch batch = new SpriteBatch();
+    private final Batch batch;
+    /** Non-null on iOS only: the BGRA-correcting shader used as the SpriteBatch default. */
+    private ShaderProgram bgraDefaultShader;
     private final ShapeRenderer shapeRenderer = new ShapeRenderer();
     private final Deque<Matrix4> Dtransforms = new ArrayDeque<>();
     private final Vector3 tmp = new Vector3();
@@ -65,6 +68,21 @@ public class Graphics {
 
     public Graphics() {
         ShaderProgram.pedantic = false;
+        // On iOS, CoreGraphics decodes PNG files with R and B channels swapped relative
+        // to what OpenGL ES expects for GL_RGBA uploads.  We work around this by using a
+        // custom fragment shader as the SpriteBatch's *default* shader; it swaps the R
+        // and B components of every sampled texel.  Because SpriteBatch.setShader(null)
+        // reverts to this default (not to the stock libGDX shader), ALL rendering that
+        // resets to null automatically gets the colour correction — including every
+        // location in Graphics.java that calls batch.setShader(null) after a special
+        // effect.  SpriteBatch does not own externally-supplied default shaders, so we
+        // track bgraDefaultShader here and dispose it manually in dispose().
+        if (GuiBase.isIOS()) {
+            bgraDefaultShader = new ShaderProgram(Shaders.vertexShader, Shaders.bgraFixFrag);
+            batch = new SpriteBatch(1000, bgraDefaultShader);
+        } else {
+            batch = new SpriteBatch();
+        }
         // Log compile status for ALL shaders so iOS GLSL ES issues are immediately visible.
         // (Instance field initializers run before this constructor body, so all shaders are
         //  already compiled at this point.)
@@ -87,6 +105,15 @@ public class Graphics {
                         + sp.getLog().trim().replace("\n", " | "));
             } else {
                 System.err.println("[Graphics] shader " + shaderNames[i] + " OK");
+            }
+        }
+        // Log the iOS BGRA-fix shader separately since it only exists on iOS.
+        if (bgraDefaultShader != null) {
+            if (!bgraDefaultShader.isCompiled()) {
+                System.err.println("[Graphics] shader bgraDefaultShader FAILED: "
+                        + bgraDefaultShader.getLog().trim().replace("\n", " | "));
+            } else {
+                System.err.println("[Graphics] shader bgraDefaultShader OK");
             }
         }
     }
@@ -143,6 +170,9 @@ public class Graphics {
         safeDispose(shaderOutline, shaderGrayscale, shaderWarp, shaderUnderwater, shaderNightDay,
                 shaderPixelate, shaderRipple, shaderPixelateWarp, shaderChromaticAbberation, shaderHueShift,
                 shaderRoundedRect, shaderRoundedRect2, shaderNoiseFade, shaderPortal, dummyTexture);
+        if (bgraDefaultShader != null) {
+            bgraDefaultShader.dispose();
+        }
     }
 
     public void safeDispose(Disposable... disposables) {
