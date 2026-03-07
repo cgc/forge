@@ -1,9 +1,9 @@
 #!/bin/bash
-# Build script for forge-gui-ios.
-# Clones and installs robovmx to the local Maven repository, then builds forge-gui-ios.
+# Clones and installs robovmx to the local Maven repository.
+# Required before building forge-gui-ios locally.
 # Run from the repository root or from within forge-gui-ios/.
 
-set -e
+set -euo pipefail
 
 # Resolve the repository root regardless of where the script is invoked from.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -12,8 +12,6 @@ ROBOVMX_DIR="${REPO_ROOT}/robovmx"
 
 ROBOVMX_REPO="https://github.com/robovmx/robovmx.git"
 ROBOVMX_BRANCH="experiment/2-libcore-10"
-
-echo "==> Repository root: ${REPO_ROOT}"
 
 # Clone robovmx if not already present, otherwise update it.
 if [ ! -d "${ROBOVMX_DIR}/.git" ]; then
@@ -27,12 +25,9 @@ fi
 
 # Install robovmx to the local Maven repository.
 echo "==> Installing robovmx to local Maven repository ..."
+command -v mvn >/dev/null 2>&1 || { echo "Error: Maven (mvn) not found. Please install Maven and try again." >&2; exit 1; }
 cd "${ROBOVMX_DIR}"
 mvn install -Dmaven.test.skip=true
 
-# Build forge-gui-ios.
-echo "==> Building forge-gui-ios ..."
-cd "${REPO_ROOT}"
-mvn -U -B -pl forge-gui-ios -am install -P ios-build -Dmaven.test.skip=true
-
-echo "==> Done."
+echo "==> Done. You can now build forge-gui-ios with:"
+echo "    mvn -pl forge-gui-ios -am install -P ios-build -Dmaven.test.skip=true"
