@@ -26,10 +26,10 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Patch robovm-soot for Java Record support
-        run: bash scripts/patch-robovm-soot.sh
+      - name: Install robovmx (robovm-rt with Java 8 APIs)
+        run: bash scripts/install-robovmx.sh
 
-      - name: Build Java 8 API stubs for MobiVM
+      - name: Build java.lang.Record stub for robovmx
         run: bash scripts/build-java-stubs.sh
 
       - name: Build all modules and start iOS Simulator app in background
@@ -47,7 +47,7 @@ jobs:
       - name: Wait for simulator to boot and app to launch, then screenshot
         run: |
           echo "Waiting for MobiVM AOT compilation and simulator launch..."
-          echo "(MobiVM compiles Java to native code on first run — this can take 30–45 min)"
+          echo "(robovmx compiles Java to native code on first run — this can take 30–45 min)"
           SCREENSHOT_TAKEN=false
           for i in $(seq 1 60); do
             sleep 60
