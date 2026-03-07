@@ -115,11 +115,13 @@ public class Main extends IOSApplication.Delegate {
         // transparent.  Shattered Pixel Dungeon (another libGDX/iOS title) sets
         // this to None for the same reason.
         config.depthFormat = GLKViewDrawableDepthFormat.None;
-        // Audio is enabled; OpenAL, AudioToolbox, and AVFoundation are all listed as
-        // frameworks in robovm.xml.  AudioClip and AudioMusic null-check the result
-        // of Gdx.audio.newSound/newMusic, so a missing sound file or transient OpenAL
-        // init failure is handled gracefully without crashing the app.
-        config.useAudio = true;
+        // Audio intentionally disabled: OALSimpleAudio.sharedInstance() and all other
+        // ObjectAL ObjC-bridge methods are native trampolines that require the ObjectAL
+        // framework to be fully registered with the ObjC runtime before use.  On the
+        // iOS simulator the trampoline can resolve to null, causing a crash at
+        // pc=0x0 on the background audio thread (Thread 34) before any UI appears.
+        // Re-enable only after confirming stable launch on a physical device.
+        config.useAudio = false;
         boolean isLandscape = false;
         nslog("createApplication: calling Forge.getApp()");
         final ApplicationListener app = Forge.getApp(null, new IOSClipboard(), new IOSAdapter(assetsDir), assetsDir, false, !isLandscape, 0, false, 0);
