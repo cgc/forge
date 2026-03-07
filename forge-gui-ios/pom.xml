@@ -227,6 +227,20 @@
                             <configFile>robovm.xml</configFile>
                             <arch>arm64</arch>
                         </configuration>
+                        <!--
+                          Patched robovm-dist-compiler: fixes four Soot bugs that crash
+                          AOT compilation of Java Record classes (NoSuchMethodError /
+                          RuntimeException: Attempt to create RefType containing a /).
+                          Built by: bash scripts/patch-robovm-soot.sh
+                          (called automatically from scripts/install-robovmx.sh)
+                        -->
+                        <dependencies>
+                            <dependency>
+                                <groupId>com.robovmx</groupId>
+                                <artifactId>robovm-dist-compiler</artifactId>
+                                <version>10.2.2.4-patched</version>
+                            </dependency>
+                        </dependencies>
                     </plugin>
                 </plugins>
             </build>
@@ -253,6 +267,14 @@
                             <configFile>robovm.xml</configFile>
                             <arch>${ios.simulator.arch}</arch>
                         </configuration>
+                        <!-- Patched dist-compiler (same as ios-device profile above). -->
+                        <dependencies>
+                            <dependency>
+                                <groupId>com.robovmx</groupId>
+                                <artifactId>robovm-dist-compiler</artifactId>
+                                <version>10.2.2.4-patched</version>
+                            </dependency>
+                        </dependencies>
                     </plugin>
                 </plugins>
             </build>

@@ -109,4 +109,17 @@ else
     rm -f "$FULL_BUILD_LOG"
 fi
 
+# ── Step 4: Patch robovm-dist-compiler Soot ───────────────────────────────────
+# If the full compiler build succeeded, the dist-compiler is now in ~/.m2.  Apply
+# the Soot patches that fix AOT compilation of Java Record classes and install the
+# patched jar into forge-gui-ios/local-repo/ so the Maven plugin can find it.
+DIST_COMPILER_M2="$HOME/.m2/repository/com/robovmx/robovm-dist-compiler/${ROBOVMX_VERSION}/robovm-dist-compiler-${ROBOVMX_VERSION}.jar"
+if [ -f "$DIST_COMPILER_M2" ]; then
+    echo "[install-robovmx] Patching robovm-dist-compiler Soot (record class fixes) ..."
+    ROBOVMX_VERSION="$ROBOVMX_VERSION" bash "$(dirname "${BASH_SOURCE[0]}")/patch-robovm-soot.sh"
+else
+    echo "[install-robovmx] robovm-dist-compiler not found in ~/.m2; Soot patch skipped."
+    echo "[install-robovmx] (Soot patch is only needed for IPA/simulator AOT builds.)"
+fi
+
 echo "[install-robovmx] Done."
