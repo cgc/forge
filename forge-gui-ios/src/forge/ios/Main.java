@@ -115,12 +115,17 @@ public class Main extends IOSApplication.Delegate {
         // transparent.  Shattered Pixel Dungeon (another libGDX/iOS title) sets
         // this to None for the same reason.
         config.depthFormat = GLKViewDrawableDepthFormat.None;
-        // Audio intentionally disabled: OALSimpleAudio.sharedInstance() and all other
-        // ObjectAL ObjC-bridge methods are native trampolines that require the ObjectAL
-        // framework to be fully registered with the ObjC runtime before use.  On the
-        // iOS simulator the trampoline can resolve to null, causing a crash at
-        // pc=0x0 on the background audio thread (Thread 34) before any UI appears.
-        // Re-enable only after confirming stable launch on a physical device.
+        // Audio intentionally disabled while startup is being stabilised.
+        // Root cause of audio crash: IOSGraphics.requestRendering() → viewController.setPaused(false)
+        // is an ObjC UIKit call that must happen on the main thread.  The ObjectAL audio-init
+        // thread called it from a background thread, causing a null-trampoline crash (pc=0x0)
+        // on the simulator.  That same background-thread violation also caused a permanent
+        // hang on physical devices: setPaused silently no-ops off the main thread, leaving the
+        // GL render loop paused, so any WaitRunnable.invokeAndWait() call deadlocks.
+        // The root fix is in Forge.create(): startContinuousRendering() is now called before
+        // the background DB-load thread starts, keeping isContinuous=true so requestRendering()
+        // never reaches the setPaused path.  Re-enable audio here once the app is confirmed
+        // to launch stably on a physical device with that fix in place.
         config.useAudio = false;
         boolean isLandscape = false;
         nslog("createApplication: calling Forge.getApp()");
