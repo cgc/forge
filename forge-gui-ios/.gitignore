@@ -1,4 +1,10 @@
-# Local Maven repository populated by scripts/patch-robovm-soot.sh and
-# scripts/build-java-stubs.sh. Contains the patched robovm-dist-compiler jar
-# and the java-stubs jar; never committed.
+# Local Maven repository populated by scripts/patch-robovm-soot.sh,
+# scripts/build-java-stubs.sh, and scripts/install-robovmx.sh.
+# Contains the patched robovm-dist-compiler jar, java-stubs jar,
+# and robovmx artifacts; never committed.
 local-repo/
+
+# robovmx nocompiler distribution extracted by scripts/install-robovmx.sh.
+# Provides the <home> directory for robovm-maven-plugin and the platform-native
+# librobovm-rt.a from Android 10-13 libcore. Never committed.
+robovmx-dist/
