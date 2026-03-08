@@ -4,7 +4,7 @@
  Scope: forge-core, forge-game, forge-ai, forge-gui, forge-gui-mobile
  Note:  forge-gui-ios excluded (it is the adaptation / fix layer).
 ════════════════════════════════════════════════════════════════════════════════
-Generated: 2026-03-08 13:18 UTC
+Generated: 2026-03-08 13:46 UTC
 
 ────────────────────────────────────────────────────────────────────────────────
  SECTION 1  –  Call sites covered by StreamDesugar.java (safe on iOS)
@@ -16,7 +16,7 @@ Generated: 2026-03-08 13:18 UTC
 
   [P50] File.toPath()
     forge-core/src/main/java/forge/CardStorageReader.java:409:        try (InputStream fileInputStream = java.nio.file.Files.newInputStream(file.toPath())) {
-    forge-core/src/main/java/forge/util/StreamUtil.java:166:    /** Pattern 50: replacement for {@code file.toPath()}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:194:    /** Pattern 50: replacement for {@code file.toPath()}. */
     forge-core/src/main/java/forge/util/FileUtil.java:113:        try (InputStream is = Files.newInputStream(source.toPath());
     forge-core/src/main/java/forge/util/FileUtil.java:114:             OutputStream os = Files.newOutputStream(new File(destFilename).toPath())){
     forge-core/src/main/java/forge/util/FileUtil.java:256:                    new InputStreamReader(Files.newInputStream(file.toPath()), StandardCharsets.UTF_8));
@@ -31,7 +31,7 @@ Generated: 2026-03-08 13:18 UTC
     forge-gui-mobile/src/forge/util/LibGDXImageFetcher.java:86:            try(OutputStream out = Files.newOutputStream(destFile.file().toPath())) {
 
   [P51] Paths.get(String, String…)
-    forge-core/src/main/java/forge/util/StreamUtil.java:169:    /** Pattern 51: replacement for {@code Paths.get(first, more)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:197:    /** Pattern 51: replacement for {@code Paths.get(first, more)}. */
     forge-core/src/main/java/forge/util/CardTranslation.java:27:        try (LineReader translationFile = new LineReader(Files.newInputStream(Paths.get(languagesDirectory + filename)), StandardCharsets.UTF_8)) {
     forge-gui/src/main/java/forge/gui/download/GuiDownloadZipService.java:115:                OutputStream output = java.nio.file.Files.newOutputStream(Paths.get(destFile))) {
     forge-gui/src/main/java/forge/gui/download/GuiDownloadZipService.java:236:        try (BufferedOutputStream out = new BufferedOutputStream(java.nio.file.Files.newOutputStream(Paths.get(outPath)))) {
@@ -46,8 +46,8 @@ Generated: 2026-03-08 13:18 UTC
 
   [P52] Files.newInputStream(Path, …)
     forge-core/src/main/java/forge/CardStorageReader.java:409:        try (InputStream fileInputStream = java.nio.file.Files.newInputStream(file.toPath())) {
-    forge-core/src/main/java/forge/util/StreamUtil.java:176:    /** Pattern 52: replacement for {@code Files.newInputStream(path, opts)}. */
-    forge-core/src/main/java/forge/util/StreamUtil.java:179:        return java.nio.file.Files.newInputStream(p, opts);
+    forge-core/src/main/java/forge/util/StreamUtil.java:204:    /** Pattern 52: replacement for {@code Files.newInputStream(path, opts)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:207:        return java.nio.file.Files.newInputStream(p, opts);
     forge-core/src/main/java/forge/util/FileUtil.java:113:        try (InputStream is = Files.newInputStream(source.toPath());
     forge-core/src/main/java/forge/util/FileUtil.java:256:                    new InputStreamReader(Files.newInputStream(file.toPath()), StandardCharsets.UTF_8));
     forge-core/src/main/java/forge/util/CardTranslation.java:27:        try (LineReader translationFile = new LineReader(Files.newInputStream(Paths.get(languagesDirectory + filename)), StandardCharsets.UTF_8)) {
@@ -59,8 +59,8 @@ Generated: 2026-03-08 13:18 UTC
     forge-gui-mobile/src/forge/assets/FSkinFont.java:372:            try (LineReader translationFile = new LineReader(Files.newInputStream(Paths.get(translationFilePath)),
 
   [P53] Files.newOutputStream(Path, …)
-    forge-core/src/main/java/forge/util/StreamUtil.java:182:    /** Pattern 53: replacement for {@code Files.newOutputStream(path, opts)}. */
-    forge-core/src/main/java/forge/util/StreamUtil.java:191:        return java.nio.file.Files.newOutputStream(p, opts);
+    forge-core/src/main/java/forge/util/StreamUtil.java:210:    /** Pattern 53: replacement for {@code Files.newOutputStream(path, opts)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:219:        return java.nio.file.Files.newOutputStream(p, opts);
     forge-core/src/main/java/forge/util/FileUtil.java:114:             OutputStream os = Files.newOutputStream(new File(destFilename).toPath())){
     forge-gui/src/main/java/forge/gui/download/GuiDownloadZipService.java:115:                OutputStream output = java.nio.file.Files.newOutputStream(Paths.get(destFile))) {
     forge-gui/src/main/java/forge/gui/download/GuiDownloadZipService.java:236:        try (BufferedOutputStream out = new BufferedOutputStream(java.nio.file.Files.newOutputStream(Paths.get(outPath)))) {
@@ -71,27 +71,61 @@ Generated: 2026-03-08 13:18 UTC
     forge-gui-mobile/src/forge/util/LibGDXImageFetcher.java:86:            try(OutputStream out = Files.newOutputStream(destFile.file().toPath())) {
 
   [P54] Files.walk(Path, …)
-    forge-core/src/main/java/forge/util/StreamUtil.java:194:    /** Pattern 54: replacement for {@code Files.walk(path, opts)}. */
-    forge-core/src/main/java/forge/util/StreamUtil.java:201:        return java.nio.file.Files.walk(path, opts);
+    forge-core/src/main/java/forge/util/StreamUtil.java:222:    /** Pattern 54: replacement for {@code Files.walk(path, opts)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:229:        return java.nio.file.Files.walk(path, opts);
     forge-gui/src/main/java/forge/gamemodes/quest/io/MainWorldDuelReader.java:44:        try (Stream<Path> stream = Files.walk(directory.toPath())) {
     forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:47:        try (Stream<Path> stream = Files.walk(source)) {
 
   [P55] Files.exists(Path, …)
-    forge-core/src/main/java/forge/util/StreamUtil.java:215:    /** Pattern 55: replacement for {@code Files.exists(path, opts)}. */
-    forge-core/src/main/java/forge/util/StreamUtil.java:218:        return java.nio.file.Files.exists(p, opts);
+    forge-core/src/main/java/forge/util/StreamUtil.java:243:    /** Pattern 55: replacement for {@code Files.exists(path, opts)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:246:        return java.nio.file.Files.exists(p, opts);
     forge-gui-mobile/src/forge/adventure/util/Config.java:127:        return (GuiBase.isAndroid() || GuiBase.isIOS()) ? ForgeConstants.ASSETS_DIR : Files.exists(Paths.get("./res")) ? "./" : Files.exists(Paths.get("./forge-gui/")) ? "./forge-gui/" : "../forge-gui";
     forge-gui-mobile/src/forge/adventure/util/Config.java:192:            if (Files.exists(Paths.get(langFile))) {
     forge-gui-mobile/src/forge/adventure/util/Config.java:196:            } else if (Files.exists(Paths.get(fullPath))) {
 
   [P56] Files.createDirectories(Path, …)
-    forge-core/src/main/java/forge/util/StreamUtil.java:221:    /** Pattern 56: replacement for {@code Files.createDirectories(path, attrs)}. */
-    forge-core/src/main/java/forge/util/StreamUtil.java:224:        return java.nio.file.Files.createDirectories(p, attrs);
+    forge-core/src/main/java/forge/util/StreamUtil.java:249:    /** Pattern 56: replacement for {@code Files.createDirectories(path, attrs)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:252:        return java.nio.file.Files.createDirectories(p, attrs);
     forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:48:            Files.createDirectories(destination);
 
   [P57] Files.copy(Path, Path, …)
-    forge-core/src/main/java/forge/util/StreamUtil.java:227:    /** Pattern 57: replacement for {@code Files.copy(src, dst, opts)}. */
-    forge-core/src/main/java/forge/util/StreamUtil.java:242:        return java.nio.file.Files.copy(src, dst, opts);
+    forge-core/src/main/java/forge/util/StreamUtil.java:255:    /** Pattern 57: replacement for {@code Files.copy(src, dst, opts)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:270:        return java.nio.file.Files.copy(src, dst, opts);
     forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:51:                    Files.copy(s, destination.resolve(source.relativize(s)), REPLACE_EXISTING);
+
+  [P58] Predicate.not(Predicate) — Java 11 static method
+    forge-core/src/main/java/forge/card/CardRulesPredicates.java:561:    public static final Predicate<CardRules> IS_NON_CREATURE_SPELL = Predicate.not(
+    forge-core/src/main/java/forge/util/StreamUtil.java:166:    /** Pattern 58: replacement for {@code Predicate.not(target)} (Java 11).
+    forge-game/src/main/java/forge/game/staticability/StaticAbilityContinuous.java:330:                removeAbilities = Predicate.not(CardTraitBase::isManaAbility);
+    forge-game/src/main/java/forge/game/ability/effects/AnimateEffectBase.java:82:            removeAbilities = Predicate.not(CardTraitBase::isManaAbility);
+    forge-game/src/main/java/forge/game/combat/AttackRestrictionType.java:25:                        .and(Predicate.not(attacker::equals));
+    forge-game/src/main/java/forge/game/card/CardState.java:474:        newCol.removeIf(Predicate.not(SpellAbility::isManaAbility));
+    forge-ai/src/main/java/forge/ai/AiController.java:1622:                                Predicate.not(CardPredicates.LANDS.or(CardPredicates.hasKeyword("Storm")))
+    forge-ai/src/main/java/forge/ai/ability/ChooseSourceAi.java:131:                List<Card> oppCreatures = CardLists.filter(options, Predicate.not(
+    forge-ai/src/main/java/forge/ai/ability/MutateAi.java:24:        mutateTgts = CardLists.filter(mutateTgts, Predicate.not(
+    forge-ai/src/main/java/forge/ai/ability/AttachAi.java:1206:            prefList = CardLists.filter(prefList, Predicate.not(
+    forge-ai/src/main/java/forge/ai/ComputerUtil.java:2309:                    .filter(Predicate.not(goodChoices::contains))
+    forge-ai/src/main/java/forge/ai/ComputerUtilCost.java:709:            choices = IterableUtil.filter(choices, Predicate.not(CardPredicates.isController(ai).and(targets::contains)));
+    forge-gui/src/main/java/forge/gamemodes/net/server/FServerManager.java:213:        Predicate<RemoteClient> filter = Predicate.not(notTo::contains);
+    forge-gui/src/main/java/forge/gamemodes/quest/BoosterUtils.java:62:            .and(filterPioneer.and(Predicate.not(formats.getStandard().editionLegalPredicate)));
+    forge-gui/src/main/java/forge/gamemodes/quest/BoosterUtils.java:65:            .and(filterModern.and(Predicate.not(filterPioneer)));
+    forge-gui/src/main/java/forge/gamemodes/quest/BoosterUtils.java:69:            .and(Predicate.not(filterModern));
+    forge-gui/src/main/java/forge/gamemodes/planarconquest/ConquestData.java:198:        return (int) FModel.getPlanes().stream().filter(Predicate.not(ConquestPlane::isUnreachable)).count();
+    forge-gui-mobile/src/forge/adventure/scene/AdventureDeckEditor.java:221:                eventSets.removeIf(Predicate.not(CardEdition::hasBasicLands));
+
+  [P59] String.isBlank() — Java 11 (defensive; may be natively provided by robovmx)
+    forge-core/src/main/java/forge/util/StreamUtil.java:172:    /** Pattern 59: defensive replacement for {@code s.isBlank()} (Java 11).
+    forge-game/src/main/java/forge/game/ability/effects/ManaEffect.java:77:                if (combo.isBlank()) {
+
+  [P60] String.repeat(int) — Java 11 (defensive; filter out Strings./StringUtils. lines manually)
+    forge-core/src/main/java/forge/util/StreamUtil.java:178:    /** Pattern 60: defensive replacement for {@code s.repeat(count)} (Java 11).
+    forge-game/src/main/java/forge/game/cost/CostAdjustment.java:221:                cost.subtractManaCost(new ManaCost(Strings.repeat(cst + " ", num)));
+    forge-game/src/main/java/forge/game/cost/CostAdjustment.java:493:                    manaCost.subtractManaCost(new ManaCost(Strings.repeat(cost + " ", value)));
+    forge-game/src/main/java/forge/game/ability/effects/ReplaceManaEffect.java:75:            replaced = StringUtils.repeat(replaced, " ", Integer.parseInt(sa.getParam("ReplaceAmount")));
+    forge-game/src/main/java/forge/game/ability/effects/ManaEffect.java:257:                    sb.append(StringUtils.repeat(MagicColor.toShortString(color) + " ", chooser.getManaPool().getAmountOfColor(color)));
+    forge-game/src/main/java/forge/game/keyword/Firebending.java:11:            fire = "{R}".repeat(amount);
+    forge-ai/src/main/java/forge/ai/ComputerUtilMana.java:510:            manaProduced = StringUtils.repeat(manaProduced, " ", totalAmount);
+    forge-ai/src/main/java/forge/ai/ComputerUtilMana.java:542:                manaProduced.append(" ").append(StringUtils.repeat(produced, " ", pAmount));
 
 ────────────────────────────────────────────────────────────────────────────────
  SECTION 2  –  Other java.nio.file.Files.* calls (NOT in StreamDesugar)
@@ -141,6 +175,40 @@ Generated: 2026-03-08 13:18 UTC
     (none found)
 
 ────────────────────────────────────────────────────────────────────────────────
+ SECTION 2b  –  Other Java 11+ calls on existing JDK classes (NOT in StreamDesugar)
+ robovmx ships the Java 8 subset of java.lang / java.util; Java 9-11 additions
+ on existing classes (not new classes) cause NoSuchMethodError at runtime.
+ Add a StreamDesugar pattern + StreamUtil helper for any hit that appears in a
+ live code path.
+────────────────────────────────────────────────────────────────────────────────
+
+  [J11] String.strip/stripLeading/stripTrailing() — Java 11
+    (none found)
+
+  [J11] String.lines() — Java 11
+    forge-ai/src/main/java/forge/ai/GameState.java:490:        parse(br.lines());
+
+  [J9] Optional.ifPresentOrElse() — Java 9
+    (none found)
+
+  [J11] Optional.isEmpty() — Java 11 (robovmx provides this natively; listed for info)
+    forge-game/src/main/java/forge/game/spellability/StackItemView.java:87:                OptionalCostString += OptionalCostString.isEmpty() ? "Entwined" : ", Entwined";
+    forge-game/src/main/java/forge/game/spellability/StackItemView.java:89:                OptionalCostString += OptionalCostString.isEmpty() ? "Buyback" : ", Buyback";
+    forge-game/src/main/java/forge/game/spellability/StackItemView.java:91:                OptionalCostString += OptionalCostString.isEmpty() ? "Retraced" : ", Retraced";
+    forge-game/src/main/java/forge/game/spellability/StackItemView.java:93:                OptionalCostString += OptionalCostString.isEmpty() ? "Jumpstart" : ", Jumpstart";
+    forge-game/src/main/java/forge/game/spellability/StackItemView.java:95:                OptionalCostString += OptionalCostString.isEmpty() ? "Additional" : ", Additional";
+    forge-ai/src/main/java/forge/ai/ComputerUtil.java:1574:                if (!GameActionUtil.getOptionalCostValues(sa).isEmpty()) {
+    forge-gui-mobile/src/forge/screens/match/views/VStack.java:387:            String optionalCostString = !stackInstance.getOptionalCostString().isEmpty() ? " ("+ stackInstance.getOptionalCostString() + ")" : "";
+
+  [J9] Stream.takeWhile/dropWhile — Java 9
+    (none found)
+
+  [J10] List.copyOf/Set.copyOf/Map.copyOf — Java 10
+    forge-gui-mobile/src/forge/deck/FDeckEditor.java:320:                return List.copyOf(fnGetBasicLandSet.apply(currentDeck));
+    forge-gui-mobile/src/forge/screens/match/views/VField.java:212:        return List.copyOf(row);
+    forge-gui-mobile/src/forge/screens/match/views/VPlayerPanel.java:995:            List<ZoneType> keyList = List.copyOf(displayAreas.keySet());
+
+────────────────────────────────────────────────────────────────────────────────
  SECTION 3  –  Other ICU-dependent / robovm-rt-specific patterns
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -151,22 +219,12 @@ Generated: 2026-03-08 13:18 UTC
     (none found)
 
   [ICU] NativeConverter direct references
-    forge-core/src/main/java/forge/util/StreamUtil.java:162:    // call sites that trigger Android ICU charset encoding (NativeConverter) which
-    forge-core/src/main/java/forge/util/StreamUtil.java:247:     * triggering Android ICU charset encoding ({@code NativeConverter}).
-    forge-core/src/main/java/forge/util/StreamUtil.java:248:     * On iOS, {@code NativeConverter}'s native methods are dead-stripped by the
+    forge-core/src/main/java/forge/util/StreamUtil.java:190:    // call sites that trigger Android ICU charset encoding (NativeConverter) which
+    forge-core/src/main/java/forge/util/StreamUtil.java:275:     * triggering Android ICU charset encoding ({@code NativeConverter}).
+    forge-core/src/main/java/forge/util/StreamUtil.java:276:     * On iOS, {@code NativeConverter}'s native methods are dead-stripped by the
 
   [ICU] Charset.defaultCharset() — uses ICU on Android/robovm-rt
     (none found)
-
-  [ICU] new InputStreamReader(stream) without explicit Charset — uses defaultCharset
-    forge-core/src/main/java/forge/util/FileUtil.java:256:                    new InputStreamReader(Files.newInputStream(file.toPath()), StandardCharsets.UTF_8));
-    forge-core/src/main/java/forge/util/FileUtil.java:305:            try (BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()))) {
-    forge-core/src/main/java/forge/util/BuildInfo.java:89:        try (BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
-    forge-ai/src/main/java/forge/ai/GameState.java:489:        final BufferedReader br = new BufferedReader(new InputStreamReader(in));
-    forge-gui/src/main/java/forge/gui/card/CardReaderExperiments.java:35:                isr = new InputStreamReader(new FileInputStream(file), charset);
-    forge-gui/src/main/java/forge/gamemodes/tournament/TournamentIO.java:83:             InputStreamReader reader = new InputStreamReader(zin)) {
-    forge-gui/src/main/java/forge/gamemodes/gauntlet/GauntletIO.java:102:             InputStreamReader reader = new InputStreamReader(zin)) {
-    forge-gui/src/main/java/forge/gamemodes/quest/io/QuestDataIO.java:135:             InputStreamReader reader = new InputStreamReader(zin)) {
 
 ────────────────────────────────────────────────────────────────────────────────
  SECTION 4  –  All java.nio.file.* imports (inventory)
@@ -174,17 +232,17 @@ Generated: 2026-03-08 13:18 UTC
 forge-core/src/main/java/forge/util/CardTranslation.java:8:import java.nio.file.Files;
 forge-core/src/main/java/forge/util/CardTranslation.java:9:import java.nio.file.Paths;
 forge-core/src/main/java/forge/util/FileUtil.java:26:import java.nio.file.Files;
-forge-core/src/main/java/forge/util/StreamUtil.java:17:import java.nio.file.CopyOption;
-forge-core/src/main/java/forge/util/StreamUtil.java:18:import java.nio.file.FileSystem;
-forge-core/src/main/java/forge/util/StreamUtil.java:19:import java.nio.file.FileVisitOption;
-forge-core/src/main/java/forge/util/StreamUtil.java:20:import java.nio.file.LinkOption;
-forge-core/src/main/java/forge/util/StreamUtil.java:21:import java.nio.file.OpenOption;
-forge-core/src/main/java/forge/util/StreamUtil.java:22:import java.nio.file.Path;
-forge-core/src/main/java/forge/util/StreamUtil.java:23:import java.nio.file.StandardOpenOption;
-forge-core/src/main/java/forge/util/StreamUtil.java:24:import java.nio.file.WatchEvent;
-forge-core/src/main/java/forge/util/StreamUtil.java:25:import java.nio.file.WatchKey;
-forge-core/src/main/java/forge/util/StreamUtil.java:26:import java.nio.file.WatchService;
-forge-core/src/main/java/forge/util/StreamUtil.java:27:import java.nio.file.attribute.FileAttribute;
+forge-core/src/main/java/forge/util/StreamUtil.java:18:import java.nio.file.CopyOption;
+forge-core/src/main/java/forge/util/StreamUtil.java:19:import java.nio.file.FileSystem;
+forge-core/src/main/java/forge/util/StreamUtil.java:20:import java.nio.file.FileVisitOption;
+forge-core/src/main/java/forge/util/StreamUtil.java:21:import java.nio.file.LinkOption;
+forge-core/src/main/java/forge/util/StreamUtil.java:22:import java.nio.file.OpenOption;
+forge-core/src/main/java/forge/util/StreamUtil.java:23:import java.nio.file.Path;
+forge-core/src/main/java/forge/util/StreamUtil.java:24:import java.nio.file.StandardOpenOption;
+forge-core/src/main/java/forge/util/StreamUtil.java:25:import java.nio.file.WatchEvent;
+forge-core/src/main/java/forge/util/StreamUtil.java:26:import java.nio.file.WatchKey;
+forge-core/src/main/java/forge/util/StreamUtil.java:27:import java.nio.file.WatchService;
+forge-core/src/main/java/forge/util/StreamUtil.java:28:import java.nio.file.attribute.FileAttribute;
 forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:21:import java.nio.file.Files;
 forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:22:import java.nio.file.Path;
 forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:23:import java.nio.file.Paths;

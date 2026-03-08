@@ -124,6 +124,14 @@ show "P56" "Files.createDirectories(Path, …)" \
     '\bFiles\.createDirectories\('
 show "P57" "Files.copy(Path, Path, …)" \
     '\bFiles\.copy\('
+show "P58" "Predicate.not(Predicate) — Java 11 static method" \
+    '\bPredicate\.not\('
+show "P59" "String.isBlank() — Java 11 (defensive; may be natively provided by robovmx)" \
+    '\b\.isBlank\(\)'
+# P60 note: Guava Strings.repeat() and Apache StringUtils.repeat() are also matched;
+# the only JDK String.repeat(int) call is the one NOT preceded by Strings. or StringUtils.
+show "P60" "String.repeat(int) — Java 11 (defensive; filter out Strings./StringUtils. lines manually)" \
+    '\.repeat\([0-9a-zA-Z_]'
 
 # ── Section 2: other Files.* calls not yet in StreamDesugar ──────────────────
 
@@ -152,6 +160,32 @@ show "CHK" "Files.createFile(Path, …)"   '\bFiles\.createFile\('
 show "CHK" "Files.createTempFile(…)"     '\bFiles\.createTempFile\('
 show "CHK" "Files.newByteChannel(…)"     '\bFiles\.newByteChannel\('
 
+# ── Section 2b: other Java 11+ method calls on existing JDK classes ──────────
+
+cat <<'S2B'
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 2b  –  Other Java 11+ calls on existing JDK classes (NOT in StreamDesugar)
+ robovmx ships the Java 8 subset of java.lang / java.util; Java 9-11 additions
+ on existing classes (not new classes) cause NoSuchMethodError at runtime.
+ Add a StreamDesugar pattern + StreamUtil helper for any hit that appears in a
+ live code path.
+────────────────────────────────────────────────────────────────────────────────
+S2B
+
+show "J11" "String.strip/stripLeading/stripTrailing() — Java 11" \
+    '\.strip\(\)|\.stripLeading\(\)|\.stripTrailing\(\)'
+show "J11" "String.lines() — Java 11" \
+    '[a-zA-Z_][a-zA-Z0-9_]*\.lines\(\)'
+show "J9"  "Optional.ifPresentOrElse() — Java 9" \
+    '\.ifPresentOrElse\('
+show "J11" "Optional.isEmpty() — Java 11 (robovmx provides this natively; listed for info)" \
+    'Optional[^.]*\.isEmpty\(\)'
+show "J9"  "Stream.takeWhile/dropWhile — Java 9" \
+    '\.takeWhile\(|\.dropWhile\('
+show "J10" "List.copyOf/Set.copyOf/Map.copyOf — Java 10" \
+    '\bList\.copyOf\(|\bSet\.copyOf\(|\bMap\.copyOf\('
+
 # ── Section 3: other ICU-dependent patterns ───────────────────────────────────
 
 cat <<'S3'
@@ -162,15 +196,13 @@ cat <<'S3'
 S3
 
 show "ICU"  "BreakIterator usages (getLineInstance covered by P49)" \
-    '\bBreakIterator\.[a-zA-Z]' 
+    '\bBreakIterator\.[a-zA-Z]'
 show "ICU"  "com.android.icu direct references" \
     'com\.android\.icu\.'
 show "ICU"  "NativeConverter direct references" \
     'NativeConverter'
 show "ICU"  "Charset.defaultCharset() — uses ICU on Android/robovm-rt" \
     '\bCharset\.defaultCharset\(\)'
-show "ICU"  "new InputStreamReader(stream) without explicit Charset — uses defaultCharset" \
-    'new InputStreamReader\([^,)]+\)'
 
 # ── Section 4: summary count of all java.nio.file.* imports ──────────────────
 

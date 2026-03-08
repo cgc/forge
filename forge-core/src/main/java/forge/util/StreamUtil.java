@@ -4,6 +4,7 @@ import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collector;
 import java.util.stream.Stream;
@@ -154,6 +155,33 @@ public class StreamUtil {
             if(j < maxSize)
                 samples.set(j, next);
         }
+    }
+
+    // ── iOS Java-11 desugaring ────────────────────────────────────────────────
+    // robovmx's robovm-rt ships the Java 8 subset of java.util.function.* and
+    // java.lang.String; the Java 11 additions below are absent and cause
+    // NoSuchMethodError at runtime.  StreamDesugar patterns 58-60 rewrite the
+    // call sites at build time to the helpers below.
+
+    /** Pattern 58: replacement for {@code Predicate.not(target)} (Java 11).
+     *  {@code Predicate.negate()} is a Java 8 default method available in robovm-rt. */
+    public static <T> Predicate<T> predicateNot(Predicate<T> target) {
+        return target.negate();
+    }
+
+    /** Pattern 59: defensive replacement for {@code s.isBlank()} (Java 11).
+     *  robovmx's robovm-rt likely provides this natively; rewritten as insurance. */
+    public static boolean stringIsBlank(String s) {
+        return s.trim().isEmpty();
+    }
+
+    /** Pattern 60: defensive replacement for {@code s.repeat(count)} (Java 11).
+     *  robovmx's robovm-rt likely provides this natively; rewritten as insurance. */
+    public static String stringRepeat(String s, int count) {
+        if (count <= 0) return "";
+        StringBuilder sb = new StringBuilder(s.length() * count);
+        for (int i = 0; i < count; i++) sb.append(s);
+        return sb.toString();
     }
 
     // ── iOS NIO desugaring ─────────────────────────────────────────────────────

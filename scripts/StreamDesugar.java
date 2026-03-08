@@ -68,6 +68,23 @@ import java.nio.file.attribute.BasicFileAttributes;
  *   <li>{@code Files.copy(Path, Path, CopyOption...)} →
  *       {@code StreamUtil.filesCopy(Path, Path, CopyOption...)} (Pattern 57)
  *   </li>
+ *   <li>{@code Predicate.not(Predicate)} →
+ *       {@code StreamUtil.predicateNot(Predicate)} (Pattern 58)<br>
+ *       {@code Predicate.not} is a Java 11 static interface method absent from
+ *       robovmx's robovm-rt which ships only the Java 8 subset of
+ *       {@code java.util.function.*}.  The replacement delegates to
+ *       {@code Predicate.negate()} which is a Java 8 default method.
+ *   </li>
+ *   <li>{@code String.isBlank()} →
+ *       {@code StreamUtil.stringIsBlank(String)} (Pattern 59, defensive)<br>
+ *       robovmx's build-java-stubs.sh lists {@code String.isBlank} as natively
+ *       provided; this pattern is a defensive rewrite for older builds.
+ *   </li>
+ *   <li>{@code String.repeat(int)} →
+ *       {@code StreamUtil.stringRepeat(String, int)} (Pattern 60, defensive)<br>
+ *       Same note as Pattern 59: listed as natively provided by robovmx but
+ *       desugared defensively.
+ *   </li>
  * </ol>
  *
  * <p>The transformation is idempotent: class files whose call sites already
@@ -189,6 +206,44 @@ public class StreamDesugar {
                     super.visitMethodInsn(Opcodes.INVOKESTATIC, IOS_UTIL,
                             "getLineBreakIterator",
                             "(Ljava/util/Locale;)Ljava/text/BreakIterator;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 58: Predicate.not(Predicate) — Java 11 static interface method,
+                // absent from robovmx's robovm-rt which ships only the Java 8 function APIs.
+                // Replaced by Predicate.negate() which IS a Java 8 default method.
+                if (opcode == Opcodes.INVOKESTATIC
+                        && "java/util/function/Predicate".equals(owner)
+                        && "not".equals(name)
+                        && "(Ljava/util/function/Predicate;)Ljava/util/function/Predicate;".equals(descriptor)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "predicateNot",
+                            "(Ljava/util/function/Predicate;)Ljava/util/function/Predicate;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 59: String.isBlank() — Java 11, absent from robovmx's String.
+                if (opcode == Opcodes.INVOKEVIRTUAL
+                        && "java/lang/String".equals(owner)
+                        && "isBlank".equals(name)
+                        && "()Z".equals(descriptor)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "stringIsBlank",
+                            "(Ljava/lang/String;)Z", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 60: String.repeat(int) — Java 11, absent from robovmx's String.
+                if (opcode == Opcodes.INVOKEVIRTUAL
+                        && "java/lang/String".equals(owner)
+                        && "repeat".equals(name)
+                        && "(I)Ljava/lang/String;".equals(descriptor)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "stringRepeat",
+                            "(Ljava/lang/String;I)Ljava/lang/String;", false);
                     modified = true;
                     return;
                 }
