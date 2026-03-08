@@ -4,7 +4,7 @@
  Scope: forge-core, forge-game, forge-ai, forge-gui, forge-gui-mobile
  Note:  forge-gui-ios excluded (it is the adaptation / fix layer).
 ════════════════════════════════════════════════════════════════════════════════
-Generated: 2026-03-08 13:46 UTC
+Generated: 2026-03-08 14:05 UTC
 
 ────────────────────────────────────────────────────────────────────────────────
  SECTION 1  –  Call sites covered by StreamDesugar.java (safe on iOS)
@@ -260,6 +260,23 @@ forge-gui/src/main/java/forge/gamemodes/tournament/TournamentIO.java:20:import j
 forge-gui/src/main/java/forge/gui/download/GuiDownloadZipService.java:15:import java.nio.file.Paths;
 forge-gui/src/main/java/forge/localinstance/properties/ForgeProfileProperties.java:22:import java.nio.file.Files;
 forge-gui/src/main/java/forge/util/ZipUtil.java:7:import java.nio.file.Files;
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 5  –  Bytecode-level scan (authoritative; catches synthetic methods)
+────────────────────────────────────────────────────────────────────────────────
+ Source-level grep (Sections 1-4) can miss Java 9-11 API calls hidden inside
+ compiler-generated synthetic methods, lambda helpers, and enum clinit blocks.
+ For the authoritative scan, run scripts/ios-bytecode-scan.sh AFTER mvn compile:
+
+   mvn compile -pl forge-core,forge-game,forge-ai,forge-gui,forge-gui-mobile -am
+   bash scripts/ios-bytecode-scan.sh > scripts/ios-bytecode-scan.txt
+
+ The committed scripts/ios-bytecode-scan.txt shows the last known clean state.
+ Categories reported:
+   RISK:HIGH — not patched, not claimed → NoSuchMethodError on iOS
+   CLAIMED   — listed in build-java-stubs.sh as provided by robovmx robovm-rt
+   PATCHED   — rewritten by StreamDesugar.java at build time (safe)
+────────────────────────────────────────────────────────────────────────────────
 
 ════════════════════════════════════════════════════════════════════════════════
  Scan complete.

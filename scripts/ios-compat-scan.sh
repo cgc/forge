@@ -218,6 +218,28 @@ grep -rn --include="*.java" '^import java\.nio\.file\.' "${SRC_DIRS[@]}" 2>/dev/
     | sort \
     || echo "  (none)"
 
+# ── Section 5: pointer to bytecode-level scanner ──────────────────────────────
+
+cat <<'S5'
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 5  –  Bytecode-level scan (authoritative; catches synthetic methods)
+────────────────────────────────────────────────────────────────────────────────
+ Source-level grep (Sections 1-4) can miss Java 9-11 API calls hidden inside
+ compiler-generated synthetic methods, lambda helpers, and enum clinit blocks.
+ For the authoritative scan, run scripts/ios-bytecode-scan.sh AFTER mvn compile:
+
+   mvn compile -pl forge-core,forge-game,forge-ai,forge-gui,forge-gui-mobile -am
+   bash scripts/ios-bytecode-scan.sh > scripts/ios-bytecode-scan.txt
+
+ The committed scripts/ios-bytecode-scan.txt shows the last known clean state.
+ Categories reported:
+   RISK:HIGH — not patched, not claimed → NoSuchMethodError on iOS
+   CLAIMED   — listed in build-java-stubs.sh as provided by robovmx robovm-rt
+   PATCHED   — rewritten by StreamDesugar.java at build time (safe)
+────────────────────────────────────────────────────────────────────────────────
+S5
+
 echo ""
 echo "════════════════════════════════════════════════════════════════════════════════"
 echo " Scan complete."
