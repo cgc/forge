@@ -85,7 +85,7 @@ public class Main extends IOSApplication.Delegate {
          */
         @Override
         public void requestRendering() {
-            if (NSThread.isMainThread()) {
+            if (NSThread.getCurrentThread().isMainThread()) {
                 doRequestRendering();
             } else {
                 // Dispatch to main thread: viewController.setPaused() is UIKit and
