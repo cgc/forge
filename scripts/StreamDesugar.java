@@ -21,25 +21,66 @@ import java.nio.file.attribute.BasicFileAttributes;
  * library.  The bulk of the Java 8 desugaring that was previously needed for
  * MobiVM's robovm-rt is therefore no longer required.
  *
- * <p>The one remaining rewrite is:
+ * <p>The remaining rewrites are:
  * <ol>
  *   <li>{@code BreakIterator.getLineInstance(Locale)} →
- *       {@code forge.ios.IosUtil.getLineBreakIterator(Locale)}<br>
+ *       {@code forge.ios.IosUtil.getLineBreakIterator(Locale)} (Pattern 49)<br>
  *       ICU data files for line-break analysis are absent from the iOS app
  *       bundle, so the standard {@code BreakIterator.getLineInstance(Locale)}
  *       call throws at runtime.  {@code IosUtil.getLineBreakIterator} returns
  *       a pure-Java character-boundary fallback that works without ICU data.
  *   </li>
+ *   <li>{@code File.toPath()} →
+ *       {@code StreamUtil.fileToPath(File)} (Pattern 50)<br>
+ *       {@code File.toPath()} constructs a {@code UnixPath} which immediately
+ *       encodes the path string to bytes via Android's ICU charset engine
+ *       ({@code com.android.icu.charset.NativeConverter.resetCharToByte}).
+ *       On iOS those native ICU C functions are dead-stripped by the Apple
+ *       linker so the call crashes at address 0x0.
+ *       {@code StreamUtil.fileToPath} returns an {@link StreamUtil.IosFilePath}
+ *       wrapper that stores the {@link java.io.File} reference without any
+ *       ICU charset encoding.
+ *   </li>
+ *   <li>{@code Paths.get(String, String...)} →
+ *       {@code StreamUtil.pathsGet(String, String...)} (Pattern 51)<br>
+ *       Same root cause as Pattern 50: {@code Paths.get} also creates a
+ *       {@code UnixPath}.
+ *   </li>
+ *   <li>{@code Files.newInputStream(Path, OpenOption...)} →
+ *       {@code StreamUtil.filesNewInputStream(Path, OpenOption...)} (Pattern 52)<br>
+ *       When the {@code Path} is an {@code IosFilePath} the wrapper opens a
+ *       plain {@link java.io.FileInputStream}; otherwise delegates to
+ *       {@code Files.newInputStream}.
+ *   </li>
+ *   <li>{@code Files.newOutputStream(Path, OpenOption...)} →
+ *       {@code StreamUtil.filesNewOutputStream(Path, OpenOption...)} (Pattern 53)
+ *   </li>
+ *   <li>{@code Files.walk(Path)} →
+ *       {@code StreamUtil.filesWalk(Path)} (Pattern 54)<br>
+ *       Recursive directory walk via {@code File.listFiles()}.
+ *   </li>
+ *   <li>{@code Files.exists(Path, LinkOption...)} →
+ *       {@code StreamUtil.filesExists(Path, LinkOption...)} (Pattern 55)
+ *   </li>
+ *   <li>{@code Files.createDirectories(Path, FileAttribute...)} →
+ *       {@code StreamUtil.filesCreateDirectories(Path, FileAttribute...)} (Pattern 56)
+ *   </li>
+ *   <li>{@code Files.copy(Path, Path, CopyOption...)} →
+ *       {@code StreamUtil.filesCopy(Path, Path, CopyOption...)} (Pattern 57)
+ *   </li>
  * </ol>
  *
  * <p>The transformation is idempotent: class files whose call sites already
- * target {@code forge/ios/IosUtil} are left unchanged.
+ * target {@code forge/ios/IosUtil} or {@code forge/util/StreamUtil} are left
+ * unchanged.  {@code StreamUtil} itself is also excluded from transformation
+ * to prevent its internal NIO fallback calls from becoming recursive.
  *
  * <p>Usage: {@code java -cp asm.jar:. StreamDesugar <dir> [<dir2> ...]}
  */
 public class StreamDesugar {
 
-    private static final String IOS_UTIL = "forge/ios/IosUtil";
+    private static final String IOS_UTIL   = "forge/ios/IosUtil";
+    private static final String STREAM_UTIL = "forge/util/StreamUtil";
 
     public static void main(String[] args) throws IOException {
         if (args.length == 0) {
@@ -97,15 +138,28 @@ public class StreamDesugar {
 
     static final class Visitor extends ClassVisitor {
         boolean modified = false;
+        // Set once per class during accept(); the Visitor instance is not reused across classes.
+        private String currentClassName;
 
         Visitor(ClassWriter cw) {
             super(Opcodes.ASM9, cw);
         }
 
         @Override
+        public void visit(int version, int access, String name, String signature,
+                          String superName, String[] interfaces) {
+            currentClassName = name;
+            super.visit(version, access, name, signature, superName, interfaces);
+        }
+
+        @Override
         public MethodVisitor visitMethod(int access, String name, String descriptor,
                                          String signature, String[] exceptions) {
             MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+            // Skip transforming StreamUtil's own methods: its NIO fallback calls
+            // (e.g. Files.walk inside filesWalk) must NOT be rewritten to
+            // StreamUtil calls or they become infinitely recursive.
+            if (STREAM_UTIL.equals(currentClassName)) return mv;
             return new MethodTransformer(mv);
         }
 
@@ -119,8 +173,8 @@ public class StreamDesugar {
             @Override
             public void visitMethodInsn(int opcode, String owner, String name,
                                         String descriptor, boolean isInterface) {
-                // Idempotency guard: already targeting IosUtil.
-                if (IOS_UTIL.equals(owner)) {
+                // Idempotency guard: already targeting IosUtil or StreamUtil.
+                if (IOS_UTIL.equals(owner) || STREAM_UTIL.equals(owner)) {
                     super.visitMethodInsn(opcode, owner, name, descriptor, isInterface);
                     return;
                 }
@@ -135,6 +189,103 @@ public class StreamDesugar {
                     super.visitMethodInsn(Opcodes.INVOKESTATIC, IOS_UTIL,
                             "getLineBreakIterator",
                             "(Ljava/util/Locale;)Ljava/text/BreakIterator;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 50: File.toPath() — constructs a UnixPath which encodes the path
+                // string via Android ICU charset (NativeConverter.resetCharToByte).  On iOS
+                // those native ICU symbols are dead-stripped, causing a crash at 0x0.
+                if (opcode == Opcodes.INVOKEVIRTUAL
+                        && "java/io/File".equals(owner)
+                        && "toPath".equals(name)
+                        && "()Ljava/nio/file/Path;".equals(descriptor)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "fileToPath", "(Ljava/io/File;)Ljava/nio/file/Path;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 51: Paths.get(String, String...) — same root cause as Pattern 50.
+                if (opcode == Opcodes.INVOKESTATIC
+                        && "java/nio/file/Paths".equals(owner)
+                        && "get".equals(name)
+                        && "(Ljava/lang/String;[Ljava/lang/String;)Ljava/nio/file/Path;".equals(descriptor)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "pathsGet",
+                            "(Ljava/lang/String;[Ljava/lang/String;)Ljava/nio/file/Path;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 52: Files.newInputStream(Path, OpenOption...)
+                if (opcode == Opcodes.INVOKESTATIC
+                        && "java/nio/file/Files".equals(owner)
+                        && "newInputStream".equals(name)
+                        && "(Ljava/nio/file/Path;[Ljava/nio/file/OpenOption;)Ljava/io/InputStream;".equals(descriptor)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "filesNewInputStream",
+                            "(Ljava/nio/file/Path;[Ljava/nio/file/OpenOption;)Ljava/io/InputStream;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 53: Files.newOutputStream(Path, OpenOption...)
+                if (opcode == Opcodes.INVOKESTATIC
+                        && "java/nio/file/Files".equals(owner)
+                        && "newOutputStream".equals(name)
+                        && "(Ljava/nio/file/Path;[Ljava/nio/file/OpenOption;)Ljava/io/OutputStream;".equals(descriptor)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "filesNewOutputStream",
+                            "(Ljava/nio/file/Path;[Ljava/nio/file/OpenOption;)Ljava/io/OutputStream;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 54: Files.walk(Path, FileVisitOption...)
+                if (opcode == Opcodes.INVOKESTATIC
+                        && "java/nio/file/Files".equals(owner)
+                        && "walk".equals(name)
+                        && "(Ljava/nio/file/Path;[Ljava/nio/file/FileVisitOption;)Ljava/util/stream/Stream;".equals(descriptor)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "filesWalk",
+                            "(Ljava/nio/file/Path;[Ljava/nio/file/FileVisitOption;)Ljava/util/stream/Stream;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 55: Files.exists(Path, LinkOption...)
+                if (opcode == Opcodes.INVOKESTATIC
+                        && "java/nio/file/Files".equals(owner)
+                        && "exists".equals(name)
+                        && "(Ljava/nio/file/Path;[Ljava/nio/file/LinkOption;)Z".equals(descriptor)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "filesExists",
+                            "(Ljava/nio/file/Path;[Ljava/nio/file/LinkOption;)Z", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 56: Files.createDirectories(Path, FileAttribute...)
+                if (opcode == Opcodes.INVOKESTATIC
+                        && "java/nio/file/Files".equals(owner)
+                        && "createDirectories".equals(name)
+                        && "(Ljava/nio/file/Path;[Ljava/nio/file/attribute/FileAttribute;)Ljava/nio/file/Path;".equals(descriptor)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "filesCreateDirectories",
+                            "(Ljava/nio/file/Path;[Ljava/nio/file/attribute/FileAttribute;)Ljava/nio/file/Path;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 57: Files.copy(Path, Path, CopyOption...)
+                if (opcode == Opcodes.INVOKESTATIC
+                        && "java/nio/file/Files".equals(owner)
+                        && "copy".equals(name)
+                        && "(Ljava/nio/file/Path;Ljava/nio/file/Path;[Ljava/nio/file/CopyOption;)Ljava/nio/file/Path;".equals(descriptor)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "filesCopy",
+                            "(Ljava/nio/file/Path;Ljava/nio/file/Path;[Ljava/nio/file/CopyOption;)Ljava/nio/file/Path;", false);
                     modified = true;
                     return;
                 }

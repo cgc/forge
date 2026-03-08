@@ -1,0 +1,208 @@
+════════════════════════════════════════════════════════════════════════════════
+ iOS Compatibility Scan
+ Tool:  scripts/ios-compat-scan.sh
+ Scope: forge-core, forge-game, forge-ai, forge-gui, forge-gui-mobile
+ Note:  forge-gui-ios excluded (it is the adaptation / fix layer).
+════════════════════════════════════════════════════════════════════════════════
+Generated: 2026-03-08 13:18 UTC
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 1  –  Call sites covered by StreamDesugar.java (safe on iOS)
+ Each entry below is rewritten at build time (mvn process-classes phase).
+────────────────────────────────────────────────────────────────────────────────
+
+  [P49] BreakIterator.getLineInstance(Locale)
+    forge-gui-mobile/src/forge/assets/TextRenderer.java:36:    private BreakIterator boundary = BreakIterator.getLineInstance(new Locale(Forge.locale));
+
+  [P50] File.toPath()
+    forge-core/src/main/java/forge/CardStorageReader.java:409:        try (InputStream fileInputStream = java.nio.file.Files.newInputStream(file.toPath())) {
+    forge-core/src/main/java/forge/util/StreamUtil.java:166:    /** Pattern 50: replacement for {@code file.toPath()}. */
+    forge-core/src/main/java/forge/util/FileUtil.java:113:        try (InputStream is = Files.newInputStream(source.toPath());
+    forge-core/src/main/java/forge/util/FileUtil.java:114:             OutputStream os = Files.newOutputStream(new File(destFilename).toPath())){
+    forge-core/src/main/java/forge/util/FileUtil.java:256:                    new InputStreamReader(Files.newInputStream(file.toPath()), StandardCharsets.UTF_8));
+    forge-gui/src/main/java/forge/localinstance/properties/ForgeProfileProperties.java:64:                props.load(Files.newInputStream(propFile.toPath()));
+    forge-gui/src/main/java/forge/gamemodes/tournament/TournamentIO.java:82:        try (GZIPInputStream zin = new GZIPInputStream(Files.newInputStream(xmlSaveFile.toPath()));
+    forge-gui/src/main/java/forge/gamemodes/tournament/TournamentIO.java:116:        try(final BufferedOutputStream bout = new BufferedOutputStream(Files.newOutputStream(getTournamentFile(gd0).toPath()));
+    forge-gui/src/main/java/forge/gamemodes/gauntlet/GauntletIO.java:101:        try (GZIPInputStream zin = new GZIPInputStream(Files.newInputStream(xmlSaveFile.toPath()));
+    forge-gui/src/main/java/forge/gamemodes/gauntlet/GauntletIO.java:137:        try(final BufferedOutputStream bout = new BufferedOutputStream(Files.newOutputStream(getGauntletFile(gd0).toPath()));
+    forge-gui/src/main/java/forge/gamemodes/quest/io/QuestDataIO.java:134:        try (GZIPInputStream zin = new GZIPInputStream(Files.newInputStream(xmlSaveFile.toPath()));
+    forge-gui/src/main/java/forge/gamemodes/quest/io/MainWorldDuelReader.java:44:        try (Stream<Path> stream = Files.walk(directory.toPath())) {
+    forge-gui/src/main/java/forge/util/ZipUtil.java:69:        ZipInputStream zis = new ZipInputStream(Files.newInputStream(fileZip.toPath()));
+    forge-gui-mobile/src/forge/util/LibGDXImageFetcher.java:86:            try(OutputStream out = Files.newOutputStream(destFile.file().toPath())) {
+
+  [P51] Paths.get(String, String…)
+    forge-core/src/main/java/forge/util/StreamUtil.java:169:    /** Pattern 51: replacement for {@code Paths.get(first, more)}. */
+    forge-core/src/main/java/forge/util/CardTranslation.java:27:        try (LineReader translationFile = new LineReader(Files.newInputStream(Paths.get(languagesDirectory + filename)), StandardCharsets.UTF_8)) {
+    forge-gui/src/main/java/forge/gui/download/GuiDownloadZipService.java:115:                OutputStream output = java.nio.file.Files.newOutputStream(Paths.get(destFile))) {
+    forge-gui/src/main/java/forge/gui/download/GuiDownloadZipService.java:236:        try (BufferedOutputStream out = new BufferedOutputStream(java.nio.file.Files.newOutputStream(Paths.get(outPath)))) {
+    forge-gui/src/main/java/forge/gamemodes/quest/io/QuestDataIO.java:429:            final BufferedOutputStream bout = new BufferedOutputStream(Files.newOutputStream(Paths.get(f)));
+    forge-gui/src/main/java/forge/gamemodes/quest/io/QuestDataIO.java:438:        try(final BufferedOutputStream boutUnp = new BufferedOutputStream(Files.newOutputStream(Paths.get(f)))) {
+    forge-gui-mobile/src/forge/assets/FSkinFont.java:372:            try (LineReader translationFile = new LineReader(Files.newInputStream(Paths.get(translationFilePath)),
+    forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:44:        Path source = Paths.get(Config.instance().getPlanePath(plane));
+    forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:45:        Path destination = Paths.get(Config.instance().getPlanePath("<user>" + newPlaneName.getText()));
+    forge-gui-mobile/src/forge/adventure/util/Config.java:127:        return (GuiBase.isAndroid() || GuiBase.isIOS()) ? ForgeConstants.ASSETS_DIR : Files.exists(Paths.get("./res")) ? "./" : Files.exists(Paths.get("./forge-gui/")) ? "./forge-gui/" : "../forge-gui";
+    forge-gui-mobile/src/forge/adventure/util/Config.java:192:            if (Files.exists(Paths.get(langFile))) {
+    forge-gui-mobile/src/forge/adventure/util/Config.java:196:            } else if (Files.exists(Paths.get(fullPath))) {
+
+  [P52] Files.newInputStream(Path, …)
+    forge-core/src/main/java/forge/CardStorageReader.java:409:        try (InputStream fileInputStream = java.nio.file.Files.newInputStream(file.toPath())) {
+    forge-core/src/main/java/forge/util/StreamUtil.java:176:    /** Pattern 52: replacement for {@code Files.newInputStream(path, opts)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:179:        return java.nio.file.Files.newInputStream(p, opts);
+    forge-core/src/main/java/forge/util/FileUtil.java:113:        try (InputStream is = Files.newInputStream(source.toPath());
+    forge-core/src/main/java/forge/util/FileUtil.java:256:                    new InputStreamReader(Files.newInputStream(file.toPath()), StandardCharsets.UTF_8));
+    forge-core/src/main/java/forge/util/CardTranslation.java:27:        try (LineReader translationFile = new LineReader(Files.newInputStream(Paths.get(languagesDirectory + filename)), StandardCharsets.UTF_8)) {
+    forge-gui/src/main/java/forge/localinstance/properties/ForgeProfileProperties.java:64:                props.load(Files.newInputStream(propFile.toPath()));
+    forge-gui/src/main/java/forge/gamemodes/tournament/TournamentIO.java:82:        try (GZIPInputStream zin = new GZIPInputStream(Files.newInputStream(xmlSaveFile.toPath()));
+    forge-gui/src/main/java/forge/gamemodes/gauntlet/GauntletIO.java:101:        try (GZIPInputStream zin = new GZIPInputStream(Files.newInputStream(xmlSaveFile.toPath()));
+    forge-gui/src/main/java/forge/gamemodes/quest/io/QuestDataIO.java:134:        try (GZIPInputStream zin = new GZIPInputStream(Files.newInputStream(xmlSaveFile.toPath()));
+    forge-gui/src/main/java/forge/util/ZipUtil.java:69:        ZipInputStream zis = new ZipInputStream(Files.newInputStream(fileZip.toPath()));
+    forge-gui-mobile/src/forge/assets/FSkinFont.java:372:            try (LineReader translationFile = new LineReader(Files.newInputStream(Paths.get(translationFilePath)),
+
+  [P53] Files.newOutputStream(Path, …)
+    forge-core/src/main/java/forge/util/StreamUtil.java:182:    /** Pattern 53: replacement for {@code Files.newOutputStream(path, opts)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:191:        return java.nio.file.Files.newOutputStream(p, opts);
+    forge-core/src/main/java/forge/util/FileUtil.java:114:             OutputStream os = Files.newOutputStream(new File(destFilename).toPath())){
+    forge-gui/src/main/java/forge/gui/download/GuiDownloadZipService.java:115:                OutputStream output = java.nio.file.Files.newOutputStream(Paths.get(destFile))) {
+    forge-gui/src/main/java/forge/gui/download/GuiDownloadZipService.java:236:        try (BufferedOutputStream out = new BufferedOutputStream(java.nio.file.Files.newOutputStream(Paths.get(outPath)))) {
+    forge-gui/src/main/java/forge/gamemodes/tournament/TournamentIO.java:116:        try(final BufferedOutputStream bout = new BufferedOutputStream(Files.newOutputStream(getTournamentFile(gd0).toPath()));
+    forge-gui/src/main/java/forge/gamemodes/gauntlet/GauntletIO.java:137:        try(final BufferedOutputStream bout = new BufferedOutputStream(Files.newOutputStream(getGauntletFile(gd0).toPath()));
+    forge-gui/src/main/java/forge/gamemodes/quest/io/QuestDataIO.java:429:            final BufferedOutputStream bout = new BufferedOutputStream(Files.newOutputStream(Paths.get(f)));
+    forge-gui/src/main/java/forge/gamemodes/quest/io/QuestDataIO.java:438:        try(final BufferedOutputStream boutUnp = new BufferedOutputStream(Files.newOutputStream(Paths.get(f)))) {
+    forge-gui-mobile/src/forge/util/LibGDXImageFetcher.java:86:            try(OutputStream out = Files.newOutputStream(destFile.file().toPath())) {
+
+  [P54] Files.walk(Path, …)
+    forge-core/src/main/java/forge/util/StreamUtil.java:194:    /** Pattern 54: replacement for {@code Files.walk(path, opts)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:201:        return java.nio.file.Files.walk(path, opts);
+    forge-gui/src/main/java/forge/gamemodes/quest/io/MainWorldDuelReader.java:44:        try (Stream<Path> stream = Files.walk(directory.toPath())) {
+    forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:47:        try (Stream<Path> stream = Files.walk(source)) {
+
+  [P55] Files.exists(Path, …)
+    forge-core/src/main/java/forge/util/StreamUtil.java:215:    /** Pattern 55: replacement for {@code Files.exists(path, opts)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:218:        return java.nio.file.Files.exists(p, opts);
+    forge-gui-mobile/src/forge/adventure/util/Config.java:127:        return (GuiBase.isAndroid() || GuiBase.isIOS()) ? ForgeConstants.ASSETS_DIR : Files.exists(Paths.get("./res")) ? "./" : Files.exists(Paths.get("./forge-gui/")) ? "./forge-gui/" : "../forge-gui";
+    forge-gui-mobile/src/forge/adventure/util/Config.java:192:            if (Files.exists(Paths.get(langFile))) {
+    forge-gui-mobile/src/forge/adventure/util/Config.java:196:            } else if (Files.exists(Paths.get(fullPath))) {
+
+  [P56] Files.createDirectories(Path, …)
+    forge-core/src/main/java/forge/util/StreamUtil.java:221:    /** Pattern 56: replacement for {@code Files.createDirectories(path, attrs)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:224:        return java.nio.file.Files.createDirectories(p, attrs);
+    forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:48:            Files.createDirectories(destination);
+
+  [P57] Files.copy(Path, Path, …)
+    forge-core/src/main/java/forge/util/StreamUtil.java:227:    /** Pattern 57: replacement for {@code Files.copy(src, dst, opts)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:242:        return java.nio.file.Files.copy(src, dst, opts);
+    forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:51:                    Files.copy(s, destination.resolve(source.relativize(s)), REPLACE_EXISTING);
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 2  –  Other java.nio.file.Files.* calls (NOT in StreamDesugar)
+ These are safe today only if every Path argument reaching them was first
+ created through a patched call site (P50 or P51 above) and therefore holds
+ an IosFilePath.  If a raw UnixPath can reach any of these methods, add a
+ new StreamDesugar pattern + StreamUtil helper.
+────────────────────────────────────────────────────────────────────────────────
+
+  [CHK] Files.delete(Path)
+    (none found)
+
+  [CHK] Files.deleteIfExists(Path)
+    (none found)
+
+  [CHK] Files.readAllBytes(Path)
+    (none found)
+
+  [CHK] Files.readAllLines(Path, …)
+    (none found)
+
+  [CHK] Files.write(Path, …)
+    (none found)
+
+  [CHK] Files.move(Path, Path, …)
+    (none found)
+
+  [CHK] Files.size(Path)
+    (none found)
+
+  [CHK] Files.isDirectory(Path, …)
+    (none found)
+
+  [CHK] Files.isRegularFile(Path,…)
+    (none found)
+
+  [CHK] Files.list(Path)
+    (none found)
+
+  [CHK] Files.createFile(Path, …)
+    (none found)
+
+  [CHK] Files.createTempFile(…)
+    (none found)
+
+  [CHK] Files.newByteChannel(…)
+    (none found)
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 3  –  Other ICU-dependent / robovm-rt-specific patterns
+────────────────────────────────────────────────────────────────────────────────
+
+  [ICU] BreakIterator usages (getLineInstance covered by P49)
+    forge-gui-mobile/src/forge/assets/TextRenderer.java:36:    private BreakIterator boundary = BreakIterator.getLineInstance(new Locale(Forge.locale));
+
+  [ICU] com.android.icu direct references
+    (none found)
+
+  [ICU] NativeConverter direct references
+    forge-core/src/main/java/forge/util/StreamUtil.java:162:    // call sites that trigger Android ICU charset encoding (NativeConverter) which
+    forge-core/src/main/java/forge/util/StreamUtil.java:247:     * triggering Android ICU charset encoding ({@code NativeConverter}).
+    forge-core/src/main/java/forge/util/StreamUtil.java:248:     * On iOS, {@code NativeConverter}'s native methods are dead-stripped by the
+
+  [ICU] Charset.defaultCharset() — uses ICU on Android/robovm-rt
+    (none found)
+
+  [ICU] new InputStreamReader(stream) without explicit Charset — uses defaultCharset
+    forge-core/src/main/java/forge/util/FileUtil.java:256:                    new InputStreamReader(Files.newInputStream(file.toPath()), StandardCharsets.UTF_8));
+    forge-core/src/main/java/forge/util/FileUtil.java:305:            try (BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()))) {
+    forge-core/src/main/java/forge/util/BuildInfo.java:89:        try (BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
+    forge-ai/src/main/java/forge/ai/GameState.java:489:        final BufferedReader br = new BufferedReader(new InputStreamReader(in));
+    forge-gui/src/main/java/forge/gui/card/CardReaderExperiments.java:35:                isr = new InputStreamReader(new FileInputStream(file), charset);
+    forge-gui/src/main/java/forge/gamemodes/tournament/TournamentIO.java:83:             InputStreamReader reader = new InputStreamReader(zin)) {
+    forge-gui/src/main/java/forge/gamemodes/gauntlet/GauntletIO.java:102:             InputStreamReader reader = new InputStreamReader(zin)) {
+    forge-gui/src/main/java/forge/gamemodes/quest/io/QuestDataIO.java:135:             InputStreamReader reader = new InputStreamReader(zin)) {
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 4  –  All java.nio.file.* imports (inventory)
+────────────────────────────────────────────────────────────────────────────────
+forge-core/src/main/java/forge/util/CardTranslation.java:8:import java.nio.file.Files;
+forge-core/src/main/java/forge/util/CardTranslation.java:9:import java.nio.file.Paths;
+forge-core/src/main/java/forge/util/FileUtil.java:26:import java.nio.file.Files;
+forge-core/src/main/java/forge/util/StreamUtil.java:17:import java.nio.file.CopyOption;
+forge-core/src/main/java/forge/util/StreamUtil.java:18:import java.nio.file.FileSystem;
+forge-core/src/main/java/forge/util/StreamUtil.java:19:import java.nio.file.FileVisitOption;
+forge-core/src/main/java/forge/util/StreamUtil.java:20:import java.nio.file.LinkOption;
+forge-core/src/main/java/forge/util/StreamUtil.java:21:import java.nio.file.OpenOption;
+forge-core/src/main/java/forge/util/StreamUtil.java:22:import java.nio.file.Path;
+forge-core/src/main/java/forge/util/StreamUtil.java:23:import java.nio.file.StandardOpenOption;
+forge-core/src/main/java/forge/util/StreamUtil.java:24:import java.nio.file.WatchEvent;
+forge-core/src/main/java/forge/util/StreamUtil.java:25:import java.nio.file.WatchKey;
+forge-core/src/main/java/forge/util/StreamUtil.java:26:import java.nio.file.WatchService;
+forge-core/src/main/java/forge/util/StreamUtil.java:27:import java.nio.file.attribute.FileAttribute;
+forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:21:import java.nio.file.Files;
+forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:22:import java.nio.file.Path;
+forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:23:import java.nio.file.Paths;
+forge-gui-mobile/src/forge/adventure/util/Config.java:29:import java.nio.file.Files;
+forge-gui-mobile/src/forge/adventure/util/Config.java:30:import java.nio.file.Paths;
+forge-gui-mobile/src/forge/assets/FSkinFont.java:5:import java.nio.file.Files;
+forge-gui-mobile/src/forge/assets/FSkinFont.java:6:import java.nio.file.Paths;
+forge-gui-mobile/src/forge/util/LibGDXImageFetcher.java:14:import java.nio.file.Files;
+forge-gui/src/main/java/forge/gamemodes/gauntlet/GauntletIO.java:24:import java.nio.file.Files;
+forge-gui/src/main/java/forge/gamemodes/quest/io/MainWorldDuelReader.java:6:import java.nio.file.Files;
+forge-gui/src/main/java/forge/gamemodes/quest/io/MainWorldDuelReader.java:7:import java.nio.file.Path;
+forge-gui/src/main/java/forge/gamemodes/quest/io/QuestDataIO.java:58:import java.nio.file.Files;
+forge-gui/src/main/java/forge/gamemodes/quest/io/QuestDataIO.java:59:import java.nio.file.Paths;
+forge-gui/src/main/java/forge/gamemodes/tournament/TournamentIO.java:20:import java.nio.file.Files;
+forge-gui/src/main/java/forge/gui/download/GuiDownloadZipService.java:15:import java.nio.file.Paths;
+forge-gui/src/main/java/forge/localinstance/properties/ForgeProfileProperties.java:22:import java.nio.file.Files;
+forge-gui/src/main/java/forge/util/ZipUtil.java:7:import java.nio.file.Files;
+
+════════════════════════════════════════════════════════════════════════════════
+ Scan complete.
+════════════════════════════════════════════════════════════════════════════════

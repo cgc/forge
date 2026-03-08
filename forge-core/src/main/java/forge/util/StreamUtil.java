@@ -7,6 +7,24 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collector;
 import java.util.stream.Stream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.IOException;
+import java.net.URI;
+import java.nio.file.CopyOption;
+import java.nio.file.FileSystem;
+import java.nio.file.FileVisitOption;
+import java.nio.file.LinkOption;
+import java.nio.file.OpenOption;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.WatchEvent;
+import java.nio.file.WatchKey;
+import java.nio.file.WatchService;
+import java.nio.file.attribute.FileAttribute;
 
 public class StreamUtil {
 
@@ -136,5 +154,153 @@ public class StreamUtil {
             if(j < maxSize)
                 samples.set(j, next);
         }
+    }
+
+    // ── iOS NIO desugaring ─────────────────────────────────────────────────────
+    // Methods below are called by the bytecode-rewritten code produced by
+    // scripts/StreamDesugar.java (patterns 50-57).  They replace java.nio.file.*
+    // call sites that trigger Android ICU charset encoding (NativeConverter) which
+    // has dead-stripped native methods in robovmx's robovm-rt on iOS.
+    // On non-iOS platforms the fallback delegates to the standard NIO methods.
+
+    /** Pattern 50: replacement for {@code file.toPath()}. */
+    public static Path fileToPath(File f) { return new IosFilePath(f); }
+
+    /** Pattern 51: replacement for {@code Paths.get(first, more)}. */
+    public static Path pathsGet(String first, String... more) {
+        File f = new File(first);
+        for (String m : more) f = new File(f, m);
+        return new IosFilePath(f);
+    }
+
+    /** Pattern 52: replacement for {@code Files.newInputStream(path, opts)}. */
+    public static InputStream filesNewInputStream(Path p, OpenOption... opts) throws IOException {
+        if (p instanceof IosFilePath) return new FileInputStream(((IosFilePath) p).file);
+        return java.nio.file.Files.newInputStream(p, opts);
+    }
+
+    /** Pattern 53: replacement for {@code Files.newOutputStream(path, opts)}. */
+    public static OutputStream filesNewOutputStream(Path p, OpenOption... opts) throws IOException {
+        if (p instanceof IosFilePath) {
+            boolean append = false;
+            for (OpenOption o : opts) {
+                if (o == StandardOpenOption.APPEND) { append = true; break; }
+            }
+            return new FileOutputStream(((IosFilePath) p).file, append);
+        }
+        return java.nio.file.Files.newOutputStream(p, opts);
+    }
+
+    /** Pattern 54: replacement for {@code Files.walk(path, opts)}. */
+    public static Stream<Path> filesWalk(Path path, FileVisitOption... opts) throws IOException {
+        if (path instanceof IosFilePath) {
+            List<Path> list = new ArrayList<>();
+            walkInto(((IosFilePath) path).file, list);
+            return list.stream();
+        }
+        return java.nio.file.Files.walk(path, opts);
+    }
+
+    private static void walkInto(File dir, List<Path> list) {
+        list.add(new IosFilePath(dir));
+        File[] children = dir.listFiles();
+        if (children != null) {
+            for (File f : children) {
+                if (f.isDirectory()) walkInto(f, list);
+                else list.add(new IosFilePath(f));
+            }
+        }
+    }
+
+    /** Pattern 55: replacement for {@code Files.exists(path, opts)}. */
+    public static boolean filesExists(Path p, LinkOption... opts) {
+        if (p instanceof IosFilePath) return ((IosFilePath) p).file.exists();
+        return java.nio.file.Files.exists(p, opts);
+    }
+
+    /** Pattern 56: replacement for {@code Files.createDirectories(path, attrs)}. */
+    public static Path filesCreateDirectories(Path p, FileAttribute<?>... attrs) throws IOException {
+        if (p instanceof IosFilePath) { ((IosFilePath) p).file.mkdirs(); return p; }
+        return java.nio.file.Files.createDirectories(p, attrs);
+    }
+
+    /** Pattern 57: replacement for {@code Files.copy(src, dst, opts)}. */
+    public static Path filesCopy(Path src, Path dst, CopyOption... opts) throws IOException {
+        if (src instanceof IosFilePath && dst instanceof IosFilePath) {
+            File srcFile = ((IosFilePath) src).file;
+            File dstFile = ((IosFilePath) dst).file;
+            if (srcFile.isDirectory()) { dstFile.mkdirs(); return dst; }
+            File parent = dstFile.getParentFile();
+            if (parent != null) parent.mkdirs();
+            try (InputStream in = new FileInputStream(srcFile);
+                 OutputStream out = new FileOutputStream(dstFile)) {
+                byte[] buf = new byte[8192]; int n;
+                while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            }
+            return dst;
+        }
+        return java.nio.file.Files.copy(src, dst, opts);
+    }
+
+    /**
+     * Minimal {@link Path} implementation that wraps a {@link File} without
+     * triggering Android ICU charset encoding ({@code NativeConverter}).
+     * On iOS, {@code NativeConverter}'s native methods are dead-stripped by the
+     * Apple linker, so constructing a {@code UnixPath} (which encodes the path
+     * string to bytes via ICU) crashes at address 0x0.  This wrapper stores the
+     * {@link File} reference directly and delegates only the operations this
+     * codebase actually uses.  All other {@link Path} methods throw
+     * {@link UnsupportedOperationException}.
+     */
+    public static final class IosFilePath implements Path {
+        final File file;
+        public IosFilePath(File f) { this.file = f; }
+
+        @Override public File toFile()            { return file; }
+        @Override public String toString()         { return file.getPath(); }
+        @Override public boolean isAbsolute()      { return file.isAbsolute(); }
+        @Override public Path toAbsolutePath()     { return new IosFilePath(file.getAbsoluteFile()); }
+        @Override public Path getFileName()        { return new IosFilePath(new File(file.getName())); }
+        @Override public Path getParent()          { File p = file.getParentFile(); return p == null ? null : new IosFilePath(p); }
+        @Override public Path normalize()          { return this; }
+        @Override public URI toUri()               { return file.toURI(); }
+        @Override public Path toRealPath(LinkOption... opts) throws IOException { return new IosFilePath(file.getCanonicalFile()); }
+
+        @Override public Path resolve(Path other) {
+            if (other instanceof IosFilePath) return new IosFilePath(new File(file, ((IosFilePath) other).file.getPath()));
+            return new IosFilePath(new File(file, other.toString()));
+        }
+        @Override public Path resolve(String other) { return new IosFilePath(new File(file, other)); }
+
+        @Override public Path relativize(Path other) {
+            String base   = file.getAbsolutePath();
+            String target = other instanceof IosFilePath ? ((IosFilePath) other).file.getAbsolutePath() : other.toString();
+            if (base.equals(target)) return new IosFilePath(new File(""));
+            if (!base.endsWith(File.separator)) base += File.separator;
+            if (target.startsWith(base)) return new IosFilePath(new File(target.substring(base.length())));
+            throw new IllegalArgumentException("Cannot relativize " + other + " against " + this);
+        }
+
+        @Override public int compareTo(Path o)        { return file.getPath().compareTo(o.toString()); }
+        @Override public boolean equals(Object o)     { return o instanceof IosFilePath && file.equals(((IosFilePath) o).file); }
+        @Override public int hashCode()               { return file.hashCode(); }
+
+        // ── not needed by this codebase; throw rather than silently misbehave ──
+
+        @Override public FileSystem getFileSystem()   { throw new UnsupportedOperationException("IosFilePath.getFileSystem"); }
+        // getRoot() returns null for relative paths per Path contract; not an error.
+        @Override public Path getRoot()               { return null; }
+        @Override public int getNameCount()           { throw new UnsupportedOperationException("IosFilePath.getNameCount"); }
+        @Override public Path getName(int i)          { throw new UnsupportedOperationException("IosFilePath.getName"); }
+        @Override public Path subpath(int b, int e)   { throw new UnsupportedOperationException("IosFilePath.subpath"); }
+        @Override public boolean startsWith(Path o)   { return file.getPath().startsWith(o.toString()); }
+        @Override public boolean startsWith(String o) { return file.getPath().startsWith(o); }
+        @Override public boolean endsWith(Path o)     { return file.getPath().endsWith(o.toString()); }
+        @Override public boolean endsWith(String o)   { return file.getPath().endsWith(o); }
+        @Override public Path resolveSibling(Path o)  { throw new UnsupportedOperationException("IosFilePath.resolveSibling"); }
+        @Override public Path resolveSibling(String o){ throw new UnsupportedOperationException("IosFilePath.resolveSibling"); }
+        @Override public WatchKey register(WatchService w, WatchEvent.Kind<?>[] e, WatchEvent.Modifier... m) throws IOException { throw new UnsupportedOperationException("IosFilePath.register"); }
+        @Override public WatchKey register(WatchService w, WatchEvent.Kind<?>... e) throws IOException { throw new UnsupportedOperationException("IosFilePath.register"); }
+        @Override public Iterator<Path> iterator()    { throw new UnsupportedOperationException("IosFilePath.iterator"); }
     }
 }
