@@ -4,7 +4,7 @@
  Scope: forge-core, forge-game, forge-ai, forge-gui, forge-gui-mobile
  Note:  forge-gui-ios excluded (it is the adaptation / fix layer).
 ════════════════════════════════════════════════════════════════════════════════
-Generated: 2026-03-08 14:05 UTC
+Generated: 2026-03-08 14:19 UTC
 
 ────────────────────────────────────────────────────────────────────────────────
  SECTION 1  –  Call sites covered by StreamDesugar.java (safe on iOS)
@@ -16,7 +16,7 @@ Generated: 2026-03-08 14:05 UTC
 
   [P50] File.toPath()
     forge-core/src/main/java/forge/CardStorageReader.java:409:        try (InputStream fileInputStream = java.nio.file.Files.newInputStream(file.toPath())) {
-    forge-core/src/main/java/forge/util/StreamUtil.java:194:    /** Pattern 50: replacement for {@code file.toPath()}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:243:    /** Pattern 50: replacement for {@code file.toPath()}. */
     forge-core/src/main/java/forge/util/FileUtil.java:113:        try (InputStream is = Files.newInputStream(source.toPath());
     forge-core/src/main/java/forge/util/FileUtil.java:114:             OutputStream os = Files.newOutputStream(new File(destFilename).toPath())){
     forge-core/src/main/java/forge/util/FileUtil.java:256:                    new InputStreamReader(Files.newInputStream(file.toPath()), StandardCharsets.UTF_8));
@@ -31,7 +31,7 @@ Generated: 2026-03-08 14:05 UTC
     forge-gui-mobile/src/forge/util/LibGDXImageFetcher.java:86:            try(OutputStream out = Files.newOutputStream(destFile.file().toPath())) {
 
   [P51] Paths.get(String, String…)
-    forge-core/src/main/java/forge/util/StreamUtil.java:197:    /** Pattern 51: replacement for {@code Paths.get(first, more)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:246:    /** Pattern 51: replacement for {@code Paths.get(first, more)}. */
     forge-core/src/main/java/forge/util/CardTranslation.java:27:        try (LineReader translationFile = new LineReader(Files.newInputStream(Paths.get(languagesDirectory + filename)), StandardCharsets.UTF_8)) {
     forge-gui/src/main/java/forge/gui/download/GuiDownloadZipService.java:115:                OutputStream output = java.nio.file.Files.newOutputStream(Paths.get(destFile))) {
     forge-gui/src/main/java/forge/gui/download/GuiDownloadZipService.java:236:        try (BufferedOutputStream out = new BufferedOutputStream(java.nio.file.Files.newOutputStream(Paths.get(outPath)))) {
@@ -46,8 +46,8 @@ Generated: 2026-03-08 14:05 UTC
 
   [P52] Files.newInputStream(Path, …)
     forge-core/src/main/java/forge/CardStorageReader.java:409:        try (InputStream fileInputStream = java.nio.file.Files.newInputStream(file.toPath())) {
-    forge-core/src/main/java/forge/util/StreamUtil.java:204:    /** Pattern 52: replacement for {@code Files.newInputStream(path, opts)}. */
-    forge-core/src/main/java/forge/util/StreamUtil.java:207:        return java.nio.file.Files.newInputStream(p, opts);
+    forge-core/src/main/java/forge/util/StreamUtil.java:253:    /** Pattern 52: replacement for {@code Files.newInputStream(path, opts)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:256:        return java.nio.file.Files.newInputStream(p, opts);
     forge-core/src/main/java/forge/util/FileUtil.java:113:        try (InputStream is = Files.newInputStream(source.toPath());
     forge-core/src/main/java/forge/util/FileUtil.java:256:                    new InputStreamReader(Files.newInputStream(file.toPath()), StandardCharsets.UTF_8));
     forge-core/src/main/java/forge/util/CardTranslation.java:27:        try (LineReader translationFile = new LineReader(Files.newInputStream(Paths.get(languagesDirectory + filename)), StandardCharsets.UTF_8)) {
@@ -59,8 +59,8 @@ Generated: 2026-03-08 14:05 UTC
     forge-gui-mobile/src/forge/assets/FSkinFont.java:372:            try (LineReader translationFile = new LineReader(Files.newInputStream(Paths.get(translationFilePath)),
 
   [P53] Files.newOutputStream(Path, …)
-    forge-core/src/main/java/forge/util/StreamUtil.java:210:    /** Pattern 53: replacement for {@code Files.newOutputStream(path, opts)}. */
-    forge-core/src/main/java/forge/util/StreamUtil.java:219:        return java.nio.file.Files.newOutputStream(p, opts);
+    forge-core/src/main/java/forge/util/StreamUtil.java:259:    /** Pattern 53: replacement for {@code Files.newOutputStream(path, opts)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:268:        return java.nio.file.Files.newOutputStream(p, opts);
     forge-core/src/main/java/forge/util/FileUtil.java:114:             OutputStream os = Files.newOutputStream(new File(destFilename).toPath())){
     forge-gui/src/main/java/forge/gui/download/GuiDownloadZipService.java:115:                OutputStream output = java.nio.file.Files.newOutputStream(Paths.get(destFile))) {
     forge-gui/src/main/java/forge/gui/download/GuiDownloadZipService.java:236:        try (BufferedOutputStream out = new BufferedOutputStream(java.nio.file.Files.newOutputStream(Paths.get(outPath)))) {
@@ -71,26 +71,26 @@ Generated: 2026-03-08 14:05 UTC
     forge-gui-mobile/src/forge/util/LibGDXImageFetcher.java:86:            try(OutputStream out = Files.newOutputStream(destFile.file().toPath())) {
 
   [P54] Files.walk(Path, …)
-    forge-core/src/main/java/forge/util/StreamUtil.java:222:    /** Pattern 54: replacement for {@code Files.walk(path, opts)}. */
-    forge-core/src/main/java/forge/util/StreamUtil.java:229:        return java.nio.file.Files.walk(path, opts);
+    forge-core/src/main/java/forge/util/StreamUtil.java:271:    /** Pattern 54: replacement for {@code Files.walk(path, opts)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:278:        return java.nio.file.Files.walk(path, opts);
     forge-gui/src/main/java/forge/gamemodes/quest/io/MainWorldDuelReader.java:44:        try (Stream<Path> stream = Files.walk(directory.toPath())) {
     forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:47:        try (Stream<Path> stream = Files.walk(source)) {
 
   [P55] Files.exists(Path, …)
-    forge-core/src/main/java/forge/util/StreamUtil.java:243:    /** Pattern 55: replacement for {@code Files.exists(path, opts)}. */
-    forge-core/src/main/java/forge/util/StreamUtil.java:246:        return java.nio.file.Files.exists(p, opts);
+    forge-core/src/main/java/forge/util/StreamUtil.java:292:    /** Pattern 55: replacement for {@code Files.exists(path, opts)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:295:        return java.nio.file.Files.exists(p, opts);
     forge-gui-mobile/src/forge/adventure/util/Config.java:127:        return (GuiBase.isAndroid() || GuiBase.isIOS()) ? ForgeConstants.ASSETS_DIR : Files.exists(Paths.get("./res")) ? "./" : Files.exists(Paths.get("./forge-gui/")) ? "./forge-gui/" : "../forge-gui";
     forge-gui-mobile/src/forge/adventure/util/Config.java:192:            if (Files.exists(Paths.get(langFile))) {
     forge-gui-mobile/src/forge/adventure/util/Config.java:196:            } else if (Files.exists(Paths.get(fullPath))) {
 
   [P56] Files.createDirectories(Path, …)
-    forge-core/src/main/java/forge/util/StreamUtil.java:249:    /** Pattern 56: replacement for {@code Files.createDirectories(path, attrs)}. */
-    forge-core/src/main/java/forge/util/StreamUtil.java:252:        return java.nio.file.Files.createDirectories(p, attrs);
+    forge-core/src/main/java/forge/util/StreamUtil.java:298:    /** Pattern 56: replacement for {@code Files.createDirectories(path, attrs)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:301:        return java.nio.file.Files.createDirectories(p, attrs);
     forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:48:            Files.createDirectories(destination);
 
   [P57] Files.copy(Path, Path, …)
-    forge-core/src/main/java/forge/util/StreamUtil.java:255:    /** Pattern 57: replacement for {@code Files.copy(src, dst, opts)}. */
-    forge-core/src/main/java/forge/util/StreamUtil.java:270:        return java.nio.file.Files.copy(src, dst, opts);
+    forge-core/src/main/java/forge/util/StreamUtil.java:304:    /** Pattern 57: replacement for {@code Files.copy(src, dst, opts)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:319:        return java.nio.file.Files.copy(src, dst, opts);
     forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:51:                    Files.copy(s, destination.resolve(source.relativize(s)), REPLACE_EXISTING);
 
   [P58] Predicate.not(Predicate) — Java 11 static method
@@ -126,6 +126,22 @@ Generated: 2026-03-08 14:05 UTC
     forge-game/src/main/java/forge/game/keyword/Firebending.java:11:            fire = "{R}".repeat(amount);
     forge-ai/src/main/java/forge/ai/ComputerUtilMana.java:510:            manaProduced = StringUtils.repeat(manaProduced, " ", totalAmount);
     forge-ai/src/main/java/forge/ai/ComputerUtilMana.java:542:                manaProduced.append(" ").append(StringUtils.repeat(produced, " ", pAmount));
+
+  [P61] CompletableFuture.supplyAsync(Supplier) — ForkJoinPool crash on iOS
+    forge-core/src/main/java/forge/util/StreamUtil.java:188:    // Pattern 61: CompletableFuture.supplyAsync(Supplier) uses ForkJoinPool.commonPool()
+    forge-core/src/main/java/forge/util/StreamUtil.java:213:     * Pattern 61: replacement for {@code CompletableFuture.supplyAsync(supplier)}.
+    forge-core/src/main/java/forge/util/StreamUtil.java:221:        return java.util.concurrent.CompletableFuture.supplyAsync(supplier, IOS_THREAD_POOL);
+    forge-core/src/main/java/forge/StaticData.java:798:                futures.add(CompletableFuture.supplyAsync(()-> {
+    forge-ai/src/main/java/forge/ai/AiAttackController.java:884:                futures.add(CompletableFuture.supplyAsync(()-> {
+    forge-gui/src/main/java/forge/gamemodes/limited/BoosterDraft.java:430:                        futures.add(CompletableFuture.supplyAsync(()-> {
+    forge-gui-mobile/src/forge/adventure/world/World.java:338:                        futures.add(CompletableFuture.supplyAsync(()-> {
+    forge-gui-mobile/src/forge/adventure/world/World.java:624:                futures.add(CompletableFuture.supplyAsync(()-> {
+    forge-gui-mobile/src/forge/adventure/world/World.java:661:                futures.add(CompletableFuture.supplyAsync(()-> {
+
+  [P62] CompletableFuture.completeOnTimeout — Java 9, absent from robovmx CF
+    forge-core/src/main/java/forge/util/StreamUtil.java:194:    // Pattern 62: CompletableFuture.completeOnTimeout(T, long, TimeUnit) is Java 9 and
+    forge-core/src/main/java/forge/util/StreamUtil.java:225:     * Pattern 62: replacement for {@code cf.completeOnTimeout(value, timeout, unit)} (Java 9).
+    forge-ai/src/main/java/forge/ai/AiAttackController.java:944:                CompletableFuture.allOf(futuresArray).completeOnTimeout(null, timeOut, TimeUnit.SECONDS).join();
 
 ────────────────────────────────────────────────────────────────────────────────
  SECTION 2  –  Other java.nio.file.Files.* calls (NOT in StreamDesugar)
@@ -209,6 +225,34 @@ Generated: 2026-03-08 14:05 UTC
     forge-gui-mobile/src/forge/screens/match/views/VPlayerPanel.java:995:            List<ZoneType> keyList = List.copyOf(displayAreas.keySet());
 
 ────────────────────────────────────────────────────────────────────────────────
+ SECTION 2c  –  CompletableFuture crash patterns (action required)
+ CompletableFuture.supplyAsync(Supplier) — no-executor overload — routes to
+ ForkJoinPool.commonPool(). ForkJoinWorkerThread.<clinit> reflects on
+ Thread.threadLocals which is absent from robovmx's robovm-rt, crashing with
+ NoSuchFieldException at the first async task submission.
+ Patched by StreamDesugar P61 (supplyAsync) and P62 (completeOnTimeout).
+────────────────────────────────────────────────────────────────────────────────
+
+  [P61] CompletableFuture.supplyAsync(Supplier) — ForkJoin crash on iOS [StreamDesugar P61]
+    forge-core/src/main/java/forge/util/StreamUtil.java:188:    // Pattern 61: CompletableFuture.supplyAsync(Supplier) uses ForkJoinPool.commonPool()
+    forge-core/src/main/java/forge/util/StreamUtil.java:213:     * Pattern 61: replacement for {@code CompletableFuture.supplyAsync(supplier)}.
+    forge-core/src/main/java/forge/util/StreamUtil.java:221:        return java.util.concurrent.CompletableFuture.supplyAsync(supplier, IOS_THREAD_POOL);
+    forge-core/src/main/java/forge/StaticData.java:798:                futures.add(CompletableFuture.supplyAsync(()-> {
+    forge-ai/src/main/java/forge/ai/AiAttackController.java:884:                futures.add(CompletableFuture.supplyAsync(()-> {
+    forge-gui/src/main/java/forge/gamemodes/limited/BoosterDraft.java:430:                        futures.add(CompletableFuture.supplyAsync(()-> {
+    forge-gui-mobile/src/forge/adventure/world/World.java:338:                        futures.add(CompletableFuture.supplyAsync(()-> {
+    forge-gui-mobile/src/forge/adventure/world/World.java:624:                futures.add(CompletableFuture.supplyAsync(()-> {
+    forge-gui-mobile/src/forge/adventure/world/World.java:661:                futures.add(CompletableFuture.supplyAsync(()-> {
+
+  [P62] CompletableFuture.completeOnTimeout — Java 9, absent from robovmx CF [StreamDesugar P62]
+    forge-core/src/main/java/forge/util/StreamUtil.java:194:    // Pattern 62: CompletableFuture.completeOnTimeout(T, long, TimeUnit) is Java 9 and
+    forge-core/src/main/java/forge/util/StreamUtil.java:225:     * Pattern 62: replacement for {@code cf.completeOnTimeout(value, timeout, unit)} (Java 9).
+    forge-ai/src/main/java/forge/ai/AiAttackController.java:944:                CompletableFuture.allOf(futuresArray).completeOnTimeout(null, timeOut, TimeUnit.SECONDS).join();
+
+  [CHK] CompletableFuture.orTimeout — Java 9, absent from robovmx CF
+    (none found)
+
+────────────────────────────────────────────────────────────────────────────────
  SECTION 3  –  Other ICU-dependent / robovm-rt-specific patterns
 ────────────────────────────────────────────────────────────────────────────────
 
@@ -219,9 +263,9 @@ Generated: 2026-03-08 14:05 UTC
     (none found)
 
   [ICU] NativeConverter direct references
-    forge-core/src/main/java/forge/util/StreamUtil.java:190:    // call sites that trigger Android ICU charset encoding (NativeConverter) which
-    forge-core/src/main/java/forge/util/StreamUtil.java:275:     * triggering Android ICU charset encoding ({@code NativeConverter}).
-    forge-core/src/main/java/forge/util/StreamUtil.java:276:     * On iOS, {@code NativeConverter}'s native methods are dead-stripped by the
+    forge-core/src/main/java/forge/util/StreamUtil.java:239:    // call sites that trigger Android ICU charset encoding (NativeConverter) which
+    forge-core/src/main/java/forge/util/StreamUtil.java:324:     * triggering Android ICU charset encoding ({@code NativeConverter}).
+    forge-core/src/main/java/forge/util/StreamUtil.java:325:     * On iOS, {@code NativeConverter}'s native methods are dead-stripped by the
 
   [ICU] Charset.defaultCharset() — uses ICU on Android/robovm-rt
     (none found)

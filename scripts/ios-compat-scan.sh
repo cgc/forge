@@ -41,6 +41,11 @@
 #   BreakIterator.getLineInstance(Locale)  → Pattern 49
 #     (ICU line-break data files absent from app bundle; different root cause
 #      from NativeConverter, but same symptom – crash on first use)
+#   Predicate.not(Predicate)              → Pattern 58  (Java 11 static; absent from robovm-rt)
+#   String.isBlank()                       → Pattern 59  (Java 11, defensive)
+#   String.repeat(int)                     → Pattern 60  (Java 11, defensive)
+#   CompletableFuture.supplyAsync(Supplier)→ Pattern 61  (ForkJoinPool.commonPool() crash)
+#   CompletableFuture.completeOnTimeout    → Pattern 62  (Java 9; absent from robovm-rt CF)
 #
 # Usage:  bash scripts/ios-compat-scan.sh [repo-root]
 # ════════════════════════════════════════════════════════════════════════════
@@ -132,6 +137,10 @@ show "P59" "String.isBlank() — Java 11 (defensive; may be natively provided by
 # the only JDK String.repeat(int) call is the one NOT preceded by Strings. or StringUtils.
 show "P60" "String.repeat(int) — Java 11 (defensive; filter out Strings./StringUtils. lines manually)" \
     '\.repeat\([0-9a-zA-Z_]'
+show "P61" "CompletableFuture.supplyAsync(Supplier) — ForkJoinPool crash on iOS" \
+    '\bCompletableFuture\.supplyAsync\('
+show "P62" "CompletableFuture.completeOnTimeout — Java 9, absent from robovmx CF" \
+    '\.completeOnTimeout\('
 
 # ── Section 2: other Files.* calls not yet in StreamDesugar ──────────────────
 
@@ -185,6 +194,27 @@ show "J9"  "Stream.takeWhile/dropWhile — Java 9" \
     '\.takeWhile\(|\.dropWhile\('
 show "J10" "List.copyOf/Set.copyOf/Map.copyOf — Java 10" \
     '\bList\.copyOf\(|\bSet\.copyOf\(|\bMap\.copyOf\('
+
+# ── Section 2c: CompletableFuture-related crash patterns ─────────────────────
+
+cat <<'S2C'
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 2c  –  CompletableFuture crash patterns (action required)
+ CompletableFuture.supplyAsync(Supplier) — no-executor overload — routes to
+ ForkJoinPool.commonPool(). ForkJoinWorkerThread.<clinit> reflects on
+ Thread.threadLocals which is absent from robovmx's robovm-rt, crashing with
+ NoSuchFieldException at the first async task submission.
+ Patched by StreamDesugar P61 (supplyAsync) and P62 (completeOnTimeout).
+────────────────────────────────────────────────────────────────────────────────
+S2C
+
+show "P61" "CompletableFuture.supplyAsync(Supplier) — ForkJoin crash on iOS [StreamDesugar P61]" \
+    '\bCompletableFuture\.supplyAsync\('
+show "P62" "CompletableFuture.completeOnTimeout — Java 9, absent from robovmx CF [StreamDesugar P62]" \
+    '\.completeOnTimeout\('
+show "CHK" "CompletableFuture.orTimeout — Java 9, absent from robovmx CF" \
+    '\.orTimeout\('
 
 # ── Section 3: other ICU-dependent patterns ───────────────────────────────────
 

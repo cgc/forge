@@ -227,6 +227,23 @@ public class ApiScan {
         add("java/nio/file/Files", "writeString",
             "(Ljava/nio/file/Path;Ljava/lang/CharSequence;Ljava/nio/charset/Charset;[Ljava/nio/file/OpenOption;)Ljava/nio/file/Path;",
             11, Category.RISK_HIGH, "Files.writeString(Path,CharSequence,Charset,OpenOption...) — Java 11");
+
+        // ── Java 9 CompletableFuture additions ────────────────────────────────
+
+        // PATCHED by StreamDesugar Pattern 61.
+        // The no-executor variant routes to ForkJoinPool.commonPool(); ForkJoinWorkerThread.<clinit>
+        // reflects on Thread.threadLocals which is absent from robovmx's robovm-rt.
+        add("java/util/concurrent/CompletableFuture", "supplyAsync",
+            "(Ljava/util/function/Supplier;)Ljava/util/concurrent/CompletableFuture;",
+            8, Category.PATCHED,
+            "CompletableFuture.supplyAsync(Supplier) — ForkJoinPool crash on iOS [StreamDesugar P61]");
+
+        // PATCHED by StreamDesugar Pattern 62.
+        // completeOnTimeout(T, long, TimeUnit) is Java 9; absent from robovmx's CF.
+        add("java/util/concurrent/CompletableFuture", "completeOnTimeout",
+            "(Ljava/lang/Object;JLjava/util/concurrent/TimeUnit;)Ljava/util/concurrent/CompletableFuture;",
+            9, Category.PATCHED,
+            "CompletableFuture.completeOnTimeout(T,long,TimeUnit) — Java 9 [StreamDesugar P62]");
     }
 
     private static void add(String owner, String name, String desc,

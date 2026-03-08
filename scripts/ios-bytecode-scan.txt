@@ -4,7 +4,7 @@
  patched by StreamDesugar or natively provided by robovmx robovm-rt.
 ════════════════════════════════════════════════════════════════════════════════
 
- Summary: 0 RISK:HIGH call sites, 47 CLAIMED, 17 PATCHED
+ Summary: 0 RISK:HIGH call sites, 47 CLAIMED, 24 PATCHED
 
 ────────────────────────────────────────────────────────────────────────────────
  RISK: RISK:HIGH — NOT patched, NOT claimed; action required if reachable on iOS
@@ -94,6 +94,17 @@
     forge.gamemodes.quest.BoosterUtils.<clinit>
     forge.gamemodes.planarconquest.ConquestData.getAccessiblePlaneCount
     forge.adventure.scene.AdventureDeckEditor$AdventureEventEditorConfig.getBasicLandSets
+  [Java 8] CompletableFuture.supplyAsync(Supplier) — ForkJoinPool crash on iOS [StreamDesugar P61]
+           6 call site(s):
+    forge.StaticData.audit
+    forge.ai.AiAttackController.declareAttackers
+    forge.gamemodes.limited.BoosterDraft.loadCustomDrafts
+    forge.adventure.world.World.generateNew
+    forge.adventure.world.World.generateNew
+    forge.adventure.world.World.generateNew
+  [Java 9] CompletableFuture.completeOnTimeout(T,long,TimeUnit) — Java 9 [StreamDesugar P62]
+           1 call site(s):
+    forge.ai.AiAttackController.declareAttackers
 
 ════════════════════════════════════════════════════════════════════════════════
  No RISK:HIGH call sites found — all Java 9-11 APIs are patched or claimed.

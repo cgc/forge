@@ -184,6 +184,55 @@ public class StreamUtil {
         return sb.toString();
     }
 
+    // ── iOS CompletableFuture desugaring ───────────────────────────────────────
+    // Pattern 61: CompletableFuture.supplyAsync(Supplier) uses ForkJoinPool.commonPool()
+    // by default.  ForkJoinWorkerThread.<clinit> reflects on Thread.threadLocals which
+    // does not exist in robovmx's robovm-rt, crashing with NoSuchFieldException on the
+    // very first async submission.  Using a plain cached-thread-pool avoids ForkJoinPool
+    // entirely.
+    //
+    // Pattern 62: CompletableFuture.completeOnTimeout(T, long, TimeUnit) is Java 9 and
+    // absent from robovmx's Java-8-based CompletableFuture.  Polyfilled with a
+    // ScheduledExecutorService.
+
+    private static final java.util.concurrent.ExecutorService IOS_THREAD_POOL =
+            java.util.concurrent.Executors.newCachedThreadPool(r -> {
+                Thread t = new Thread(r, "forge-async");
+                t.setDaemon(true);
+                return t;
+            });
+
+    private static final java.util.concurrent.ScheduledExecutorService IOS_SCHEDULER =
+            java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "forge-cf-timeout");
+                t.setDaemon(true);
+                return t;
+            });
+
+    /**
+     * Pattern 61: replacement for {@code CompletableFuture.supplyAsync(supplier)}.
+     * The no-executor overload uses {@code ForkJoinPool.commonPool()} which triggers
+     * {@code ForkJoinWorkerThread.<clinit>} → {@code Thread.getDeclaredField("threadLocals")}
+     * → {@code NoSuchFieldException} on robovm-rt.  This variant routes to a plain
+     * cached-thread-pool executor instead.
+     */
+    public static <U> java.util.concurrent.CompletableFuture<U> completableFutureSupplyAsync(
+            java.util.function.Supplier<U> supplier) {
+        return java.util.concurrent.CompletableFuture.supplyAsync(supplier, IOS_THREAD_POOL);
+    }
+
+    /**
+     * Pattern 62: replacement for {@code cf.completeOnTimeout(value, timeout, unit)} (Java 9).
+     * Schedules a task that calls {@code cf.complete(value)} after the given delay,
+     * mirroring the Java 9 behaviour without requiring a Java 9 JDK at runtime.
+     */
+    public static <T> java.util.concurrent.CompletableFuture<T> completableFutureCompleteOnTimeout(
+            java.util.concurrent.CompletableFuture<T> cf, T value, long timeout,
+            java.util.concurrent.TimeUnit unit) {
+        IOS_SCHEDULER.schedule(() -> cf.complete(value), timeout, unit);
+        return cf;
+    }
+
     // ── iOS NIO desugaring ─────────────────────────────────────────────────────
     // Methods below are called by the bytecode-rewritten code produced by
     // scripts/StreamDesugar.java (patterns 50-57).  They replace java.nio.file.*

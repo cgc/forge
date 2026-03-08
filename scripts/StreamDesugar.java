@@ -85,6 +85,22 @@ import java.nio.file.attribute.BasicFileAttributes;
  *       Same note as Pattern 59: listed as natively provided by robovmx but
  *       desugared defensively.
  *   </li>
+ *   <li>{@code CompletableFuture.supplyAsync(Supplier)} →
+ *       {@code StreamUtil.completableFutureSupplyAsync(Supplier)} (Pattern 61)<br>
+ *       The no-executor overload uses {@code ForkJoinPool.commonPool()} by default.
+ *       {@code ForkJoinWorkerThread.&lt;clinit&gt;} reflects on {@code Thread.threadLocals}
+ *       which is absent from robovmx's robovm-rt, crashing with
+ *       {@code NoSuchFieldException} on the first async submission.
+ *       The replacement routes to a plain cached-thread-pool so {@code ForkJoinPool}
+ *       is never touched.
+ *   </li>
+ *   <li>{@code CompletableFuture.completeOnTimeout(T, long, TimeUnit)} →
+ *       {@code StreamUtil.completableFutureCompleteOnTimeout(CompletableFuture, T, long, TimeUnit)}
+ *       (Pattern 62)<br>
+ *       {@code completeOnTimeout} is a Java 9 instance method absent from robovmx's
+ *       Java-8-based {@code CompletableFuture}.  Polyfilled with a
+ *       {@code ScheduledExecutorService}.
+ *   </li>
  * </ol>
  *
  * <p>The transformation is idempotent: class files whose call sites already
@@ -244,6 +260,39 @@ public class StreamDesugar {
                     super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
                             "stringRepeat",
                             "(Ljava/lang/String;I)Ljava/lang/String;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 61: CompletableFuture.supplyAsync(Supplier) — the no-executor overload
+                // uses ForkJoinPool.commonPool() by default.  ForkJoinWorkerThread.<clinit>
+                // reflects on Thread.threadLocals which is absent from robovmx's robovm-rt,
+                // crashing with NoSuchFieldException on the first async submission.
+                // Redirect to a plain cached-thread-pool to avoid ForkJoinPool entirely.
+                if (opcode == Opcodes.INVOKESTATIC
+                        && "java/util/concurrent/CompletableFuture".equals(owner)
+                        && "supplyAsync".equals(name)
+                        && "(Ljava/util/function/Supplier;)Ljava/util/concurrent/CompletableFuture;".equals(descriptor)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "completableFutureSupplyAsync",
+                            "(Ljava/util/function/Supplier;)Ljava/util/concurrent/CompletableFuture;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 62: CompletableFuture.completeOnTimeout(T, long, TimeUnit) — Java 9
+                // instance method absent from robovmx's Java-8-based CompletableFuture.
+                // Polyfilled with ScheduledExecutorService.
+                // Stack before: ... cf value timeout unit
+                // INVOKEVIRTUAL descriptor: (Ljava/lang/Object;JLjava/util/concurrent/TimeUnit;)...
+                // After rewrite as INVOKESTATIC the receiver (cf) becomes the first argument.
+                if (opcode == Opcodes.INVOKEVIRTUAL
+                        && "java/util/concurrent/CompletableFuture".equals(owner)
+                        && "completeOnTimeout".equals(name)
+                        && "(Ljava/lang/Object;JLjava/util/concurrent/TimeUnit;)Ljava/util/concurrent/CompletableFuture;".equals(descriptor)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "completableFutureCompleteOnTimeout",
+                            "(Ljava/util/concurrent/CompletableFuture;Ljava/lang/Object;JLjava/util/concurrent/TimeUnit;)Ljava/util/concurrent/CompletableFuture;", false);
                     modified = true;
                     return;
                 }
