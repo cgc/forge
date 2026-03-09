@@ -2,9 +2,10 @@
  iOS Bytecode API Scan — Java 9-11 call sites in compiled classes
  Scans for method calls that will NoSuchMethodError on iOS if not
  patched by StreamDesugar or natively provided by robovmx robovm-rt.
+ Also scans for serializable-lambda INVOKEDYNAMIC (Pattern 65 target).
 ════════════════════════════════════════════════════════════════════════════════
 
- Summary: 0 RISK:HIGH call sites, 47 CLAIMED, 27 PATCHED
+ Summary: 0 RISK:HIGH call sites, 47 CLAIMED, 27 PATCHED, 86 serializable-lambda site(s)
 
 ────────────────────────────────────────────────────────────────────────────────
  RISK: RISK:HIGH — NOT patched, NOT claimed; action required if reachable on iOS
@@ -113,6 +114,101 @@
            1 call site(s):
     forge.deck.FDeckChooser.lambda$new$6
 
+────────────────────────────────────────────────────────────────────────────────
+ SERIALIZABLE_LAMBDA: INVOKEDYNAMIC with altMetafactory+FLAG_SERIALIZABLE
+   RoboVM does not generate Serializable lambda proxies; the CHECKCAST
+   java/io/Serializable that follows always throws ClassCastException.
+   Fixed by StreamDesugar Pattern 65 (strip the CHECKCAST).
+────────────────────────────────────────────────────────────────────────────────
+  86 site(s):
+    forge.game.ability.effects.ControlPlayerEffect.resolve
+    forge.game.ability.effects.ControlPlayerEffect.$deserializeLambda$
+    forge.game.ability.effects.ControlPlayerEffect.$deserializeLambda$
+    forge.game.ability.effects.ControlPlayerEffect.lambda$resolve$8d5501f2$1
+    forge.game.ability.effects.RepeatEachEffect.resolve
+    forge.game.ability.effects.RepeatEachEffect.$deserializeLambda$
+    forge.game.ability.effects.DetainEffect.resolve
+    forge.game.ability.effects.DetainEffect.$deserializeLambda$
+    forge.gamemodes.limited.LimitedPlayer.handleWhispergearSneak
+    forge.gamemodes.limited.LimitedPlayer.handleIllusionaryInformant
+    forge.gamemodes.limited.LimitedPlayer.chooseCardToExchange
+    forge.gamemodes.limited.LimitedPlayer.$deserializeLambda$
+    forge.gamemodes.limited.LimitedPlayer.$deserializeLambda$
+    forge.gamemodes.limited.LimitedPlayer.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$FilterOption.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$FilterOption.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$FilterOption.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$FilterOption.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$FilterOption.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$FilterOption.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$FilterOption.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$FilterOption.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$FilterOption.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$FilterOption.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$FilterOption.<clinit>
+    forge.itemmanager.AdvancedSearch$FilterOption.<clinit>
+    forge.itemmanager.AdvancedSearch$FilterOption.<clinit>
+    forge.itemmanager.AdvancedSearch$FilterOption.<clinit>
+    forge.itemmanager.AdvancedSearch$FilterOption.<clinit>
+    forge.itemmanager.AdvancedSearch$FilterOption.<clinit>
+    forge.itemmanager.AdvancedSearch$FilterOption.<clinit>
+    forge.itemmanager.AdvancedSearch$FilterOption.<clinit>
+    forge.itemmanager.AdvancedSearch$FilterOption.<clinit>
+    forge.itemmanager.AdvancedSearch$FilterOption.<clinit>
+    forge.itemmanager.AdvancedSearch$Model.addFilterControl
+    forge.itemmanager.AdvancedSearch$Model.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$ColorEvaluator.<init>
+    forge.itemmanager.AdvancedSearch$ColorEvaluator.<init>
+    forge.itemmanager.AdvancedSearch$ColorEvaluator.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$ColorEvaluator.$deserializeLambda$
+    forge.player.PlayerControllerHuman.chooseSprocket
+    forge.player.PlayerControllerHuman.chooseTarget
+    forge.player.PlayerControllerHuman.$deserializeLambda$
+    forge.player.PlayerControllerHuman.$deserializeLambda$
+    forge.screens.quest.NewQuestScreen.<init>
+    forge.screens.quest.NewQuestScreen.$deserializeLambda$
+    forge.screens.planarconquest.ConquestAEtherScreen$ColorButton.<init>
+    forge.screens.planarconquest.ConquestAEtherScreen$ColorButton.$deserializeLambda$
+    forge.itemmanager.filters.ToggleButtonsFilter$ToggleButton.<init>
+    forge.itemmanager.filters.ToggleButtonsFilter$ToggleButton.$deserializeLambda$
+    org.jgrapht.graph.DefaultGraphSpecificsStrategy.getIntrusiveEdgesSpecificsFactory
+    org.jgrapht.graph.DefaultGraphSpecificsStrategy.getSpecificsFactory
+    org.jgrapht.graph.DefaultGraphSpecificsStrategy.$deserializeLambda$
+    org.jgrapht.graph.DefaultGraphSpecificsStrategy.$deserializeLambda$
+    org.jgrapht.graph.FastLookupGraphSpecificsStrategy.getIntrusiveEdgesSpecificsFactory
+    org.jgrapht.graph.FastLookupGraphSpecificsStrategy.getSpecificsFactory
+    org.jgrapht.graph.FastLookupGraphSpecificsStrategy.$deserializeLambda$
+    org.jgrapht.graph.FastLookupGraphSpecificsStrategy.$deserializeLambda$
+    org.jgrapht.util.WeightCombiner.$deserializeLambda$
+    org.jgrapht.util.WeightCombiner.$deserializeLambda$
+    org.jgrapht.util.WeightCombiner.$deserializeLambda$
+    org.jgrapht.util.WeightCombiner.$deserializeLambda$
+    org.jgrapht.util.WeightCombiner.$deserializeLambda$
+    org.jgrapht.util.WeightCombiner.$deserializeLambda$
+    org.jgrapht.util.WeightCombiner.<clinit>
+    org.jgrapht.util.WeightCombiner.<clinit>
+    org.jgrapht.util.WeightCombiner.<clinit>
+    org.jgrapht.util.WeightCombiner.<clinit>
+    org.jgrapht.util.WeightCombiner.<clinit>
+    org.jgrapht.util.WeightCombiner.<clinit>
+    org.jgrapht.util.SupplierUtil.getThrowingSupplier
+    org.jgrapht.util.SupplierUtil.createIntegerSupplier
+    org.jgrapht.util.SupplierUtil.createLongSupplier
+    org.jgrapht.util.SupplierUtil.createRandomUUIDStringSupplier
+    org.jgrapht.util.SupplierUtil.createStringSupplier
+    org.jgrapht.util.SupplierUtil.$deserializeLambda$
+    org.jgrapht.util.SupplierUtil.$deserializeLambda$
+    org.jgrapht.util.SupplierUtil.$deserializeLambda$
+    org.jgrapht.util.SupplierUtil.$deserializeLambda$
+    org.jgrapht.util.SupplierUtil.$deserializeLambda$
+    org.jgrapht.util.SupplierUtil.$deserializeLambda$
+    org.jgrapht.util.SupplierUtil.$deserializeLambda$
+    org.jgrapht.util.SupplierUtil.$deserializeLambda$
+    org.jgrapht.util.SupplierUtil.<clinit>
+    org.jgrapht.util.SupplierUtil.<clinit>
+    org.jgrapht.util.SupplierUtil.<clinit>
+
 ════════════════════════════════════════════════════════════════════════════════
  No RISK:HIGH call sites found — all Java 9-11 APIs are patched or claimed.
+ SERIALIZABLE LAMBDAS: 86 site(s) found (see section above). Fixed by StreamDesugar Pattern 65.
 ════════════════════════════════════════════════════════════════════════════════

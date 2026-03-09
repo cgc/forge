@@ -126,6 +126,13 @@
                                 <argument>${project.basedir}/../forge-gui/target/forge-gui-${project.version}.jar</argument>
                                 <argument>${project.basedir}/../forge-game/target/forge-game-${project.version}.jar</argument>
                                 <argument>${project.basedir}/../forge-gui-mobile/target/forge-gui-mobile-${project.version}.jar</argument>
+                                <!-- Third-party JARs containing serializable-lambda bytecode (Pattern 65).
+                                     JGraphT 1.5.2 SupplierUtil uses serializable-lambda intersection casts
+                                     in its <clinit>; RoboVM does not support altMetafactory serialisation
+                                     so the CHECKCAST java/io/Serializable throws ClassCastException at
+                                     class-init time on iOS.  Transforming the JAR here is idempotent and
+                                     semantically neutral on standard JVMs (the cast would succeed on JDK). -->
+                                <argument>${settings.localRepository}/org/jgrapht/jgrapht-core/1.5.2/jgrapht-core-1.5.2.jar</argument>
                             </arguments>
                         </configuration>
                     </execution>
