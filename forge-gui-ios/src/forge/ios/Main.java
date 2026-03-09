@@ -42,6 +42,27 @@ import forge.interfaces.IDeviceAdapter;
 public class Main extends IOSApplication.Delegate {
 
     /**
+     * Direct class-literal reference to {@code TransformerFactoryImpl}.
+     *
+     * <p>robovmx's libcore {@link javax.xml.transform.TransformerFactory#newInstance()}
+     * does a {@code Class.forName("org.apache.xalan.processor.TransformerFactoryImpl")}
+     * fallback.  That class lives in the {@code xalan:xalan:2.7.3} Maven dependency JAR.
+     * The {@code robovm.xml} {@code forceLinkClasses} entry for it is sometimes ignored
+     * for classes in third-party dependency JARs (RoboVM/Soot may silently skip classes
+     * from a JAR when it encounters any compile issue in the same JAR).
+     *
+     * <p>A direct class-literal in compiled bytecode is an unconditional static
+     * dependency that RoboVM's AOT compiler <em>must</em> follow — it cannot be
+     * silently dropped the way a force-link hint can.  Placing the reference here (in
+     * {@code Main.class}, which is the app's entry point) guarantees that
+     * {@code TransformerFactoryImpl} is always compiled into the binary and therefore
+     * findable by {@code Class.forName()} at runtime.
+     */
+    @SuppressWarnings("unused")
+    private static final Class<?> XALAN_TF_CLASS =
+            org.apache.xalan.processor.TransformerFactoryImpl.class;
+
+    /**
      * IOSGraphics subclass that makes {@code requestRendering()} safe to call from any
      * thread by dispatching the UIKit call to the main GCD queue.
      *

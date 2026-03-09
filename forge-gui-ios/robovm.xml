@@ -23,7 +23,6 @@
   <target>ios</target>
   <iosInfoPList>Info.plist.xml</iosInfoPList>
   <forceLinkClasses>
-    <pattern>org.apache.xalan.processor.TransformerFactoryImpl</pattern>
     <pattern>java.util.logging.**</pattern>
     <pattern>com.esotericsoftware.minlog.Log</pattern>
     <!--
