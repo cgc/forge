@@ -1,5 +1,16 @@
 package forge.adventure.util;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FilenameFilter;
+import java.io.InputStreamReader;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.List;
+
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
@@ -7,11 +18,20 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.JsonWriter;
 import com.badlogic.gdx.utils.ObjectMap;
+
 import forge.CardStorageReader;
 import forge.Forge;
 import forge.ImageKeys;
-import forge.adventure.data.*;
-import forge.card.*;
+import forge.adventure.data.ConfigData;
+import forge.adventure.data.DifficultyData;
+import forge.adventure.data.PointOfInterestData;
+import forge.adventure.data.RewardData;
+import forge.adventure.data.SettingData;
+import forge.card.CardDb;
+import forge.card.CardEdition;
+import forge.card.CardRarity;
+import forge.card.CardRules;
+import forge.card.ColorSet;
 import forge.deck.Deck;
 import forge.deck.DeckProxy;
 import forge.deck.DeckgenUtil;
@@ -23,13 +43,6 @@ import forge.localinstance.properties.ForgeProfileProperties;
 import forge.model.FModel;
 import forge.util.Aggregates;
 import forge.util.FileUtil;
-
-import java.io.*;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.List;
 
 /**
  * Main resource class to access files from the selected adventure
@@ -124,7 +137,7 @@ public class Config {
 
     private String resPath() {
 
-        return (GuiBase.isAndroid() || GuiBase.isIOS()) ? ForgeConstants.ASSETS_DIR : Files.exists(Paths.get("./res")) ? "./" : Files.exists(Paths.get("./forge-gui/")) ? "./forge-gui/" : "../forge-gui";
+        return GuiBase.isAndroid() ? ForgeConstants.ASSETS_DIR : Files.exists(Paths.get("./res")) ? "./" : Files.exists(Paths.get("./forge-gui/")) ? "./forge-gui/" : "../forge-gui";
     }
 
     public String getPlanePath(String plane) {

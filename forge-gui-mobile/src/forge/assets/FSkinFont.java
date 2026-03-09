@@ -22,7 +22,6 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.IntSet;
 import forge.Forge;
 import forge.gui.FThreads;
-import forge.gui.GuiBase;
 import forge.localinstance.properties.ForgeConstants;
 import forge.util.FileUtil;
 import forge.util.LineReader;
@@ -416,18 +415,18 @@ public class FSkinFont {
                         Forge.getAssets().manager().load(fontFile.path(), BitmapFont.class);
                         Forge.getAssets().manager().finishLoadingAsset(fontFile.path());
                         font = Forge.getAssets().manager().get(fontFile.path(), BitmapFont.class, false);
-                        applyFontFilter(font);
                     }
                     if (font != null)
                         found[0] = true;
                 } catch (Exception e) {
                     e.printStackTrace();
+                    found[0] = false;
                 }
             });
         }
         if (found[0])
             return;
-        //not found in cache — generate from TTF
+        //not found generate
         if (Forge.locale.equals("zh-CN") || Forge.locale.equals("ja-JP") && !Forge.forcedEnglishonCJKMissing) {
             String ttfName = Forge.CJK_Font;
             FileHandle ttfFile = Gdx.files.absolute(ForgeConstants.FONTS_DIR + ttfName + ".ttf");
@@ -436,21 +435,6 @@ public class FSkinFont {
             }
         } else {
             generateFont(FSkin.getSkinFile(TTF_FILE), fontName, fontSize);
-        }
-    }
-
-    /**
-     * Applies the appropriate texture filter to a freshly-loaded BitmapFont.
-     *
-     * On iOS, Retina displays (3×) make Nearest-filtered text look pixelated
-     * because the GPU upscales each texel by 3× with no interpolation.  Switching
-     * to Linear interpolation removes that stepping artefact.  On other platforms
-     * the default Nearest filter is preserved for backward compatibility.
-     */
-    private static void applyFontFilter(BitmapFont f) {
-        if (f == null || !GuiBase.isIOS()) return;
-        for (TextureRegion region : f.getRegions()) {
-            region.getTexture().setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
         }
     }
 
@@ -477,15 +461,6 @@ public class FSkinFont {
         parameter.characters = getCharacterSet(Forge.locale);
         parameter.size = fontSize;
         parameter.packer = packer;
-        // On iOS Retina displays (2× / 3× scale) the default AutoMedium hinting
-        // aggressively snaps glyph stems to the pixel grid.  At high pixel density
-        // that snapping is unnecessary and introduces visible unevenness.  AutoSlight
-        // preserves stem-width hints while allowing fractional positioning, giving
-        // smoother curves at the cost of a tiny amount of crispness that Retina
-        // displays make imperceptible anyway.
-        if (GuiBase.isIOS()) {
-            parameter.hinting = FreeTypeFontGenerator.Hinting.AutoSlight;
-        }
         final FreeTypeFontGenerator.FreeTypeBitmapFontData fontData = generator.generateData(parameter);
         final Array<PixmapPacker.Page> pages = packer.getPages();
 
@@ -521,7 +496,6 @@ public class FSkinFont {
                     Forge.getAssets().manager().load(fontFile.path(), BitmapFont.class);
                     Forge.getAssets().manager().finishLoadingAsset(fontFile.path());
                     font = Forge.getAssets().manager().get(fontFile.path(), BitmapFont.class);
-                    applyFontFilter(font);
                 }
 
                 generator.dispose();

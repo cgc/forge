@@ -4,12 +4,12 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import forge.Forge;
 import org.apache.commons.lang3.tuple.Pair;
 
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.utils.Align;
 
+import forge.Forge;
 import forge.Graphics;
 import forge.assets.FSkinFont;
 import forge.gui.interfaces.IProgressBar;
@@ -84,7 +84,7 @@ public class FProgressBar extends FDisplayObject implements IProgressBar {
             }
         }
 
-        if (showETA && value > 0 && value < maximum) {
+        if (showETA && value > 0) {
             long elapsed = new Date().getTime() - startTime;
             float timePerUnit = elapsed / value;
             int etaSecs = (int) ((float)(maximum - value) * timePerUnit / 1000f);

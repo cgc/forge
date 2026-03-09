@@ -346,14 +346,6 @@ public class ImageCache {
             Texture cardTexture = Forge.getAssets().manager().get(fileName, Texture.class, false);
             //if full bordermasking is enabled, update the border color
             if (cardTexture != null) {
-                // Log the first 5 successfully-loaded card textures so that on iOS we can
-                // confirm textures are reaching the GPU with the expected dimensions/format.
-                if (counter <= 5) {
-                    System.err.println("[ImageCache] loaded card texture #" + counter
-                            + " path=" + fileName
-                            + " size=" + cardTexture.getWidth() + "x" + cardTexture.getHeight()
-                            + " format=" + cardTexture.getTextureData().getFormat());
-                }
                 String setCode = imageKey.split("/")[0].trim().toUpperCase();
                 int radius;
                 if (setCode.equals("A") || setCode.equals("LEA") || setCode.equals("B") || setCode.equals("LEB"))
@@ -362,24 +354,7 @@ public class ImageCache {
                     radius = 25;
                 else
                     radius = 22;
-                String cardTextureStr = cardTexture.toString();
-                boolean isFullBorder = cardTextureStr.contains(".fullborder.") || cardTextureStr.contains("tokens");
-                try {
-                    String pixColor = getpixelColor(fileName);
-                    if (counter <= 5) {
-                        System.err.println("[ImageCache] getpixelColor #" + counter
-                                + " path=" + fileName + " color=" + pixColor
-                                + " fullBorder=" + isFullBorder);
-                    }
-                    updateImageRecord(cardTextureStr, isCloserToWhite(pixColor), radius, isFullBorder);
-                } catch (Exception e) {
-                    // getpixelColor() can fail if the file can't be re-read (e.g. on some
-                    // iOS sandboxed paths).  Use a default dark border so the texture is
-                    // still returned and rendered.
-                    System.err.println("[ImageCache] getpixelColor failed for " + fileName
-                            + " (" + e.getClass().getSimpleName() + "): " + e.getMessage());
-                    updateImageRecord(cardTextureStr, Pair.of(Color.valueOf("#171717").toString(), false), radius, isFullBorder);
-                }
+                updateImageRecord(cardTexture.toString(), isCloserToWhite(getpixelColor(cardTexture)), radius, cardTexture.toString().contains(".fullborder.") || cardTexture.toString().contains("tokens"));
             }
             return cardTexture;
         }
@@ -545,36 +520,6 @@ public class ImageCache {
             return Color.valueOf("#F8DB55");
 
         return borderColor(t);
-    }
-
-    /**
-     * Samples the border pixel of a card texture by loading an independent Pixmap
-     * directly from the file, instead of calling {@code consumePixmap()} on the
-     * texture's own {@code TextureData}.
-     *
-     * <p>On some iOS/Metal GL-emulation layers the TextureData pixmap shares backing
-     * memory with the live GPU texture; calling {@code consumePixmap()} and then
-     * {@code pixmap.dispose()} on that shared buffer corrupts the uploaded texture,
-     * causing cards to render as solid black.  Creating a completely separate Pixmap
-     * from the original file avoids this entirely (the same approach used by
-     * Shattered Pixel Dungeon's {@code SmartTexture}).
-     */
-    public String getpixelColor(String filePath) {
-        Pixmap pixmap = new Pixmap(Gdx.files.absolute(filePath));
-        try {
-            boolean isFullBorder = filePath.contains(".fullborder.");
-            int px = 1, py = 1;
-            if (isFullBorder) {
-                float rscale = 0.96f;
-                int rw = Math.round(pixmap.getWidth() * rscale);
-                int rh = Math.round(pixmap.getHeight() * rscale);
-                px = Math.round((pixmap.getWidth() - rw) / 2f) + 1;
-                py = Math.round((pixmap.getHeight() - rh) / 2f) - 2 + 1;
-            }
-            return new Color(pixmap.getPixel(px, py)).toString();
-        } finally {
-            pixmap.dispose();
-        }
     }
 
     /** @deprecated Use {@link #getpixelColor(String)} with the file path to avoid

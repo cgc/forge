@@ -6,30 +6,29 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
-import com.badlogic.gdx.files.FileHandle;
-import forge.gui.GuiBase;
-import forge.util.BuildInfo;
-import forge.util.DateUtil;
 import org.apache.commons.lang3.StringUtils;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.files.FileHandle;
 import com.google.common.collect.ImmutableList;
 
 import forge.Forge;
 import forge.gui.FThreads;
+import forge.gui.GuiBase;
 import forge.gui.download.GuiDownloadZipService;
 import forge.gui.util.SOptionPane;
-import forge.util.FileUtil;
-
 import static forge.localinstance.properties.ForgeConstants.ADV_TEXTURE_BG_FILE;
 import static forge.localinstance.properties.ForgeConstants.ASSETS_DIR;
-import static forge.localinstance.properties.ForgeConstants.GITHUB_SNAPSHOT_URL;
 import static forge.localinstance.properties.ForgeConstants.DEFAULT_SKINS_DIR;
 import static forge.localinstance.properties.ForgeConstants.GITHUB_COMMITS_ATOM;
 import static forge.localinstance.properties.ForgeConstants.GITHUB_FORGE_URL;
 import static forge.localinstance.properties.ForgeConstants.GITHUB_RELEASES_ATOM;
+import static forge.localinstance.properties.ForgeConstants.GITHUB_SNAPSHOT_URL;
 import static forge.localinstance.properties.ForgeConstants.RELEASE_URL;
 import static forge.localinstance.properties.ForgeConstants.RES_DIR;
+import forge.util.BuildInfo;
+import forge.util.DateUtil;
+import forge.util.FileUtil;
 
 public class AssetsDownloader {
     private final static ImmutableList<String> downloadIgnoreExit = ImmutableList.of("Download", "Ignore", "Exit");
@@ -63,7 +62,7 @@ public class AssetsDownloader {
         final String versionText = isSnapshots ? snapsURL + "version.txt" : releaseURL + "maven-metadata.xml";
         FileHandle assetsDir = Gdx.files.absolute(ASSETS_DIR);
         FileHandle resDir = Gdx.files.absolute(RES_DIR);
-        FileHandle buildTxtFileHandle = (GuiBase.isAndroid() || GuiBase.isIOS()) ? Gdx.files.internal("build.txt") : Gdx.files.classpath("build.txt");
+        FileHandle buildTxtFileHandle = GuiBase.isAndroid() ? Gdx.files.internal("build.txt") : Gdx.files.classpath("build.txt");
         final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         boolean verifyUpdatable = false;
         boolean mandatory = false;
