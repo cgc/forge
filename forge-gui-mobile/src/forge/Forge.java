@@ -275,10 +275,28 @@ public class Forge implements ApplicationListener {
         if (!initialized) {
             initialized = true;
 
+            // Keep continuous rendering ON for the entire DB-loading phase so that
+            // Gdx.app.postRunnable() calls from worker threads never trigger
+            // IOSGraphics.requestRendering() → viewController.setPaused(false).
+            // That ObjC UIKit call must happen on the main thread; from a background
+            // thread it resolves to a null trampoline on the iOS simulator (pc=0x0
+            // crash) and silently no-ops on device, leaving the GL loop paused so
+            // that any WaitRunnable.invokeAndWait() deadlocks permanently.
+            // The matching stopContinuousRendering() is in afterDbLoaded(), called
+            // from the EDT once FSkin, drafts, and adventure resources are loaded,
+            // just before the final transition screen is shown.
+            startContinuousRendering();
+
             Runnable runnable = () -> {
                 safeToClose = false;
                 ImageKeys.setIsLibGDXPort(GuiBase.getInterface().isLibgdxPort());
                 FModel.initialize(getSplashScreen().getProgressBar(), null);
+
+                // Log startup diagnostics here (background thread) rather than on
+                // the main GL thread in afterDbLoaded(): the many println / file-stat
+                // calls were blocking the GL thread for ~290 ms, triggering iOS
+                // always-on hang reports.
+                logStartupDiagnostics();
 
                 getSplashScreen().getProgressBar().setDescription(getLocalizer().getMessage("lblLoadingFonts"));
                 FSkinFont.preloadAll(locale);
@@ -470,10 +488,6 @@ public class Forge implements ApplicationListener {
         else
             getSplashScreen().getProgressBar().setDescription(getLocalizer().getMessage("lblFinishingStartup"));
 
-        // Startup diagnostics: log key paths so that "black squares" issues can be traced.
-        // Visible in Xcode console / Console.app when connected to a device.
-        logStartupDiagnostics();
-
         //override transition & title bg
         try {
             FileHandle transitionFile = Config.instance().getFile("ui/transition.png");
@@ -508,6 +522,12 @@ public class Forge implements ApplicationListener {
                         loadAdventureResources(false);
                         isMobileAdventureMode = true;
                     }
+                    // Balance the startContinuousRendering() added in create() to guard
+                    // against background-thread requestRendering() → setPaused() during
+                    // loading.  All background loading threads are now done; decrement
+                    // the count so that the subsequent openHomeDefault() call can drive
+                    // it to zero and correctly disable continuous rendering on iOS.
+                    stopContinuousRendering();
                     //selection transition
                     setTransitionScreen(new TransitionScreen(() -> {
                         if (createNewAdventureMap) {

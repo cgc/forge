@@ -1,0 +1,118 @@
+════════════════════════════════════════════════════════════════════════════════
+ iOS Bytecode API Scan — Java 9-11 call sites in compiled classes
+ Scans for method calls that will NoSuchMethodError on iOS if not
+ patched by StreamDesugar or natively provided by robovmx robovm-rt.
+════════════════════════════════════════════════════════════════════════════════
+
+ Summary: 0 RISK:HIGH call sites, 47 CLAIMED, 27 PATCHED
+
+────────────────────────────────────────────────────────────────────────────────
+ RISK: RISK:HIGH — NOT patched, NOT claimed; action required if reachable on iOS
+────────────────────────────────────────────────────────────────────────────────
+  (none found)
+
+────────────────────────────────────────────────────────────────────────────────
+ CLAIMED: CLAIMED  — listed as provided by robovmx robovm-rt (should be safe)
+────────────────────────────────────────────────────────────────────────────────
+  [Java 9] Objects.requireNonNullElseGet(T,Supplier) — Java 9 [claimed by robovmx]
+           2 call site(s):
+    forge.card.CardDb.getRules
+    forge.gamemodes.limited.BoosterDraft.createDraft
+  [Java 9] Objects.requireNonNullElse(T,T) — Java 9 [claimed by robovmx]
+           42 call site(s):
+    forge.card.CardRules.getDisplayNameForVariant
+    forge.card.CardRules.getDisplayNameForVariant
+    forge.game.spellability.LandAbility.canPlay
+    forge.game.spellability.TargetRestrictions.isMinTargetsChosen
+    forge.game.spellability.Spell.canPlayFromHost
+    forge.game.spellability.SpellAbility.getOriginalAbility
+    forge.game.spellability.SpellAbility.getOptionalKeywordAmount
+    forge.game.replacement.ReplaceAddCounter.hasAnyInCounterMap
+    forge.game.replacement.ReplacementHandler.executeReplacement
+    forge.game.replacement.ReplacementHandler.executeReplacement
+    forge.game.replacement.ReplacementHandler.executeReplacement
+    forge.game.ability.effects.DayTimeEffect.resolve
+    forge.game.ability.effects.ChangeZoneEffect.changeZonePlayerInvariant
+    forge.game.ability.effects.VentureEffect.getDungeonCard
+    forge.game.ability.effects.VentureEffect.getDungeonCard
+    forge.game.ability.AbilityUtils.calculateAmount
+    forge.game.ability.AbilityUtils.calculateAmount
+    forge.game.Game.getChangeZoneLKIInfo
+    forge.game.combat.AttackConstraints.getLegalAttackers
+    forge.game.combat.AttackRequirement.countViolations
+    forge.game.combat.GlobalAttackRestrictions.getGlobalRestrictions
+    forge.game.player.PlayerView.getOpponents
+    forge.game.card.token.TokenInfo.getProtoType
+    forge.game.card.token.TokenInfo.getProtoType
+    forge.game.card.ActivationTable.getOriginal
+    forge.game.card.CardState.getTypeWithChanges
+    forge.game.card.TokenCreateTable.add
+    forge.game.card.CardTraitChanges.getAbilities
+    forge.game.card.CardTraitChanges.getRemovedAbilities
+    forge.game.card.CardTraitChanges.getTriggers
+    forge.game.card.CardTraitChanges.getReplacements
+    forge.game.card.CardTraitChanges.getStaticAbilities
+    forge.game.GameEntityCounterTable.put
+    forge.game.GameEntityCounterTable.get
+    forge.game.GameEntityCounterTable.filterTable
+    forge.game.GameEntityCounterTable.filterTable
+    forge.game.phase.PhaseHandler.declareAttackersTurnBasedAction
+    forge.game.phase.PhaseHandler.declareBlockersTurnBasedAction
+    forge.ai.AiAttackController.doRevengeOfRavensAttackLogic
+    forge.ai.AiCostDecision.visit
+    forge.gamemodes.match.input.InputSelectTargets.showMessage
+    forge.player.PlayerControllerHuman.sideboard
+  [Java 11] Optional.isEmpty() — Java 11 [claimed by robovmx]
+           1 call site(s):
+    forge.util.RSSReader.getCommitLog
+  [Java 11] String.isBlank() — Java 11 [claimed + StreamDesugar P59]
+           1 call site(s):
+    forge.game.ability.effects.ManaEffect.resolve
+  [Java 11] String.repeat(int) — Java 11 [claimed + StreamDesugar P60]
+           1 call site(s):
+    forge.game.keyword.Firebending.formatReminderText
+
+────────────────────────────────────────────────────────────────────────────────
+ PATCHED: PATCHED  — rewritten at build time by StreamDesugar.java (safe)
+────────────────────────────────────────────────────────────────────────────────
+  [Java 11] Predicate.not(Predicate) — Java 11 [StreamDesugar P58]
+           17 call site(s):
+    forge.card.CardRulesPredicates.<clinit>
+    forge.game.staticability.StaticAbilityContinuous.applyContinuousAbility
+    forge.game.ability.effects.AnimateEffectBase.doAnimate
+    forge.game.combat.AttackRestrictionType.getPredicate
+    forge.game.card.CardState.getManaAbilities
+    forge.ai.ability.MutateAi.canPlay
+    forge.ai.ability.AttachAi.attachAIPumpPreference
+    forge.ai.ability.ChooseSourceAi.chooseSingleCard
+    forge.ai.ComputerUtil.getCardsToDiscardFromOpponent
+    forge.ai.AiController.lambda$chooseSpellAbilityToPlayFromList$9
+    forge.ai.ComputerUtilCost.paymentChoicesWithoutTargets
+    forge.gamemodes.net.server.FServerManager.broadcastExcept
+    forge.gamemodes.quest.BoosterUtils.<clinit>
+    forge.gamemodes.quest.BoosterUtils.<clinit>
+    forge.gamemodes.quest.BoosterUtils.<clinit>
+    forge.gamemodes.planarconquest.ConquestData.getAccessiblePlaneCount
+    forge.adventure.scene.AdventureDeckEditor$AdventureEventEditorConfig.getBasicLandSets
+  [Java 8] Executors.newWorkStealingPool() — ForkJoinPool crash on iOS [StreamDesugar P64]
+           2 call site(s):
+    forge.util.ThreadUtil.refreshServicePool
+    forge.util.ThreadUtil.<clinit>
+  [Java 8] CompletableFuture.supplyAsync(Supplier) — ForkJoinPool crash on iOS [StreamDesugar P61]
+           6 call site(s):
+    forge.StaticData.audit
+    forge.ai.AiAttackController.declareAttackers
+    forge.gamemodes.limited.BoosterDraft.loadCustomDrafts
+    forge.adventure.world.World.generateNew
+    forge.adventure.world.World.generateNew
+    forge.adventure.world.World.generateNew
+  [Java 9] CompletableFuture.completeOnTimeout(T,long,TimeUnit) — Java 9 [StreamDesugar P62]
+           1 call site(s):
+    forge.ai.AiAttackController.declareAttackers
+  [Java 8] List.parallelStream() — ForkJoinPool crash on iOS [StreamDesugar P63]
+           1 call site(s):
+    forge.deck.FDeckChooser.lambda$new$6
+
+════════════════════════════════════════════════════════════════════════════════
+ No RISK:HIGH call sites found — all Java 9-11 APIs are patched or claimed.
+════════════════════════════════════════════════════════════════════════════════

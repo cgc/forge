@@ -6,7 +6,7 @@
         <packaging.type>jar</packaging.type>
         <build.min.memory>-Xms128m</build.min.memory>
         <build.max.memory>-Xmx2048m</build.max.memory>
-        <robovm.version>2.3.23</robovm.version>
+        <robovm.version>10.2.2.4-SNAPSHOT</robovm.version>
         <!-- Auto-detected via the apple-silicon profile below; override with -Dios.simulator.arch=... -->
         <ios.simulator.arch>x86_64</ios.simulator.arch>
     </properties>
@@ -22,19 +22,12 @@
     <name>Forge iOS</name>
 
     <!--
-      Local file-system repository containing a patched robovm-dist-compiler jar.
-      robovm-dist-compiler is the shaded fat-jar used by robovm-maven-plugin; it
-      embeds robovm-soot classes directly. The patch fixes four bugs in the bundled
-      soot that cause AOT compilation to crash on Java Record classes (invokedynamic
-      with REF_getField bootstrap handles). Run scripts/patch-robovm-soot.sh once
-      after cloning to populate this directory; it is gitignored so the binary jar
-      is never committed.
-
-      The patched jar is stored as version 2.3.23-patched (not 2.3.23) because Maven
-      permanently caches release artifacts in ~/.m2. If robovm-dist-compiler:2.3.23
-      was previously downloaded from Maven Central it will be used from the local
-      cache regardless of this file:// repo. The -patched version does not exist on
-      Central so Maven always resolves it from forge-local.
+      Local file-system repository for the java-stubs JAR (forge:java-stubs:3.0).
+      This JAR contains only java.lang.Record, which is absent from robovmx's
+      robovm-rt.  All other Java 8 APIs (java.util.stream.*, java.util.function.*,
+      java.time.*, java.nio.file.*, etc.) are provided natively by robovmx's
+      robovm-rt and no longer require stubs.
+      Built by: bash scripts/build-java-stubs.sh
     -->
     <repositories>
         <repository>
@@ -64,37 +57,39 @@
                 </configuration>
             </plugin>
             <!--
-              Stream-desugaring: rewrite Java-8+ call sites in the compiled class files so
-              that RoboVM's AOT compiler never encounters these methods absent from MobiVM's
-              robovm-rt.  Rewrites:
-                • Collection.stream(), Iterable.spliterator(), Arrays.stream(), File.toPath(),
-                  BufferedReader.lines()
-                • Map.getOrDefault, computeIfAbsent, computeIfPresent, compute, merge, putIfAbsent
-                • Collection.removeIf(Predicate)
-                • Predicate.negate(), .and(), .or(), Predicate.not()
-                • Comparator.comparing, comparingInt, naturalOrder, reverseOrder,
-                  reversed, thenComparing, thenComparingInt
-                • Objects.nonNull, isNull (direct calls AND method references via INVOKEDYNAMIC)
-                • Objects.requireNonNullElse, requireNonNullElseGet
-                • map.forEach(BiConsumer)  — Java 8 default method
-                • Map.of(...)             — Java 9 static factory (0–5 key-value pairs)
-
-              NOTE: java.util.Objects and java.util.Comparator both exist in robovm-rt's
-              Android 4.4-era partial implementation.  Unlike missing classes (e.g.
-              java.util.stream.*) which can be supplied as stub JARs on the app classpath,
-              missing default/static methods on existing java.* classes cannot be patched
-              via stubs — the bootstrap classloader always serves robovm-rt's version.
-              The bytecode transformer below is the only way to handle these.
-
-              This runs during process-classes (after compilation, before the RoboVM package
-              phase) and transforms BOTH the sibling modules' target/classes/ directories AND
-              their packaged JARs in target/.
-
-              Both must be transformed because in a Maven reactor build the sibling modules
-              complete their entire lifecycle (including package) before forge-gui-ios starts.
-              RoboVM's Maven plugin resolves inter-module dependencies to the JAR artifacts in
-              target/ (not to the raw target/classes directories), so the JARs must be
-              patched in-place here, before RoboVM's package goal runs.
+              Override the root-pom RequirePluginVersions enforcer rule to exempt
+              com.robovmx:robovm-maven-plugin.  robovmx only publishes SNAPSHOT
+              artifacts; the project-wide policy that disallows SNAPSHOT plugin
+              versions cannot be satisfied for this iOS-only plugin.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-versions</id>
+                        <configuration>
+                            <rules>
+                                <requireMavenVersion>
+                                    <version>[3.8.1,)</version>
+                                </requireMavenVersion>
+                                <requireJavaVersion>
+                                    <version>17</version>
+                                </requireJavaVersion>
+                                <requirePluginVersions>
+                                    <unCheckedPluginList>com.robovmx:robovm-maven-plugin</unCheckedPluginList>
+                                </requirePluginVersions>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!--
+              BreakIterator desugaring: robovmx's robovm-rt includes full Java 8 APIs,
+              so the only remaining bytecode rewrite is:
+                • BreakIterator.getLineInstance(Locale) → IosUtil.getLineBreakIterator(Locale)
+              ICU line-break data files are absent from the iOS app bundle.  IosUtil provides
+              a pure-Java character-boundary fallback that works without ICU data.
 
               See scripts/StreamDesugar.java and scripts/desugar-streams.sh for details.
             -->
@@ -189,150 +184,23 @@
             <version>1.13.5</version>
             <classifier>natives-ios</classifier>
         </dependency>
-        <!-- commons-lang3 3.12+ rewrote StringUtils.capitalize/uncapitalize to use
-             String.codePoints(), a Java 8 method absent from MobiVM's robovm-rt.
-             Calling either method at runtime throws:
-               NoSuchMethodError: java.lang.String.codePoints()
-             String is a class PRESENT in robovm-rt, so stubs cannot patch it;
-             the bootstrap classloader always serves robovm-rt's version.  Instead,
-             scripts/patch-commons-lang3.sh downloads the upstream JAR, applies the
-             StreamDesugar bytecode transformation (which rewrites String.codePoints()
-             call sites to StreamUtil.codePoints()), and installs the result into
-             local-repo/ as commons-lang3:3.18.0-ios.  Declaring that version here
-             (depth 1) causes Maven's "nearest-wins" mediation to prefer it over the
-             transitive 3.18.0 that the forge-* modules bring in, so RoboVM
-             AOT-compiles the desugared bytecode.
-             Built by: bash scripts/patch-commons-lang3.sh -->
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.18.0-ios</version>
-        </dependency>
-        <!-- Java 8 API stubs: MobiVM's robovm-rt lacks java.util.function.*,
-             java.util.stream.*, java.util.Optional, java.util.Spliterator,
-             java.util.StringJoiner, java.lang.Record, java.nio.file.*, and
-             java.time.*.  These stubs provide working implementations so that
-             RoboVM's AOT compiler includes the types and runtime calls succeed
-             on iOS.
+        <!-- java.lang.Record stub: robovmx's robovm-rt includes full Java 8 APIs but
+             does not yet include java.lang.Record (added in Java 16).  This minimal
+             stub JAR supplies the Record abstract class so that record classes load
+             successfully at runtime on iOS.  All other Java 8 stubs (stream, function,
+             time, nio.file, Optional, StringJoiner, CompletableFuture, etc.) are
+             no longer needed because robovmx's robovm-rt provides them natively.
              Built by: bash scripts/build-java-stubs.sh
 
-             IMPORTANT — stubs only work for classes ABSENT from robovm-rt.
-             java.util.Objects and java.util.Comparator exist in robovm-rt's
-             Android 4.4-era partial implementation; the bootstrap classloader
-             serves robovm-rt's version and app-classpath stubs cannot override
-             it.  Call sites that require missing Java 8+ methods on those classes
-             (Objects.nonNull, Objects.requireNonNullElse, Comparator.naturalOrder,
-             etc.) are handled by the build-time bytecode transformer
-             (scripts/StreamDesugar.java) which rewrites them to equivalent calls
-             in forge.util.StreamUtil — no source-level changes to application
-             code are needed.  The Objects.java and Comparator.java stubs are
-             kept in src-java-stubs/ only so that the application code compiles.
-
-             WHY ANDROID DOESN'T NEED THIS: the Android build targets minimum
-             SDK 26 (Android 8.0 / Oreo).  Android 8.0's ART runtime natively
-             supports all Java 8 SE APIs (java.util.stream.*, java.util.function.*,
-             java.time.*, etc.).  D8 compiles class files to DEX with
-             min-sdk-version=26, which tells it that the target runtime already
-             provides these APIs, so no desugaring or backport stubs are needed.
-             MobiVM's robovm-rt is based on the Android 4.4-era (API 19) class
-             library — the equivalent of JDK 7 — and therefore lacks all Java 8+
-             additions.
-
-             Version 2.2: fixed Collectors stub to use Java 7-compatible Map APIs
-             internally (computeIfAbsent/merge/forEach on Map are absent from
-             robovm-rt); added toCollection(Supplier) and 3-arg groupingBy
-             overloads directly to the Collectors stub so that the corresponding
-             StreamDesugar bytecode-rewrite patterns (48 and 55) and StreamUtil
-             helper methods are no longer needed.
-
-             Version 2.1: added java.util.concurrent.CompletableFuture stub.
-             CompletableFuture was added in Java 8 and is absent from robovm-rt's
-             Java 7 runtime.  StaticData.audit() uses CompletableFuture.supplyAsync/
-             exceptionally/allOf/join for parallel card-image auditing; without this
-             stub the call throws NoClassDefFoundError: java/util/concurrent/
-             CompletableFuture on iOS.
-
-             SIMPLIFICATION (version 2.0): the standard approach for any class
-             that is absent from robovm-rt AND has no jdk.internal.* dependencies
-             is to download it directly from the pinned OpenJDK 17 source, rather
-             than maintaining a hand-written stub.  Version 2.0 extends this to:
-               • java.util.StringJoiner  (previously a hand-written stub)
-               • java.lang.Record        (previously a hand-written stub)
-               • java.nio.file.OpenOption, CopyOption, LinkOption,
-                 StandardCopyOption      (previously hand-written stubs)
-             Only java.util.concurrent.CompletableFuture, java.util.Comparator,
-             java.util.Objects, java.util.stream.*,
-             and java.nio.file.{Path,Paths,Files} remain as custom stubs because
-             the OpenJDK sources reference jdk.internal.* or complex NIO2
-             infrastructure absent from robovm-rt.
-
-             Version 1.9 (previously 1.8): added java.util.StringJoiner stub.
-             commons-lang3 3.x uses StringJoiner internally via LangCollectors.joining()
-             (called by StringUtils.join()).  Without this stub, loading any card with
-             keywords throws NoClassDefFoundError: java/util/StringJoiner at
-             Card.getKeywordKey() → CardView.updateKeywords().  StringJoiner was added
-             in Java 8 and is absent from robovm-rt's Android 4.4-era class library.
-             Since StringJoiner is a class ABSENT from robovm-rt (unlike String.codePoints()
-             which was a method on a PRESENT class), the stub-JAR approach works.
-
-             Version 1.8 (previously 1.7): added Stream.iterator() to the Stream stub
-             and ListStream.  Without it, IterableUtil.filter() lambdas that call
-             stream.filter(...).iterator() throw NoSuchMethodError: Stream.iterator()
-             at runtime.
-
-             Version 1.7 (previously 1.6): added java.util.Comparator stub for
-             compilation; the bytecode transformer now rewrites Comparator.naturalOrder/
-             reverseOrder call sites (and already rewrote comparing/reversed/etc.)
-             to StreamUtil helpers at build time.
-
-             Version 1.6 (previously 1.5): added java.util.Objects stub for
-             compilation; the bytecode transformer now rewrites Objects.isNull/
-             nonNull/requireNonNullElse call sites to StreamUtil helpers at
-             build time so they work at runtime despite robovm-rt's partial
-             Objects implementation.
-
-             Version 1.5 (previously 1.4): added java.time.* classes by
-             downloading ThreeTen-Backport 1.7.0 sources and renaming the
-             package from org.threeten.bp to java.time.  This fixes
-             NoClassDefFoundError: java/time/Instant (and related classes)
-             which was thrown by commons-lang3's StopWatch and by forge's own
-             adventure-mode code that uses LocalDate, LocalDateTime, etc.
-
-             Version 1.4 (previously 1.3): added java.lang.Record stub so that all
-             Java record classes (CardEdition.EditionEntry, StateChangedType,
-             GameEventFlipCoin, etc.) load successfully on iOS.  Without it, any
-             record class fails with NoClassDefFoundError: java.lang.Record because
-             the compiler implicitly adds "extends Record" to every record declaration
-             and MobiVM's robovm-rt predates Java 16 where Record was introduced.
-
-             Version 1.3 (previously 1.2): added Collector.of IDENTITY_FINISH 4-param
-             overload, Collectors.toMap 4-arg overload (with mapFactory), and
-             Stream.forEachOrdered.  Without these, Guava's CollectCollectors throws
-             NoSuchMethodError when initializing multimap/set collectors.
-
-             Version 1.2 (previously 1.1): added Collector.Characteristics inner enum
-             and characteristics() method to the Collector stub.  Without this enum,
-             Guava's CollectCollectors class fails to initialize with
-             NoClassDefFoundError: [Ljava/util/stream/Collector$Characteristics;
-
-             Version 1.1 (previously 1.0): the stubs now strip lambda bodies
-             from java.util.function.* default methods (andThen/compose/negate/
-             and/or).  Without stripping, RoboVM's AOT compiler generates
-             $$Lambda$N synthetic classes for each invokedynamic inside those
-             default methods and emits [lookup] references to the synthetic
-             lambda$*$N methods; those symbols are never linked because the
-             interface is not in librobovm-rt.a → "Undefined symbols" linker
-             error.
-
-             Using version 2.2 (not 2.1, 2.0, 1.9, 1.8, 1.7, 1.6, 1.5, 1.4, 1.3, 1.2, 1.1, or 1.0) is essential: Maven
-             caches release artifacts permanently in ~/.m2 and will use a previously
-             built stubs jar for every subsequent build, regardless of what is in
-             forge-local.  Version 2.2 has never been cached so Maven always
-             resolves it fresh from forge-local. -->
+             Version 3.0 contains only java.lang.Record.  Using version 3.0 (not any
+             earlier version) is essential: Maven caches release artifacts permanently
+             in ~/.m2 and will use a previously built stubs jar for every subsequent
+             build.  Version 3.0 has never been cached so Maven always resolves it
+             fresh from forge-local. -->
         <dependency>
             <groupId>forge</groupId>
             <artifactId>java-stubs</artifactId>
-            <version>2.2</version>
+            <version>3.0</version>
         </dependency>
     </dependencies>
 
@@ -342,19 +210,9 @@
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>com.mobidevelop.robovm</groupId>
+                        <groupId>com.robovmx</groupId>
                         <artifactId>robovm-maven-plugin</artifactId>
                         <version>${robovm.version}</version>
-                        <!-- Load the patched robovm-dist-compiler first on the plugin classpath.
-                             The -patched version is never cached from Central so Maven always
-                             resolves it from forge-local, regardless of ~/.m2 state. -->
-                        <dependencies>
-                            <dependency>
-                                <groupId>com.mobidevelop.robovm</groupId>
-                                <artifactId>robovm-dist-compiler</artifactId>
-                                <version>2.3.23-patched</version>
-                            </dependency>
-                        </dependencies>
                         <executions>
                             <execution>
                                 <id>ios-device-build</id>
@@ -369,6 +227,20 @@
                             <configFile>robovm.xml</configFile>
                             <arch>arm64</arch>
                         </configuration>
+                        <!--
+                          Patched robovm-dist-compiler: fixes four Soot bugs that crash
+                          AOT compilation of Java Record classes (NoSuchMethodError /
+                          RuntimeException: Attempt to create RefType containing a /).
+                          Built by: bash scripts/patch-robovm-soot.sh
+                          (called automatically from scripts/install-robovmx.sh)
+                        -->
+                        <dependencies>
+                            <dependency>
+                                <groupId>com.robovmx</groupId>
+                                <artifactId>robovm-dist-compiler</artifactId>
+                                <version>10.2.2.4-patched</version>
+                            </dependency>
+                        </dependencies>
                     </plugin>
                 </plugins>
             </build>
@@ -378,18 +250,9 @@
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>com.mobidevelop.robovm</groupId>
+                        <groupId>com.robovmx</groupId>
                         <artifactId>robovm-maven-plugin</artifactId>
                         <version>${robovm.version}</version>
-                        <!-- Load the patched robovm-dist-compiler first on the plugin classpath.
-                             See ios-device profile comment above for rationale. -->
-                        <dependencies>
-                            <dependency>
-                                <groupId>com.mobidevelop.robovm</groupId>
-                                <artifactId>robovm-dist-compiler</artifactId>
-                                <version>2.3.23-patched</version>
-                            </dependency>
-                        </dependencies>
                         <executions>
                             <execution>
                                 <id>ios-simulator-build</id>
@@ -404,6 +267,14 @@
                             <configFile>robovm.xml</configFile>
                             <arch>${ios.simulator.arch}</arch>
                         </configuration>
+                        <!-- Patched dist-compiler (same as ios-device profile above). -->
+                        <dependencies>
+                            <dependency>
+                                <groupId>com.robovmx</groupId>
+                                <artifactId>robovm-dist-compiler</artifactId>
+                                <version>10.2.2.4-patched</version>
+                            </dependency>
+                        </dependencies>
                     </plugin>
                 </plugins>
             </build>

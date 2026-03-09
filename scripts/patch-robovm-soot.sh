@@ -1,31 +1,44 @@
 #!/usr/bin/env bash
 # patch-robovm-soot.sh
 #
-# Patches the soot bytecode analyser bundled inside robovm-dist-compiler, fixing
-# four bugs that crash AOT compilation of Java Record classes, then installs the
-# patched jar into forge-gui-ios/local-repo/ as version 2.3.23-patched.
+# Patches the Soot bytecode analyser bundled inside com.robovmx:robovm-dist-compiler,
+# fixing four bugs that crash AOT compilation of Java Record classes, then installs
+# the patched jar into forge-gui-ios/local-repo/ as version 10.2.2.4-patched.
 #
-# Using a distinct version number (2.3.23-patched instead of 2.3.23) is essential:
-# Maven caches release artifacts permanently in ~/.m2 and will use a previously
-# downloaded robovm-dist-compiler:2.3.23 from Central rather than re-checking any
-# file:// repo.  The -patched version is not on Maven Central so Maven always
-# resolves it from forge-local, regardless of what is already in ~/.m2.
+# Prerequisites:
+#   bash scripts/install-robovmx.sh   (must complete its full compiler build first,
+#                                       producing robovm-dist-compiler in ~/.m2)
+#
+# Using a distinct version number (10.2.2.4-patched instead of 10.2.2.4-SNAPSHOT)
+# is essential: Maven caches release artifacts permanently in ~/.m2 and will use a
+# previously resolved jar rather than re-checking any file:// repo.  The -patched
+# version is unknown to Maven Central / Sonatype so Maven always resolves it from
+# forge-local, regardless of what is already in ~/.m2.
 #
 # forge-gui-ios/pom.xml instructs the robovm-maven-plugin to load
-# robovm-dist-compiler:2.3.23-patched via <plugin><dependencies>, which places it
-# first on the plugin classpath so its soot classes shadow the originals.
+# robovm-dist-compiler:10.2.2.4-patched via <plugin><dependencies>, which places it
+# first on the plugin classpath so its Soot classes shadow the originals.
+#
+# Soot sources: robovmx uses com.robovmx:robovm-soot:2.5.0.8-SNAPSHOT, which shares
+# the same code base as com.mobidevelop.robovm:robovm-soot:2.5.0-9 available on
+# Maven Central.  The 2.5.0-9 sources are used here; the four patched files are
+# identical in both versions.
 #
 # Usage:  bash scripts/patch-robovm-soot.sh
-# The local-repo/ directory is gitignored; run this once after cloning.
+# The local-repo/ directory is gitignored; run this once after install-robovmx.sh.
 
 set -euo pipefail
 
-DIST_GROUP_ID="com.mobidevelop.robovm"
+DIST_GROUP_ID="com.robovmx"
 DIST_ARTIFACT_ID="robovm-dist-compiler"
-DIST_VERSION_ORIG="2.3.23"
-DIST_VERSION_PATCHED="2.3.23-patched"   # distinct version → never cached from Central
-DIST_GROUP_PATH="com/mobidevelop/robovm"
+# Allow the caller (install-robovmx.sh) to pass the exact version via ROBOVMX_VERSION.
+DIST_VERSION_ORIG="${ROBOVMX_VERSION:-10.2.2.4-SNAPSHOT}"
+DIST_VERSION_PATCHED="${DIST_VERSION_ORIG%-SNAPSHOT}-patched"   # e.g. 10.2.2.4-patched
+DIST_GROUP_PATH="com/robovmx"
 
+# Soot sources: use the mobidevelop 2.5.0-9 release from Maven Central
+# (same code base as robovmx's com.robovmx:robovm-soot:2.5.0.8-SNAPSHOT)
+SOOT_SOURCES_GROUP_PATH="com/mobidevelop/robovm"
 SOOT_ARTIFACT_ID="robovm-soot"
 SOOT_VERSION="2.5.0-9"
 
@@ -43,14 +56,24 @@ if [ -f "$MARKER" ]; then
     exit 0
 fi
 
+# The dist-compiler is installed by install-robovmx.sh into ~/.m2 when the full
+# robovmx compiler build succeeds (requires LLVM + robovm-soot on the build machine).
+DIST_JAR="$HOME/.m2/repository/${DIST_GROUP_PATH}/${DIST_ARTIFACT_ID}/${DIST_VERSION_ORIG}/${DIST_ARTIFACT_ID}-${DIST_VERSION_ORIG}.jar"
+if [ ! -f "$DIST_JAR" ]; then
+    echo "[patch-robovm-soot] ERROR: dist-compiler not found at:"
+    echo "  $DIST_JAR"
+    echo "[patch-robovm-soot] Run 'bash scripts/install-robovmx.sh' first to build the"
+    echo "[patch-robovm-soot] full robovmx compiler (requires LLVM)."
+    exit 1
+fi
+
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
 
-DIST_JAR_URL="${MAVEN_CENTRAL}/${DIST_GROUP_PATH}/${DIST_ARTIFACT_ID}/${DIST_VERSION_ORIG}/${DIST_ARTIFACT_ID}-${DIST_VERSION_ORIG}.jar"
-SOOT_SOURCES_URL="${MAVEN_CENTRAL}/${DIST_GROUP_PATH}/${SOOT_ARTIFACT_ID}/${SOOT_VERSION}/${SOOT_ARTIFACT_ID}-${SOOT_VERSION}-sources.jar"
+SOOT_SOURCES_URL="${MAVEN_CENTRAL}/${SOOT_SOURCES_GROUP_PATH}/${SOOT_ARTIFACT_ID}/${SOOT_VERSION}/${SOOT_ARTIFACT_ID}-${SOOT_VERSION}-sources.jar"
 
-echo "[patch-robovm-soot] Downloading ${DIST_ARTIFACT_ID}-${DIST_VERSION_ORIG} (shaded fat-jar) from Maven Central..."
-curl --fail --silent --show-error --location "$DIST_JAR_URL" -o "$WORK_DIR/robovm-dist-compiler.jar"
+echo "[patch-robovm-soot] Using ${DIST_ARTIFACT_ID}-${DIST_VERSION_ORIG} from ~/.m2 ..."
+cp "$DIST_JAR" "$WORK_DIR/robovm-dist-compiler.jar"
 
 echo "[patch-robovm-soot] Downloading ${SOOT_ARTIFACT_ID}-${SOOT_VERSION} sources from Maven Central..."
 curl --fail --silent --show-error --location "$SOOT_SOURCES_URL" -o "$WORK_DIR/robovm-soot-sources.jar"

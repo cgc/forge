@@ -10,11 +10,16 @@ import java.util.Date;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jupnp.UpnpServiceConfiguration;
 import org.robovm.apple.coregraphics.CGRect;
+import org.robovm.apple.dispatch.DispatchQueue;
 import org.robovm.apple.foundation.Foundation;
 import org.robovm.apple.foundation.NSAutoreleasePool;
 import org.robovm.apple.foundation.NSBundle;
 import org.robovm.apple.foundation.NSException;
 import org.robovm.apple.foundation.NSString;
+import org.robovm.apple.foundation.NSThread;
+import org.robovm.apple.glkit.GLKViewDrawableColorFormat;
+import org.robovm.apple.glkit.GLKViewDrawableDepthFormat;
+import org.robovm.apple.glkit.GLKViewDrawableMultisample;
 import org.robovm.apple.uikit.UIApplication;
 import org.robovm.apple.uikit.UIApplicationLaunchOptions;
 import org.robovm.apple.uikit.UIPasteboard;
@@ -26,17 +31,81 @@ import com.badlogic.gdx.backends.iosrobovm.DefaultIOSInput;
 import com.badlogic.gdx.backends.iosrobovm.IOSApplication;
 import com.badlogic.gdx.backends.iosrobovm.IOSApplicationConfiguration;
 import com.badlogic.gdx.backends.iosrobovm.IOSFiles;
+import com.badlogic.gdx.backends.iosrobovm.IOSGraphics;
 import com.badlogic.gdx.backends.iosrobovm.IOSInput;
 import com.badlogic.gdx.backends.iosrobovm.IOSScreenBounds;
-import org.robovm.apple.glkit.GLKViewDrawableColorFormat;
-import org.robovm.apple.glkit.GLKViewDrawableDepthFormat;
-import org.robovm.apple.glkit.GLKViewDrawableMultisample;
 
 import forge.Forge;
 import forge.gui.GuiBase;
 import forge.interfaces.IDeviceAdapter;
 
 public class Main extends IOSApplication.Delegate {
+
+    /**
+     * IOSGraphics subclass that makes {@code requestRendering()} safe to call from any
+     * thread by dispatching the UIKit call to the main GCD queue.
+     *
+     * <p>In robovmx (experiment/2-libcore-10) ObjC bridge calls use direct
+     * function-pointer (IMP) dispatch instead of {@code objc_msgSend}.  As a result
+     * robovmx no longer silently marshals UIKit calls to the main thread the way
+     * MobiVM 2.3.23 did.  {@link IOSGraphics#requestRendering()} calls
+     * {@code viewController.setPaused(false)} (a {@code GLKViewController} UIKit
+     * method) when {@code isContinuous == false}.  If that call is made from a
+     * background thread:
+     * <ul>
+     *   <li><b>iOS simulator</b> – resolves to a null ObjC trampoline → {@code pc=0x0}
+     *       crash (Thread N Crashed: 0 ??? 0x0).</li>
+     *   <li><b>Physical device</b> – UIKit silently ignores the call; the GL render loop
+     *       stays paused, so any subsequent {@code WaitRunnable.invokeAndWait()} call
+     *       deadlocks permanently (app frozen).</li>
+     * </ul>
+     *
+     * <p>This subclass intercepts {@code requestRendering()} and, when called from a
+     * non-main thread, posts the actual work to the main GCD queue so that
+     * {@code viewController.setPaused()} is always called from the correct thread.
+     */
+    private static final class SafeIOSGraphics extends IOSGraphics {
+        /**
+         * @param app      the owning {@link IOSApplication}
+         * @param config   application configuration (passed through to the base class)
+         * @param input    iOS input handler (passed through to the base class)
+         * @param useGLES30 {@code true} to request an OpenGL ES 3.0 context
+         */
+        SafeIOSGraphics(IOSApplication app, IOSApplicationConfiguration config,
+                        IOSInput input, boolean useGLES30) {
+            super(app, config, input, useGLES30);
+        }
+
+        /**
+         * Thread-safe override of {@link IOSGraphics#requestRendering()}.
+         *
+         * <p>If called from the main thread the parent implementation is invoked
+         * directly (no overhead).  If called from any other thread the call is
+         * posted to the main GCD queue so that
+         * {@code viewController.setPaused(false)} — the UIKit call that actually
+         * unpauses the render loop — always executes on the main thread.
+         */
+        @Override
+        public void requestRendering() {
+            if (NSThread.getCurrentThread().isMainThread()) {
+                doRequestRendering();
+            } else {
+                // Dispatch to main thread: viewController.setPaused() is UIKit and
+                // must always run on the main thread in robovmx's direct-IMP mode.
+                DispatchQueue.getMainQueue().async(this::doRequestRendering);
+            }
+        }
+
+        /**
+         * Calls {@link IOSGraphics#requestRendering()} on the current thread.
+         * Separated from {@link #requestRendering()} so it can be used as a
+         * method-reference in the GCD dispatch block (Java lambdas cannot capture
+         * {@code super} from an enclosing class).
+         */
+        private void doRequestRendering() {
+            super.requestRendering();
+        }
+    }
 
     // Thin NSLog wrapper usable at any point — does not require Gdx.app to be set.
     static void nslog(String msg) {
@@ -147,11 +216,43 @@ public class Main extends IOSApplication.Delegate {
         // internal formats.  libGDX automatically falls back to ES 2.0 when ES 3.0
         // is not available.
         config.useGL30 = true;
-        // Audio is enabled; OpenAL, AudioToolbox, and AVFoundation are all listed as
-        // frameworks in robovm.xml.  AudioClip and AudioMusic null-check the result
-        // of Gdx.audio.newSound/newMusic, so a missing sound file or transient OpenAL
-        // init failure is handled gracefully without crashing the app.
-        config.useAudio = true;
+        // Audio intentionally disabled while startup is being stabilised.
+        //
+        // Background — robovmx and direct function-pointer dispatch:
+        // robovmx 10.x compiles ObjC bridge calls to direct function-pointer (IMP) calls
+        // rather than going through objc_msgSend's thread-agnostic dispatch table.  This is
+        // faster, but it means robovmx no longer silently marshals UIKit calls to the main
+        // thread the way MobiVM 2.3.23 did.  Any ObjC UIKit method called from a background
+        // thread now either crashes (simulator: null trampoline → pc=0x0) or silently fails
+        // (device: UIKit checks the thread internally and aborts the operation).
+        //
+        // Scope assessment — what robovmx's direct dispatch impacts in Forge:
+        //   • The only Forge bg-thread UIKit call path is:
+        //       bg thread → Gdx.app.postRunnable() → IOSApplication.postRunnable()
+        //           → IOSGraphics.requestRendering()
+        //           → (when isContinuous==false) viewController.setPaused(false)  ← UIKit
+        //     This is the crash/hang that was new to this branch.
+        //   • All other ObjC calls in Forge happen on the main thread:
+        //       Foundation.log/NSLog, NSBundle, UIScreen, UIApplication, UIPasteboard,
+        //       IOSFiles static init, computeBounds(), lifecycle callbacks.
+        //   • Foundation.log() (NSLog) is thread-safe per Apple documentation. ✓
+        //   • setupAccelerometer() and setupCompass() are overridden to no-ops below. ✓
+        //
+        // General fix: SafeIOSGraphics (see top of this file) overrides
+        // requestRendering() to dispatch to the main GCD queue when called from a
+        // background thread.  This makes ALL requestRendering() calls safe regardless
+        // of the isContinuous state.
+        //
+        // Defence-in-depth fix: Forge.create() calls startContinuousRendering() before
+        // the background DB-load thread starts, keeping isContinuous=true so that
+        // requestRendering() never reaches the viewController.setPaused() path at all
+        // during loading.  During normal gameplay the continuous-rendering count is
+        // always ≥ 1 (screens call startContinuousRendering in onActivate).
+        //
+        // Audio re-enable: ObjectAL's audio-init thread calls postRunnable → requestRendering
+        // to sync with the GL loop.  SafeIOSGraphics handles this safely now.  Re-enable
+        // audio once the app is confirmed to launch stably on a physical device.
+        config.useAudio = false;
         boolean isLandscape = false;
         nslog("createApplication: calling Forge.getApp()");
         final ApplicationListener app = Forge.getApp(null, new IOSClipboard(), new IOSAdapter(assetsDir), assetsDir, false, !isLandscape, 0, false, 0);
@@ -209,6 +310,14 @@ public class Main extends IOSApplication.Delegate {
                     @Override protected void setupAccelerometer() {}
                     @Override protected void setupCompass() {}
                 };
+            }
+
+            @Override
+            protected IOSGraphics createGraphics() {
+                // Use SafeIOSGraphics to ensure requestRendering() dispatches
+                // viewController.setPaused() to the main thread when called from a
+                // background thread (robovmx direct-IMP requirement).
+                return new SafeIOSGraphics(this, config, (IOSInput) getInput(), config.useGL30);
             }
         };
         nslog("createApplication: IOSApplication created, returning");
