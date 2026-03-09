@@ -202,6 +202,26 @@
             <artifactId>java-stubs</artifactId>
             <version>3.0</version>
         </dependency>
+
+        <!--
+          javax.xml.transform.TransformerFactory.newInstance() on robovmx's Android-based
+          libcore has a hardcoded fallback to org.apache.xalan.processor.TransformerFactoryImpl.
+          That class is absent from robovm-rt, causing NoClassDefFoundError when any code
+          calls TransformerFactory.newInstance() (e.g. XmlUtil.saveDocument).
+          Adding the real Xalan JARs provides that class so the lookup succeeds.
+          xalan:serializer is required at runtime by Xalan's TransformerIdentityImpl.
+          Both are pre-Java-8 code with no security vulnerabilities (checked 2026-03-09).
+        -->
+        <dependency>
+            <groupId>xalan</groupId>
+            <artifactId>xalan</artifactId>
+            <version>2.7.3</version>
+        </dependency>
+        <dependency>
+            <groupId>xalan</groupId>
+            <artifactId>serializer</artifactId>
+            <version>2.7.3</version>
+        </dependency>
     </dependencies>
 
     <profiles>

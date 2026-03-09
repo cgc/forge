@@ -48,7 +48,7 @@
 #   CompletableFuture.completeOnTimeout    → Pattern 62  (Java 9; absent from robovm-rt CF)
 #   Collection.parallelStream()            → Pattern 63  (ForkJoinPool.commonPool() crash)
 #   Executors.newWorkStealingPool()        → Pattern 64  (ForkJoinPool crash)
-#   TransformerFactory.newInstance()       → FIXED via iOS-only stub (NoClassDefFoundError)
+#   TransformerFactory.newInstance()       → FIXED via xalan:xalan:2.7.3 Maven dep (NoClassDefFoundError)
 #
 # SECTION 3b covers the JAXP factory newInstance() NoClassDefFoundError category.
 #
@@ -257,7 +257,7 @@ show "ICU"  "Charset.defaultCharset() — uses ICU on Android/robovm-rt" \
 #
 # TransformerFactory.newInstance()
 #   Fallback: org.apache.xalan.processor.TransformerFactoryImpl  (Xalan 2.x)
-#   Status:   FIXED — forge-gui-ios provides that class as an identity-transform stub.
+#   Status:   FIXED — xalan:xalan:2.7.3 + xalan:serializer:2.7.3 added as compile deps in forge-gui-ios/pom.xml.
 #
 # DocumentBuilderFactory.newInstance()
 #   Fallback: org.apache.xerces.jaxp.DocumentBuilderFactoryImpl (Xerces)
@@ -279,7 +279,7 @@ cat <<'S3B'
  JAXP factory type.  If the fallback class is absent the first call to
  *.newInstance() throws NoClassDefFoundError (not NoSuchMethodError).
    TransformerFactory  → org.apache.xalan.processor.TransformerFactoryImpl
-       FIXED: iOS-only stub in forge-gui-ios/src/org/apache/xalan/processor/
+       FIXED: xalan:xalan:2.7.3 + xalan:serializer:2.7.3 in forge-gui-ios/pom.xml
    DocumentBuilderFactory → org.apache.xerces.jaxp.DocumentBuilderFactoryImpl
        Safe: Xerces is bundled in robovmx's robovm-rt.
    SAXParserFactory    → org.apache.xerces.jaxp.SAXParserFactoryImpl
@@ -287,7 +287,7 @@ cat <<'S3B'
 ────────────────────────────────────────────────────────────────────────────────
 S3B
 
-show "JAXP-FIXED" "TransformerFactory.newInstance() — FIXED via ios-only stub" \
+show "JAXP-FIXED" "TransformerFactory.newInstance() — FIXED via xalan:xalan:2.7.3 dependency" \
     '\bTransformerFactory\.newInstance\(\)'
 show "JAXP-SAFE"  "DocumentBuilderFactory.newInstance() — safe (Xerces bundled in robovmx)" \
     '\bDocumentBuilderFactory\.newInstance\(\)'

@@ -4,7 +4,7 @@
  Scope: forge-core, forge-game, forge-ai, forge-gui, forge-gui-mobile
  Note:  forge-gui-ios excluded (it is the adaptation / fix layer).
 ════════════════════════════════════════════════════════════════════════════════
-Generated: 2026-03-09 10:04 UTC
+Generated: 2026-03-09 10:48 UTC
 
 ────────────────────────────────────────────────────────────────────────────────
  SECTION 1  –  Call sites covered by StreamDesugar.java (safe on iOS)
@@ -299,14 +299,14 @@ Generated: 2026-03-09 10:04 UTC
  JAXP factory type.  If the fallback class is absent the first call to
  *.newInstance() throws NoClassDefFoundError (not NoSuchMethodError).
    TransformerFactory  → org.apache.xalan.processor.TransformerFactoryImpl
-       FIXED: iOS-only stub in forge-gui-ios/src/org/apache/xalan/processor/
+       FIXED: xalan:xalan:2.7.3 + xalan:serializer:2.7.3 in forge-gui-ios/pom.xml
    DocumentBuilderFactory → org.apache.xerces.jaxp.DocumentBuilderFactoryImpl
        Safe: Xerces is bundled in robovmx's robovm-rt.
    SAXParserFactory    → org.apache.xerces.jaxp.SAXParserFactoryImpl
        Safe: Xerces is bundled in robovmx's robovm-rt.
 ────────────────────────────────────────────────────────────────────────────────
 
-  [JAXP-FIXED] TransformerFactory.newInstance() — FIXED via ios-only stub
+  [JAXP-FIXED] TransformerFactory.newInstance() — FIXED via xalan:xalan:2.7.3 dependency
     forge-gui/src/main/java/forge/util/XmlUtil.java:38:            final Transformer t = TransformerFactory.newInstance().newTransformer();
     forge-gui/src/main/java/forge/util/XmlUtil.java:50:        Transformer t = TransformerFactory.newInstance().newTransformer();
 
