@@ -256,6 +256,12 @@ public class ApiScan {
             "()Ljava/util/stream/Stream;",
             8, Category.PATCHED,
             "List.parallelStream() — ForkJoinPool crash on iOS [StreamDesugar P63]");
+
+        // Executors.newWorkStealingPool() creates a ForkJoinPool → ForkJoinWorkerThread crash.
+        add("java/util/concurrent/Executors", "newWorkStealingPool",
+            "()Ljava/util/concurrent/ExecutorService;",
+            8, Category.PATCHED,
+            "Executors.newWorkStealingPool() — ForkJoinPool crash on iOS [StreamDesugar P64]");
     }
 
     private static void add(String owner, String name, String desc,

@@ -111,6 +111,13 @@ import java.nio.file.attribute.BasicFileAttributes;
  *       Covers any {@code INVOKEINTERFACE} call site regardless of the concrete owner
  *       ({@code List}, {@code Set}, {@code Collection}, etc.).
  *   </li>
+ *   <li>{@code Executors.newWorkStealingPool()} →
+ *       {@code StreamUtil.executorsNewWorkStealingPool()} (Pattern 64)<br>
+ *       Same root cause as Pattern 63: the standard implementation creates a
+ *       {@code ForkJoinPool} backed by {@code ForkJoinWorkerThread}s.
+ *       The replacement returns a plain {@code ThreadPoolExecutor} with a
+ *       daemon thread factory, sized to {@code availableProcessors}.
+ *   </li>
  * </ol>
  *
  * <p>The transformation is idempotent: class files whose call sites already
@@ -318,6 +325,23 @@ public class StreamDesugar {
                         && "()Ljava/util/stream/Stream;".equals(descriptor)) {
                     super.visitMethodInsn(Opcodes.INVOKEINTERFACE, owner, "stream",
                             "()Ljava/util/stream/Stream;", true);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 64: Executors.newWorkStealingPool() — creates a ForkJoinPool which
+                // uses ForkJoinWorkerThread internally.  ForkJoinWorkerThread.<clinit> reflects
+                // on Thread.threadLocals which is absent from robovmx's robovm-rt, crashing
+                // with NoSuchFieldException on the first task submission.
+                // Replace with StreamUtil.executorsNewWorkStealingPool() which returns a plain
+                // ThreadPoolExecutor sized to availableProcessors.
+                if (opcode == Opcodes.INVOKESTATIC
+                        && "java/util/concurrent/Executors".equals(owner)
+                        && "newWorkStealingPool".equals(name)
+                        && "()Ljava/util/concurrent/ExecutorService;".equals(descriptor)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "executorsNewWorkStealingPool",
+                            "()Ljava/util/concurrent/ExecutorService;", false);
                     modified = true;
                     return;
                 }

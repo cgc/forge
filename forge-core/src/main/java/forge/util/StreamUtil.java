@@ -233,6 +233,37 @@ public class StreamUtil {
         return cf;
     }
 
+    // ── iOS Executors.newWorkStealingPool() desugaring ─────────────────────────
+    // Pattern 64: Executors.newWorkStealingPool() creates a ForkJoinPool that uses
+    // ForkJoinWorkerThread internally.  ForkJoinWorkerThread.<clinit> reflects on
+    // Thread.threadLocals which does not exist in robovmx's robovm-rt, crashing
+    // with NoSuchFieldException on the first task submission.
+    // Replacement: a ThreadPoolExecutor with a daemon thread factory — same API
+    // contract (ExecutorService), no ForkJoinPool, no Thread reflection.
+
+    private static final java.util.concurrent.atomic.AtomicInteger WORK_STEAL_CTR =
+            new java.util.concurrent.atomic.AtomicInteger();
+
+    /**
+     * Pattern 64: replacement for {@code Executors.newWorkStealingPool()}.
+     * Returns a {@link java.util.concurrent.ThreadPoolExecutor} sized to the
+     * number of available processors.  Unlike the standard implementation this
+     * does not use {@code ForkJoinPool}, avoiding the
+     * {@code ForkJoinWorkerThread.&lt;clinit&gt;} crash on robovmx's robovm-rt.
+     */
+    public static java.util.concurrent.ExecutorService executorsNewWorkStealingPool() {
+        int n = Runtime.getRuntime().availableProcessors();
+        return new java.util.concurrent.ThreadPoolExecutor(
+                n, n,
+                0L, java.util.concurrent.TimeUnit.MILLISECONDS,
+                new java.util.concurrent.LinkedBlockingQueue<>(),
+                r -> {
+                    Thread t = new Thread(r, "forge-ws-" + WORK_STEAL_CTR.getAndIncrement());
+                    t.setDaemon(true);
+                    return t;
+                });
+    }
+
     // ── iOS NIO desugaring ─────────────────────────────────────────────────────
     // Methods below are called by the bytecode-rewritten code produced by
     // scripts/StreamDesugar.java (patterns 50-57).  They replace java.nio.file.*

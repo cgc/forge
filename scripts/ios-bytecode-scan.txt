@@ -1,10 +1,16 @@
+[ios-bytecode-scan] Downloading ASM 9.7 from Maven Central ...
+[ios-bytecode-scan] ASM jar cached at /home/runner/work/forge/forge/forge-gui-ios/local-repo/org/ow2/asm/asm/9.7/asm-9.7.jar
+[ios-bytecode-scan] Compiling ApiScan.java ...
+[ios-bytecode-scan] Scanning 5 module(s): forge-core forge-game forge-ai forge-gui forge-gui-mobile
+[ios-bytecode-scan] Total class dirs: /home/runner/work/forge/forge/forge-core/target/classes /home/runner/work/forge/forge/forge-game/target/classes /home/runner/work/forge/forge/forge-ai/target/classes /home/runner/work/forge/forge/forge-gui/target/classes /home/runner/work/forge/forge/forge-gui-mobile/target/classes
+
 ════════════════════════════════════════════════════════════════════════════════
  iOS Bytecode API Scan — Java 9-11 call sites in compiled classes
  Scans for method calls that will NoSuchMethodError on iOS if not
  patched by StreamDesugar or natively provided by robovmx robovm-rt.
 ════════════════════════════════════════════════════════════════════════════════
 
- Summary: 0 RISK:HIGH call sites, 47 CLAIMED, 24 PATCHED
+ Summary: 0 RISK:HIGH call sites, 47 CLAIMED, 27 PATCHED
 
 ────────────────────────────────────────────────────────────────────────────────
  RISK: RISK:HIGH — NOT patched, NOT claimed; action required if reachable on iOS
@@ -94,6 +100,10 @@
     forge.gamemodes.quest.BoosterUtils.<clinit>
     forge.gamemodes.planarconquest.ConquestData.getAccessiblePlaneCount
     forge.adventure.scene.AdventureDeckEditor$AdventureEventEditorConfig.getBasicLandSets
+  [Java 8] Executors.newWorkStealingPool() — ForkJoinPool crash on iOS [StreamDesugar P64]
+           2 call site(s):
+    forge.util.ThreadUtil.refreshServicePool
+    forge.util.ThreadUtil.<clinit>
   [Java 8] CompletableFuture.supplyAsync(Supplier) — ForkJoinPool crash on iOS [StreamDesugar P61]
            6 call site(s):
     forge.StaticData.audit
@@ -105,6 +115,9 @@
   [Java 9] CompletableFuture.completeOnTimeout(T,long,TimeUnit) — Java 9 [StreamDesugar P62]
            1 call site(s):
     forge.ai.AiAttackController.declareAttackers
+  [Java 8] List.parallelStream() — ForkJoinPool crash on iOS [StreamDesugar P63]
+           1 call site(s):
+    forge.deck.FDeckChooser.lambda$new$6
 
 ════════════════════════════════════════════════════════════════════════════════
  No RISK:HIGH call sites found — all Java 9-11 APIs are patched or claimed.
