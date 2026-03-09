@@ -42,7 +42,8 @@ import forge.interfaces.IDeviceAdapter;
 public class Main extends IOSApplication.Delegate {
 
     /**
-     * Direct class-literal reference to {@code TransformerFactoryImpl}.
+     * Class-literal reference to {@code TransformerFactoryImpl} — belt-and-suspenders
+     * companion to {@link #preWarmXalan()}.
      *
      * <p>robovmx's libcore {@link javax.xml.transform.TransformerFactory#newInstance()}
      * does a {@code Class.forName("org.apache.xalan.processor.TransformerFactoryImpl")}
@@ -51,16 +52,47 @@ public class Main extends IOSApplication.Delegate {
      * for classes in third-party dependency JARs (RoboVM/Soot may silently skip classes
      * from a JAR when it encounters any compile issue in the same JAR).
      *
-     * <p>A direct class-literal in compiled bytecode is an unconditional static
-     * dependency that RoboVM's AOT compiler <em>must</em> follow — it cannot be
-     * silently dropped the way a force-link hint can.  Placing the reference here (in
-     * {@code Main.class}, which is the app's entry point) guarantees that
-     * {@code TransformerFactoryImpl} is always compiled into the binary and therefore
-     * findable by {@code Class.forName()} at runtime.
+     * <p>An {@code LDC <class>} bytecode instruction registers the class in the AOT
+     * binary's class table so that {@code Class.forName()} can find it.  However,
+     * it does <em>not</em> make any of the class's <em>methods</em> reachable in
+     * Soot's call-graph analysis, so the constructor's native code is never compiled.
+     * When {@code TransformerFactory.newInstance()} subsequently calls
+     * {@code clazz.newInstance()} via reflection the constructor is missing and
+     * RoboVM throws {@code NoClassDefFoundError}.
+     *
+     * <p>The real fix is {@link #preWarmXalan()}, which contains a direct
+     * {@code new TransformerFactoryImpl()} call that forces Soot to AOT-compile the
+     * constructor (and all methods it transitively calls).  This literal is kept
+     * alongside it as a defence-in-depth measure.
      */
     @SuppressWarnings("unused")
     private static final Class<?> XALAN_TF_CLASS =
             org.apache.xalan.processor.TransformerFactoryImpl.class;
+
+    /**
+     * Pre-warms Xalan's {@code TransformerFactoryImpl} so that Soot's call-graph
+     * analysis includes its constructor in the AOT binary.
+     *
+     * <p>Called once at the start of {@link #createApplication()} before any Forge
+     * code runs.  A direct {@code new TransformerFactoryImpl()} emits
+     * {@code INVOKESPECIAL <init>} bytecode, which Soot follows transitively —
+     * compiling the constructor and every method it calls into native code.  Without
+     * this, only the class-table entry exists (from the {@code LDC <class>} literal
+     * above) and reflection-based instantiation in
+     * {@code TransformerFactory.newInstance()} fails with
+     * {@code NoClassDefFoundError} even though the class is registered.
+     *
+     * <p>Any exception is swallowed; if Xalan is truly broken on this device we
+     * prefer to discover the failure at the actual XML call site rather than
+     * aborting the launch sequence.
+     */
+    private void preWarmXalan() {
+        try {
+            new org.apache.xalan.processor.TransformerFactoryImpl();
+        } catch (Throwable t) {
+            nslog("preWarmXalan: TransformerFactoryImpl init failed: " + t);
+        }
+    }
 
     /**
      * IOSGraphics subclass that makes {@code requestRendering()} safe to call from any
@@ -169,6 +201,15 @@ public class Main extends IOSApplication.Delegate {
     @Override
     protected IOSApplication createApplication() {
         nslog("createApplication(): building IOSApplication");
+
+        // Pre-warm Xalan so that Soot AOT-compiles TransformerFactoryImpl's
+        // constructor.  A class literal alone (XALAN_TF_CLASS above) only adds the
+        // class to the binary's class table; it does not make the constructor
+        // reachable in the call graph.  Without this call, every invocation of
+        // TransformerFactory.newInstance() → clazz.newInstance() crashes with
+        // NoClassDefFoundError because the constructor's native code was never
+        // compiled.
+        preWarmXalan();
 
         // On iOS 8+, the app bundle (containing all resources) lives in a separate
         // read-only "Bundle container", while $HOME points to the writable "Data

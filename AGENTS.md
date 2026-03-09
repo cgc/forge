@@ -48,7 +48,7 @@ guidelines in §4 if the approach or tooling changes.
 | Texture filtering crash on iOS | `Assets.java` enables anisotropic texture filtering unconditionally; the relevant OpenGL extension is unavailable on some iOS GPU configurations | Added `!GuiBase.isIOS()` guard around `textureParameter` setup in `Assets.java` |
 | Font disposal crash on iOS | `FSkinFont` attempted to dispose a font that was still in use | Added `!GuiBase.isIOS()` guard in `FSkinFont.java` dispose path |
 | `ClassCastException: SupplierUtil$$Lambda cannot be cast to java.io.Serializable` | JGraphT 1.5.2 uses serializable-lambda intersection casts (`INVOKEDYNAMIC` via `LambdaMetafactory.altMetafactory` + `CHECKCAST java/io/Serializable`); RoboVM AOT does not make lambda proxies implement `Serializable` | StreamDesugar **Pattern 65**: strip `CHECKCAST java/io/Serializable` immediately after `INVOKEDYNAMIC`; jgrapht-core JAR added to desugar-streams inputs in `pom.xml` |
-| `NoClassDefFoundError: org.apache.xalan.processor.TransformerFactoryImpl` | robovmx's Android-based libcore `TransformerFactory.newInstance()` hard-codes a `Class.forName("org.apache.xalan.processor.TransformerFactoryImpl")` fallback; Xalan is absent from robovm-rt; `forceLinkClasses` in `robovm.xml` was silently ignored by Soot for this third-party JAR | Added `xalan:xalan:2.7.3` + `xalan:serializer:2.7.3` Maven deps **and** a `static final XALAN_TF_CLASS = org.apache.xalan.processor.TransformerFactoryImpl.class` literal in `Main.java` — the class-literal creates an unconditional static dependency the AOT linker cannot drop |
+| `NoClassDefFoundError: org.apache.xalan.processor.TransformerFactoryImpl` | robovmx's Android-based libcore `TransformerFactory.newInstance()` hard-codes a `Class.forName("org.apache.xalan.processor.TransformerFactoryImpl")` fallback; Xalan is absent from robovm-rt; `forceLinkClasses` in `robovm.xml` was silently ignored by Soot for this third-party JAR. **Root cause**: `LDC <class>` (class literal) only registers the class in the AOT binary's class table — it does NOT emit an `INVOKESPECIAL` that makes the constructor reachable in Soot's call-graph, so the constructor's native code is never compiled. `clazz.newInstance()` in `TransformerFactory.newInstance()` then crashes because the constructor code is absent. | Added `xalan:xalan:2.7.3` + `xalan:serializer:2.7.3` Maven deps, `static final XALAN_TF_CLASS` literal (belt-and-suspenders for class-table registration), **and** `preWarmXalan()` called from `createApplication()` in `Main.java` — the `new TransformerFactoryImpl()` therein emits `INVOKESPECIAL <init>`, forcing Soot to AOT-compile the constructor and all its transitive callees |
 
 ### Current state
 
@@ -324,10 +324,18 @@ simulator is confirmed.  Do not add patterns speculatively.
      - **JAXP factory `*.newInstance()` can't find its fallback implementation** — Android's
        libcore `FactoryFinder` hard-codes `Class.forName("some.external.impl")`.  Fix:
        (a) add the Maven dep that provides the implementation class, AND
-       (b) add a `static final Class<?> FOO_CLASS = some.external.impl.class` literal
-           in `Main.java`.  A class-literal creates an unconditional static dependency
-           that the AOT linker **must** follow; `forceLinkClasses` in `robovm.xml` is
-           NOT sufficient — Soot may silently skip classes from third-party JARs.
+       (b) add **both** a class-literal `static final Class<?> FOO_CLASS = some.external.impl.class`
+           AND a direct-instantiation call `new some.external.impl()` from a reachable code path
+           (e.g. a `preWarmXxx()` instance method called from `createApplication()`).
+           The **class-literal** (`LDC <class>`) registers the class in the AOT binary's class
+           table so that `Class.forName()` can find it.  The **direct `new`** emits
+           `INVOKESPECIAL <init>`, making the constructor reachable in Soot's call-graph so that
+           its native code is actually compiled.  Without the constructor native code,
+           `clazz.newInstance()` (used by `TransformerFactory.newInstance()`) still crashes with
+           `NoClassDefFoundError` even though the class is registered.
+           A class-literal alone is NOT sufficient.
+           `forceLinkClasses` in `robovm.xml` is also NOT sufficient — Soot may silently skip
+           classes from third-party JARs.
        Run `scripts/ios-compat-scan.sh` (Section 3b) to find all JAXP factory calls.
    - `NoSuchMethodError` → missing method on an existing class → bytecode rewrite (§2a).
    - `ClassCastException` in `<clinit>` involving `Serializable` → serializable-lambda
