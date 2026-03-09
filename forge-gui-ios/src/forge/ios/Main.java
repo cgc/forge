@@ -19,7 +19,6 @@ import org.robovm.apple.foundation.NSString;
 import org.robovm.apple.foundation.NSThread;
 import org.robovm.apple.glkit.GLKViewDrawableColorFormat;
 import org.robovm.apple.glkit.GLKViewDrawableDepthFormat;
-import org.robovm.apple.glkit.GLKViewDrawableMultisample;
 import org.robovm.apple.uikit.UIApplication;
 import org.robovm.apple.uikit.UIApplicationLaunchOptions;
 import org.robovm.apple.uikit.UIPasteboard;
@@ -34,6 +33,7 @@ import com.badlogic.gdx.backends.iosrobovm.IOSFiles;
 import com.badlogic.gdx.backends.iosrobovm.IOSGraphics;
 import com.badlogic.gdx.backends.iosrobovm.IOSInput;
 import com.badlogic.gdx.backends.iosrobovm.IOSScreenBounds;
+import com.badlogic.gdx.graphics.glutils.HdpiMode;
 
 import forge.Forge;
 import forge.gui.GuiBase;
@@ -316,16 +316,8 @@ public class Main extends IOSApplication.Delegate {
         // transparent.  Shattered Pixel Dungeon (another libGDX/iOS title) sets
         // this to None for the same reason.
         config.depthFormat = GLKViewDrawableDepthFormat.None;
-        // Enable 4× MSAA to reduce edge aliasing on UI geometry and card art.
-        // On Metal-backed OpenGL ES the cost is modest; Shattered Pixel Dungeon
-        // uses the same setting for the same reason.
-        config.multisample = GLKViewDrawableMultisample._4X;
-        // Enable OpenGL ES 3.0 when the device supports it (all Apple A7+ devices,
-        // i.e. every iOS 12-capable device).  ES 3.0 is more efficient than ES 2.0
-        // for the Metal translation layer and allows the driver to use better
-        // internal formats.  libGDX automatically falls back to ES 2.0 when ES 3.0
-        // is not available.
-        config.useGL30 = true;
+        // Copied from Shattered Pixel Dungeon
+        config.hdpiMode = HdpiMode.Pixels;
         // Audio intentionally disabled while startup is being stabilised.
         //
         // Background — robovmx and direct function-pointer dispatch:
