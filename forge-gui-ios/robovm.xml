@@ -49,6 +49,7 @@
       compiled and registered automatically without force-linking.
     -->
     <pattern>com.badlogic.gdx.scenes.scene2d.ui.*</pattern>
+    <pattern>com.badlogic.gdx.physics.box2d.*</pattern>
     <pattern>com.android.okhttp.HttpsHandler</pattern>
     <!--
       The Android/MobiVM SSL security providers are referenced exclusively via
