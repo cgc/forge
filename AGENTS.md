@@ -29,6 +29,7 @@ guidelines in §4 if the approach or tooling changes.
 | **MobiVM → robovmx** — switched from MobiVM 2.3.23 to the robovmx fork (`experiment/2-libcore-10`), which ships a robovm-rt with full Java 8 + selected Java 11 APIs baked in | `scripts/install-robovmx.sh`, `forge-gui-ios/pom.xml` | ✅ merged |
 | **Java Records in Soot** — 4 bugs in robovmx's bundled Soot caused AOT crashes on any class using Java 16 `record` (`invokedynamic` / `ObjectMethods.bootstrap`) | `scripts/patch-robovm-soot.sh` + `patches/robovm-soot/0001–0004.patch` | ✅ merged |
 | **xcframework linkage** — JNI symbols in static `.a` libs were dead-stripped by the Apple linker; switched to Maven-fetched xcframeworks (`gdx-platform:natives-ios`, `gdx-freetype-platform:natives-ios`) | `pom.xml` + `robovm.xml` | ✅ merged |
+| **Non-ASCII class names in JARs** — `desugar-streams.sh` used `unzip`/`zip`; macOS `unzip` mangles UTF-8 filenames (`ø` → `+?`), crashing when processing `jgrapht-core-1.5.2.jar` which contains `SørensenIndexLinkPrediction.class` | `scripts/desugar-streams.sh` | ✅ merged |
 
 ### Runtime fixes
 
