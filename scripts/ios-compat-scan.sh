@@ -48,6 +48,9 @@
 #   CompletableFuture.completeOnTimeout    → Pattern 62  (Java 9; absent from robovm-rt CF)
 #   Collection.parallelStream()            → Pattern 63  (ForkJoinPool.commonPool() crash)
 #   Executors.newWorkStealingPool()        → Pattern 64  (ForkJoinPool crash)
+#   TransformerFactory.newInstance()       → FIXED via iOS-only stub (NoClassDefFoundError)
+#
+# SECTION 3b covers the JAXP factory newInstance() NoClassDefFoundError category.
 #
 # Usage:  bash scripts/ios-compat-scan.sh [repo-root]
 # ════════════════════════════════════════════════════════════════════════════
@@ -246,6 +249,52 @@ show "ICU"  "NativeConverter direct references" \
     'NativeConverter'
 show "ICU"  "Charset.defaultCharset() — uses ICU on Android/robovm-rt" \
     '\bCharset\.defaultCharset\(\)'
+
+# ── Section 3b: JAXP factory newInstance() — NoClassDefFoundError patterns ────
+# robovmx inherits Android's libcore whose javax.xml.* FactoryFinder has hardcoded
+# fallbacks for each factory type.  If the fallback class is absent from the
+# runtime library a NoClassDefFoundError is thrown.
+#
+# TransformerFactory.newInstance()
+#   Fallback: org.apache.xalan.processor.TransformerFactoryImpl  (Xalan 2.x)
+#   Status:   FIXED — forge-gui-ios provides that class as an identity-transform stub.
+#
+# DocumentBuilderFactory.newInstance()
+#   Fallback: org.apache.xerces.jaxp.DocumentBuilderFactoryImpl (Xerces)
+#   Status:   Safe — robovmx bundles Xerces in robovm-rt.
+#
+# SAXParserFactory.newInstance()
+#   Fallback: org.apache.xerces.jaxp.SAXParserFactoryImpl (Xerces)
+#   Status:   Safe — robovmx bundles Xerces in robovm-rt.
+#
+# Any new JAXP factory call found below that is NOT DocumentBuilderFactory or
+# SAXParserFactory should be investigated: verify that robovmx provides the
+# fallback class, or add an iOS-only stub under forge-gui-ios/src/.
+
+cat <<'S3B'
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 3b  –  JAXP factory newInstance() — NoClassDefFoundError risk
+ robovmx's libcore FactoryFinder has hardcoded fallback class names for each
+ JAXP factory type.  If the fallback class is absent the first call to
+ *.newInstance() throws NoClassDefFoundError (not NoSuchMethodError).
+   TransformerFactory  → org.apache.xalan.processor.TransformerFactoryImpl
+       FIXED: iOS-only stub in forge-gui-ios/src/org/apache/xalan/processor/
+   DocumentBuilderFactory → org.apache.xerces.jaxp.DocumentBuilderFactoryImpl
+       Safe: Xerces is bundled in robovmx's robovm-rt.
+   SAXParserFactory    → org.apache.xerces.jaxp.SAXParserFactoryImpl
+       Safe: Xerces is bundled in robovmx's robovm-rt.
+────────────────────────────────────────────────────────────────────────────────
+S3B
+
+show "JAXP-FIXED" "TransformerFactory.newInstance() — FIXED via ios-only stub" \
+    '\bTransformerFactory\.newInstance\(\)'
+show "JAXP-SAFE"  "DocumentBuilderFactory.newInstance() — safe (Xerces bundled in robovmx)" \
+    '\bDocumentBuilderFactory\.newInstance\(\)'
+show "JAXP-SAFE"  "SAXParserFactory.newInstance() — safe (Xerces bundled in robovmx)" \
+    '\bSAXParserFactory\.newInstance\(\)'
+show "JAXP-CHK"   "Other JAXP factory newInstance() calls — verify fallback class is in robovmx" \
+    '\b[A-Z][a-zA-Z]*Factory\.newInstance\(\)' 
 
 # ── Section 4: summary count of all java.nio.file.* imports ──────────────────
 

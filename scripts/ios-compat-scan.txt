@@ -4,7 +4,7 @@
  Scope: forge-core, forge-game, forge-ai, forge-gui, forge-gui-mobile
  Note:  forge-gui-ios excluded (it is the adaptation / fix layer).
 ════════════════════════════════════════════════════════════════════════════════
-Generated: 2026-03-09 03:14 UTC
+Generated: 2026-03-09 10:04 UTC
 
 ────────────────────────────────────────────────────────────────────────────────
  SECTION 1  –  Call sites covered by StreamDesugar.java (safe on iOS)
@@ -292,6 +292,58 @@ Generated: 2026-03-09 03:14 UTC
 
   [ICU] Charset.defaultCharset() — uses ICU on Android/robovm-rt
     (none found)
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 3b  –  JAXP factory newInstance() — NoClassDefFoundError risk
+ robovmx's libcore FactoryFinder has hardcoded fallback class names for each
+ JAXP factory type.  If the fallback class is absent the first call to
+ *.newInstance() throws NoClassDefFoundError (not NoSuchMethodError).
+   TransformerFactory  → org.apache.xalan.processor.TransformerFactoryImpl
+       FIXED: iOS-only stub in forge-gui-ios/src/org/apache/xalan/processor/
+   DocumentBuilderFactory → org.apache.xerces.jaxp.DocumentBuilderFactoryImpl
+       Safe: Xerces is bundled in robovmx's robovm-rt.
+   SAXParserFactory    → org.apache.xerces.jaxp.SAXParserFactoryImpl
+       Safe: Xerces is bundled in robovmx's robovm-rt.
+────────────────────────────────────────────────────────────────────────────────
+
+  [JAXP-FIXED] TransformerFactory.newInstance() — FIXED via ios-only stub
+    forge-gui/src/main/java/forge/util/XmlUtil.java:38:            final Transformer t = TransformerFactory.newInstance().newTransformer();
+    forge-gui/src/main/java/forge/util/XmlUtil.java:50:        Transformer t = TransformerFactory.newInstance().newTransformer();
+
+  [JAXP-SAFE] DocumentBuilderFactory.newInstance() — safe (Xerces bundled in robovmx)
+    forge-gui/src/main/java/forge/localinstance/achievements/AchievementCollection.java:148:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/localinstance/achievements/AchievementCollection.java:169:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/deck/io/DeckPreferences.java:128:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/deck/io/DeckPreferences.java:161:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/gui/card/CardPreferences.java:37:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/gui/card/CardPreferences.java:58:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/gamemodes/quest/io/QuestDataIO.java:190:        final DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/gamemodes/quest/bazaar/QuestBazaarManager.java:71:            builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/gamemodes/quest/bazaar/QuestPetStorage.java:47:            builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/itemmanager/ItemManagerConfig.java:267:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/itemmanager/ItemManagerConfig.java:342:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/util/XmlReader.java:22:        DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/util/XmlWriter.java:23:        DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+
+  [JAXP-SAFE] SAXParserFactory.newInstance() — safe (Xerces bundled in robovmx)
+    (none found)
+
+  [JAXP-CHK] Other JAXP factory newInstance() calls — verify fallback class is in robovmx
+    forge-gui/src/main/java/forge/localinstance/achievements/AchievementCollection.java:148:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/localinstance/achievements/AchievementCollection.java:169:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/deck/io/DeckPreferences.java:128:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/deck/io/DeckPreferences.java:161:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/gui/card/CardPreferences.java:37:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/gui/card/CardPreferences.java:58:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/gamemodes/quest/io/QuestDataIO.java:190:        final DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/gamemodes/quest/bazaar/QuestBazaarManager.java:71:            builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/gamemodes/quest/bazaar/QuestPetStorage.java:47:            builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/itemmanager/ItemManagerConfig.java:267:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/itemmanager/ItemManagerConfig.java:342:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/util/XmlReader.java:22:        DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/util/XmlWriter.java:23:        DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/util/XmlUtil.java:38:            final Transformer t = TransformerFactory.newInstance().newTransformer();
+    forge-gui/src/main/java/forge/util/XmlUtil.java:50:        Transformer t = TransformerFactory.newInstance().newTransformer();
 
 ────────────────────────────────────────────────────────────────────────────────
  SECTION 4  –  All java.nio.file.* imports (inventory)
