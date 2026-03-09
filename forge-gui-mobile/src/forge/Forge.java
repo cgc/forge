@@ -292,12 +292,6 @@ public class Forge implements ApplicationListener {
                 ImageKeys.setIsLibGDXPort(GuiBase.getInterface().isLibgdxPort());
                 FModel.initialize(getSplashScreen().getProgressBar(), null);
 
-                // Log startup diagnostics here (background thread) rather than on
-                // the main GL thread in afterDbLoaded(): the many println / file-stat
-                // calls were blocking the GL thread for ~290 ms, triggering iOS
-                // always-on hang reports.
-                logStartupDiagnostics();
-
                 getSplashScreen().getProgressBar().setDescription(getLocalizer().getMessage("lblLoadingFonts"));
                 FSkinFont.preloadAll(locale);
 
