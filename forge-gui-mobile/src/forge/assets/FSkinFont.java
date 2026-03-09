@@ -409,7 +409,7 @@ public class FSkinFont {
         FileHandle fontFile = Gdx.files.absolute(ForgeConstants.FONTS_DIR + fontName + ".fnt");
         final boolean[] found = {false};
         if (fontFile != null && fontFile.exists()) {
-            FThreads.invokeInEdtNowOrLater(() -> { //font must be initialized on UI thread
+            FThreads.invokeInEdtAndWait(() -> { //font must be initialized on UI thread; wait so found[0] is set before we decide whether to regenerate
                 try {
                     font = Forge.getAssets().manager().get(fontFile.path(), BitmapFont.class, false);
                     if (font == null && fontFile.toString().endsWith(".fnt")) {
@@ -422,13 +422,12 @@ public class FSkinFont {
                         found[0] = true;
                 } catch (Exception e) {
                     e.printStackTrace();
-                    found[0] = false;
                 }
             });
         }
         if (found[0])
             return;
-        //not found generate
+        //not found in cache — generate from TTF
         if (Forge.locale.equals("zh-CN") || Forge.locale.equals("ja-JP") && !Forge.forcedEnglishonCJKMissing) {
             String ttfName = Forge.CJK_Font;
             FileHandle ttfFile = Gdx.files.absolute(ForgeConstants.FONTS_DIR + ttfName + ".ttf");
@@ -478,6 +477,15 @@ public class FSkinFont {
         parameter.characters = getCharacterSet(Forge.locale);
         parameter.size = fontSize;
         parameter.packer = packer;
+        // On iOS Retina displays (2× / 3× scale) the default AutoMedium hinting
+        // aggressively snaps glyph stems to the pixel grid.  At high pixel density
+        // that snapping is unnecessary and introduces visible unevenness.  AutoSlight
+        // preserves stem-width hints while allowing fractional positioning, giving
+        // smoother curves at the cost of a tiny amount of crispness that Retina
+        // displays make imperceptible anyway.
+        if (GuiBase.isIOS()) {
+            parameter.hinting = FreeTypeFontGenerator.Hinting.AutoSlight;
+        }
         final FreeTypeFontGenerator.FreeTypeBitmapFontData fontData = generator.generateData(parameter);
         final Array<PixmapPacker.Page> pages = packer.getPages();
 

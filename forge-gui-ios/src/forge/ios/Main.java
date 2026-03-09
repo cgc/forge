@@ -10,11 +10,16 @@ import java.util.Date;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jupnp.UpnpServiceConfiguration;
 import org.robovm.apple.coregraphics.CGRect;
+import org.robovm.apple.dispatch.DispatchQueue;
 import org.robovm.apple.foundation.Foundation;
 import org.robovm.apple.foundation.NSAutoreleasePool;
 import org.robovm.apple.foundation.NSBundle;
 import org.robovm.apple.foundation.NSException;
 import org.robovm.apple.foundation.NSString;
+import org.robovm.apple.foundation.NSThread;
+import org.robovm.apple.glkit.GLKViewDrawableColorFormat;
+import org.robovm.apple.glkit.GLKViewDrawableDepthFormat;
+import org.robovm.apple.glkit.GLKViewDrawableMultisample;
 import org.robovm.apple.uikit.UIApplication;
 import org.robovm.apple.uikit.UIApplicationLaunchOptions;
 import org.robovm.apple.uikit.UIPasteboard;
@@ -29,9 +34,6 @@ import com.badlogic.gdx.backends.iosrobovm.IOSFiles;
 import com.badlogic.gdx.backends.iosrobovm.IOSGraphics;
 import com.badlogic.gdx.backends.iosrobovm.IOSInput;
 import com.badlogic.gdx.backends.iosrobovm.IOSScreenBounds;
-import org.robovm.apple.dispatch.DispatchQueue;
-import org.robovm.apple.foundation.NSThread;
-import org.robovm.apple.glkit.GLKViewDrawableDepthFormat;
 
 import forge.Forge;
 import forge.gui.GuiBase;
@@ -177,6 +179,26 @@ public class Main extends IOSApplication.Delegate {
         final IOSApplicationConfiguration config = new IOSApplicationConfiguration();
         config.useAccelerometer = false;
         config.useCompass = false;
+        // Explicitly request RGBA8888 as the drawable color format.
+        //
+        // On physical iOS devices the GLKit/Metal translation layer defaults to
+        // BGRAFormatPixel32 (BGRA byte order) for the color renderbuffer.  OpenGL
+        // textures uploaded as GL_RGBA are stored with the correct RGBA byte order
+        // in the GPU, but when they are blitted to the BGRA drawable surface the
+        // red and blue channels are swapped — making blue UI elements appear as
+        // orange/gold and vice-versa.  The iOS Simulator does not exhibit this bug
+        // because macOS uses the x86/ARM host byte order for the drawable surface.
+        //
+        // Setting colorFormat to RGBA8888 tells GLKit to allocate the renderbuffer
+        // as MTLPixelFormatRGBA8Unorm, matching the byte order of GL_RGBA texture
+        // uploads and eliminating the channel swap across the entire rendering
+        // pipeline without any per-texture or per-shader workarounds.
+        //
+        // This is the same configuration that Shattered Pixel Dungeon
+        // (another libGDX/MobiVM title) uses to solve the identical problem
+        // (their MGLDrawableColorFormat.RGBA8888 maps to the same underlying
+        // Metal pixel format via their MetalANGLE backend).
+        config.colorFormat = GLKViewDrawableColorFormat.RGBA8888;
         // Disable the depth buffer: Forge is a pure-2D app and never uses depth
         // testing, so allocating a 16-bit depth renderbuffer (the GLKit default)
         // wastes VRAM and — on some iOS/Metal driver combinations — can cause the
@@ -184,6 +206,16 @@ public class Main extends IOSApplication.Delegate {
         // transparent.  Shattered Pixel Dungeon (another libGDX/iOS title) sets
         // this to None for the same reason.
         config.depthFormat = GLKViewDrawableDepthFormat.None;
+        // Enable 4× MSAA to reduce edge aliasing on UI geometry and card art.
+        // On Metal-backed OpenGL ES the cost is modest; Shattered Pixel Dungeon
+        // uses the same setting for the same reason.
+        config.multisample = GLKViewDrawableMultisample._4X;
+        // Enable OpenGL ES 3.0 when the device supports it (all Apple A7+ devices,
+        // i.e. every iOS 12-capable device).  ES 3.0 is more efficient than ES 2.0
+        // for the Metal translation layer and allows the driver to use better
+        // internal formats.  libGDX automatically falls back to ES 2.0 when ES 3.0
+        // is not available.
+        config.useGL30 = true;
         // Audio intentionally disabled while startup is being stabilised.
         //
         // Background — robovmx and direct function-pointer dispatch:
