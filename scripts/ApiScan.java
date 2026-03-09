@@ -1,5 +1,6 @@
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.Handle;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
@@ -62,10 +63,19 @@ import java.util.jar.JarFile;
  * Java 11 additions: Predicate.not, String.isBlank/repeat/strip/lines,
  * Optional.isEmpty, Collection.toArray(IntFunction), Path.of, Files.readString/
  * writeString.
+ *
+ * Serializable-lambda detection: INVOKEDYNAMIC calls that use
+ * LambdaMetafactory.altMetafactory with FLAG_SERIALIZABLE.  RoboVM's AOT
+ * compiler does not generate Serializable lambda proxy classes, so the
+ * CHECKCAST java/io/Serializable that follows such calls always throws
+ * ClassCastException at class-init time.  Fixed by StreamDesugar Pattern 65.
  */
 public class ApiScan {
 
     enum Category { PATCHED, CLAIMED, RISK_HIGH }
+
+    /** Locations (className.methodName) of serializable-lambda INVOKEDYNAMIC instructions. */
+    static final List<String> SERIALIZABLE_LAMBDA_LOCATIONS = new ArrayList<>();
 
     static final class ApiEntry {
         final String owner;
@@ -381,6 +391,27 @@ public class ApiScan {
                                                 String descriptor, boolean isInterface) {
                         checkCall(owner, name, descriptor, currentClass + "." + mName);
                     }
+
+                    // Detect serializable-lambda INVOKEDYNAMIC (Pattern 65 target).
+                    // LambdaMetafactory.altMetafactory is used when FLAG_SERIALIZABLE (bit 0)
+                    // is set.  RoboVM does not produce Serializable lambda proxies, so the
+                    // subsequent CHECKCAST java/io/Serializable always fails at class-init time.
+                    @Override
+                    public void visitInvokeDynamicInsn(String name, String descriptor,
+                                                       Handle bootstrapMethodHandle,
+                                                       Object... bootstrapMethodArguments) {
+                        if ("java/lang/invoke/LambdaMetafactory".equals(
+                                bootstrapMethodHandle.getOwner())
+                                && "altMetafactory".equals(bootstrapMethodHandle.getName())
+                                && bootstrapMethodArguments.length >= 4
+                                && bootstrapMethodArguments[3] instanceof Integer) {
+                            int flags = (Integer) bootstrapMethodArguments[3];
+                            if ((flags & 1) != 0) { // FLAG_SERIALIZABLE = 1
+                                SERIALIZABLE_LAMBDA_LOCATIONS.add(
+                                        currentClass + "." + mName);
+                            }
+                        }
+                    }
                 };
             }
         }, ClassReader.SKIP_FRAMES);
@@ -420,12 +451,15 @@ public class ApiScan {
         System.out.println(" iOS Bytecode API Scan — Java 9-11 call sites in compiled classes");
         System.out.println(" Scans for method calls that will NoSuchMethodError on iOS if not");
         System.out.println(" patched by StreamDesugar or natively provided by robovmx robovm-rt.");
+        System.out.println(" Also scans for serializable-lambda INVOKEDYNAMIC (Pattern 65 target).");
         printDivider();
         System.out.println();
-        System.out.printf(" Summary: %d RISK:HIGH call sites, %d CLAIMED, %d PATCHED%n%n",
+        System.out.printf(" Summary: %d RISK:HIGH call sites, %d CLAIMED, %d PATCHED,"
+                        + " %d serializable-lambda site(s)%n%n",
                 riskCount,
                 byCategory.get(Category.CLAIMED).stream().mapToInt(hg -> hg.locations.size()).sum(),
-                byCategory.get(Category.PATCHED).stream().mapToInt(hg -> hg.locations.size()).sum());
+                byCategory.get(Category.PATCHED).stream().mapToInt(hg -> hg.locations.size()).sum(),
+                SERIALIZABLE_LAMBDA_LOCATIONS.size());
 
         printSection("RISK:HIGH — NOT patched, NOT claimed; action required if reachable on iOS",
                 byCategory.get(Category.RISK_HIGH), "RISK");
@@ -433,6 +467,7 @@ public class ApiScan {
                 byCategory.get(Category.CLAIMED), "CLAIMED");
         printSection("PATCHED  — rewritten at build time by StreamDesugar.java (safe)",
                 byCategory.get(Category.PATCHED), "PATCHED");
+        printSerializableLambdaSection();
 
         printDivider();
         if (riskCount > 0) {
@@ -443,6 +478,10 @@ public class ApiScan {
             System.out.println("   3. Re-run scripts/desugar-streams.sh");
         } else {
             System.out.println(" No RISK:HIGH call sites found — all Java 9-11 APIs are patched or claimed.");
+        }
+        if (!SERIALIZABLE_LAMBDA_LOCATIONS.isEmpty()) {
+            System.out.println(" SERIALIZABLE LAMBDAS: " + SERIALIZABLE_LAMBDA_LOCATIONS.size()
+                    + " site(s) found (see section above). Fixed by StreamDesugar Pattern 65.");
         }
         printDivider();
     }
@@ -460,6 +499,24 @@ public class ApiScan {
                 for (String loc : hg.locations) {
                     System.out.println("    " + loc.replace('/', '.'));
                 }
+            }
+        }
+        System.out.println();
+    }
+
+    private static void printSerializableLambdaSection() {
+        System.out.println("────────────────────────────────────────────────────────────────────────────────");
+        System.out.println(" SERIALIZABLE_LAMBDA: INVOKEDYNAMIC with altMetafactory+FLAG_SERIALIZABLE");
+        System.out.println("   RoboVM does not generate Serializable lambda proxies; the CHECKCAST");
+        System.out.println("   java/io/Serializable that follows always throws ClassCastException.");
+        System.out.println("   Fixed by StreamDesugar Pattern 65 (strip the CHECKCAST).");
+        System.out.println("────────────────────────────────────────────────────────────────────────────────");
+        if (SERIALIZABLE_LAMBDA_LOCATIONS.isEmpty()) {
+            System.out.println("  (none found in scanned classes)");
+        } else {
+            System.out.printf("  %d site(s):%n", SERIALIZABLE_LAMBDA_LOCATIONS.size());
+            for (String loc : SERIALIZABLE_LAMBDA_LOCATIONS) {
+                System.out.println("    " + loc.replace('/', '.'));
             }
         }
         System.out.println();

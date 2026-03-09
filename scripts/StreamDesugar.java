@@ -1,6 +1,7 @@
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Handle;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
@@ -118,6 +119,20 @@ import java.nio.file.attribute.BasicFileAttributes;
  *       The replacement returns a plain {@code ThreadPoolExecutor} with a
  *       daemon thread factory, sized to {@code availableProcessors}.
  *   </li>
+ *   <li>Strip {@code CHECKCAST java/io/Serializable} after {@code INVOKEDYNAMIC}
+ *       (Pattern 65 — serializable lambda intersection cast)<br>
+ *       Serializable lambdas are expressed in source as
+ *       {@code (FunctionalInterface & Serializable) x -> ...} and compile to an
+ *       {@code INVOKEDYNAMIC} using {@code LambdaMetafactory.altMetafactory} with
+ *       {@code FLAG_SERIALIZABLE}, immediately followed by
+ *       {@code CHECKCAST java/io/Serializable}.  RoboVM's AOT compiler creates the
+ *       lambda proxy but does <em>not</em> make it implement {@code Serializable},
+ *       so the {@code CHECKCAST} always throws {@code ClassCastException} at
+ *       class-initialization time (e.g. in {@code SupplierUtil.<clinit>} from
+ *       JGraphT 1.5.2).  The cast is stripped: the lambda remains fully functional
+ *       as its declared functional-interface type; only Java-object serialisation
+ *       of the lambda itself is lost, which is not needed on iOS.
+ *   </li>
  * </ol>
  *
  * <p>The transformation is idempotent: class files whose call sites already
@@ -216,13 +231,47 @@ public class StreamDesugar {
         // ── Method visitor ────────────────────────────────────────────────
 
         final class MethodTransformer extends MethodVisitor {
+            /**
+             * Set to {@code true} when the immediately preceding bytecode instruction
+             * was {@code INVOKEDYNAMIC}.  Used by Pattern 65 to strip the
+             * {@code CHECKCAST java/io/Serializable} that follows a serializable-lambda
+             * intersection cast.
+             */
+            private boolean pendingInvokeDynamic = false;
+
             MethodTransformer(MethodVisitor mv) {
                 super(Opcodes.ASM9, mv);
+            }
+
+            // Pattern 65 (part 1): record when the previous instruction was INVOKEDYNAMIC.
+            @Override
+            public void visitInvokeDynamicInsn(String name, String descriptor,
+                                               Handle bootstrapMethodHandle,
+                                               Object... bootstrapMethodArguments) {
+                pendingInvokeDynamic = true;
+                super.visitInvokeDynamicInsn(name, descriptor, bootstrapMethodHandle,
+                        bootstrapMethodArguments);
+            }
+
+            // Pattern 65 (part 2): strip CHECKCAST java/io/Serializable after INVOKEDYNAMIC.
+            @Override
+            public void visitTypeInsn(int opcode, String type) {
+                if (opcode == Opcodes.CHECKCAST
+                        && "java/io/Serializable".equals(type)
+                        && pendingInvokeDynamic) {
+                    pendingInvokeDynamic = false;
+                    modified = true;
+                    return;  // drop the cast
+                }
+                pendingInvokeDynamic = false;
+                super.visitTypeInsn(opcode, type);
             }
 
             @Override
             public void visitMethodInsn(int opcode, String owner, String name,
                                         String descriptor, boolean isInterface) {
+                // Any method call breaks the INVOKEDYNAMIC→CHECKCAST adjacency.
+                pendingInvokeDynamic = false;
                 // Idempotency guard: already targeting IosUtil or StreamUtil.
                 if (IOS_UTIL.equals(owner) || STREAM_UTIL.equals(owner)) {
                     super.visitMethodInsn(opcode, owner, name, descriptor, isInterface);
