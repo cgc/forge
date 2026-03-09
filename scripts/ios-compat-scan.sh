@@ -46,6 +46,7 @@
 #   String.repeat(int)                     → Pattern 60  (Java 11, defensive)
 #   CompletableFuture.supplyAsync(Supplier)→ Pattern 61  (ForkJoinPool.commonPool() crash)
 #   CompletableFuture.completeOnTimeout    → Pattern 62  (Java 9; absent from robovm-rt CF)
+#   Collection.parallelStream()            → Pattern 63  (ForkJoinPool.commonPool() crash)
 #
 # Usage:  bash scripts/ios-compat-scan.sh [repo-root]
 # ════════════════════════════════════════════════════════════════════════════
@@ -141,6 +142,8 @@ show "P61" "CompletableFuture.supplyAsync(Supplier) — ForkJoinPool crash on iO
     '\bCompletableFuture\.supplyAsync\('
 show "P62" "CompletableFuture.completeOnTimeout — Java 9, absent from robovmx CF" \
     '\.completeOnTimeout\('
+show "P63" "Collection.parallelStream() — ForkJoinPool crash on iOS" \
+    '\.parallelStream\('
 
 # ── Section 2: other Files.* calls not yet in StreamDesugar ──────────────────
 
@@ -200,12 +203,13 @@ show "J10" "List.copyOf/Set.copyOf/Map.copyOf — Java 10" \
 cat <<'S2C'
 
 ────────────────────────────────────────────────────────────────────────────────
- SECTION 2c  –  CompletableFuture crash patterns (action required)
+ SECTION 2c  –  CompletableFuture/parallelStream crash patterns (action required)
  CompletableFuture.supplyAsync(Supplier) — no-executor overload — routes to
  ForkJoinPool.commonPool(). ForkJoinWorkerThread.<clinit> reflects on
  Thread.threadLocals which is absent from robovmx's robovm-rt, crashing with
  NoSuchFieldException at the first async task submission.
- Patched by StreamDesugar P61 (supplyAsync) and P62 (completeOnTimeout).
+ Collection.parallelStream() has the same root cause: it also uses ForkJoinPool.
+ Patched by StreamDesugar P61 (supplyAsync), P62 (completeOnTimeout), P63 (parallelStream).
 ────────────────────────────────────────────────────────────────────────────────
 S2C
 
@@ -213,6 +217,8 @@ show "P61" "CompletableFuture.supplyAsync(Supplier) — ForkJoin crash on iOS [S
     '\bCompletableFuture\.supplyAsync\('
 show "P62" "CompletableFuture.completeOnTimeout — Java 9, absent from robovmx CF [StreamDesugar P62]" \
     '\.completeOnTimeout\('
+show "P63" "Collection.parallelStream() — ForkJoinPool crash on iOS [StreamDesugar P63]" \
+    '\.parallelStream\('
 show "CHK" "CompletableFuture.orTimeout — Java 9, absent from robovmx CF" \
     '\.orTimeout\('
 

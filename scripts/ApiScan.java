@@ -244,6 +244,18 @@ public class ApiScan {
             "(Ljava/lang/Object;JLjava/util/concurrent/TimeUnit;)Ljava/util/concurrent/CompletableFuture;",
             9, Category.PATCHED,
             "CompletableFuture.completeOnTimeout(T,long,TimeUnit) — Java 9 [StreamDesugar P62]");
+
+        // PATCHED by StreamDesugar Pattern 63.
+        // parallelStream() routes to ForkJoinPool.commonPool(); ForkJoinWorkerThread.<clinit>
+        // reflects on Thread.threadLocals which is absent from robovmx's robovm-rt.
+        add("java/util/Collection", "parallelStream",
+            "()Ljava/util/stream/Stream;",
+            8, Category.PATCHED,
+            "Collection.parallelStream() — ForkJoinPool crash on iOS [StreamDesugar P63]");
+        add("java/util/List", "parallelStream",
+            "()Ljava/util/stream/Stream;",
+            8, Category.PATCHED,
+            "List.parallelStream() — ForkJoinPool crash on iOS [StreamDesugar P63]");
     }
 
     private static void add(String owner, String name, String desc,

@@ -101,6 +101,16 @@ import java.nio.file.attribute.BasicFileAttributes;
  *       Java-8-based {@code CompletableFuture}.  Polyfilled with a
  *       {@code ScheduledExecutorService}.
  *   </li>
+ *   <li>{@code Collection.parallelStream()} → {@code Collection.stream()} (Pattern 63)<br>
+ *       {@code parallelStream()} uses {@code ForkJoinPool.commonPool()} internally.
+ *       {@code ForkJoinWorkerThread.&lt;clinit&gt;} reflects on {@code Thread.threadLocals}
+ *       which is absent from robovmx's robovm-rt, crashing with
+ *       {@code NoSuchFieldException}.  The replacement rewrites the call to the
+ *       sequential {@code stream()} on the same receiver.  Parallel execution is
+ *       counterproductive on mobile and the sequential result is functionally identical.
+ *       Covers any {@code INVOKEINTERFACE} call site regardless of the concrete owner
+ *       ({@code List}, {@code Set}, {@code Collection}, etc.).
+ *   </li>
  * </ol>
  *
  * <p>The transformation is idempotent: class files whose call sites already
@@ -293,6 +303,21 @@ public class StreamDesugar {
                     super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
                             "completableFutureCompleteOnTimeout",
                             "(Ljava/util/concurrent/CompletableFuture;Ljava/lang/Object;JLjava/util/concurrent/TimeUnit;)Ljava/util/concurrent/CompletableFuture;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 63: Collection.parallelStream() — uses ForkJoinPool.commonPool()
+                // internally.  ForkJoinWorkerThread.<clinit> reflects on Thread.threadLocals
+                // which is absent from robovmx's robovm-rt, crashing with NoSuchFieldException.
+                // Replace with sequential stream() on the same receiver; parallel execution is
+                // counterproductive on mobile and the result is functionally identical.
+                // Matches any INVOKEINTERFACE owner (List, Set, Collection, etc.).
+                if (opcode == Opcodes.INVOKEINTERFACE
+                        && "parallelStream".equals(name)
+                        && "()Ljava/util/stream/Stream;".equals(descriptor)) {
+                    super.visitMethodInsn(Opcodes.INVOKEINTERFACE, owner, "stream",
+                            "()Ljava/util/stream/Stream;", true);
                     modified = true;
                     return;
                 }
