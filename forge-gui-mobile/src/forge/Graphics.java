@@ -65,37 +65,16 @@ public class Graphics {
 
     public Graphics() {
         ShaderProgram.pedantic = false;
-        // Log compile status for ALL shaders so iOS GLSL ES issues are immediately visible.
+        // Log any shaders that failed to compile so iOS GLSL ES issues are immediately visible.
         // (Instance field initializers run before this constructor body, so all shaders are
         //  already compiled at this point.)
-        ShaderProgram[] allShaders = {
+        for (ShaderProgram sp : new ShaderProgram[]{
                 shaderRoundedRect, shaderRoundedRect2, shaderGrayscale, shaderWarp,
-                shaderOutline, shaderUnderwater, shaderNightDay,
-                shaderPixelate, shaderRipple, shaderPixelateWarp, shaderChromaticAbberation,
-                shaderHueShift, shaderNoiseFade, shaderPortal, shaderPixelateSimple};
-        String[] shaderNames = {
-                "shaderRoundedRect", "shaderRoundedRect2", "shaderGrayscale", "shaderWarp",
-                "shaderOutline", "shaderUnderwater", "shaderNightDay",
-                "shaderPixelate", "shaderRipple", "shaderPixelateWarp", "shaderChromaticAbberation",
-                "shaderHueShift", "shaderNoiseFade", "shaderPortal", "shaderPixelateSimple"};
-        for (int i = 0; i < allShaders.length; i++) {
-            ShaderProgram sp = allShaders[i];
-            if (sp == null) {
-                System.err.println("[Graphics] shader " + shaderNames[i] + "=null");
-            } else if (!sp.isCompiled()) {
-                System.err.println("[Graphics] shader " + shaderNames[i] + " FAILED: "
+                shaderOutline, shaderUnderwater, shaderNightDay}) {
+            if (sp != null && !sp.isCompiled()) {
+                System.err.println("[Graphics] shader failed to compile: "
                         + sp.getLog().trim().replace("\n", " | "));
-            } else {
-                System.err.println("[Graphics] shader " + shaderNames[i] + " OK");
             }
-        }
-    }
-
-    /** Check and log any pending OpenGL error; no-op if there is none. */
-    private static void logGlError(String context) {
-        int err = Gdx.gl.glGetError();
-        if (err != GL20.GL_NO_ERROR) {
-            System.err.println("[Graphics] GL error after " + context + ": 0x" + Integer.toHexString(err));
         }
     }
 
@@ -824,7 +803,6 @@ public class Graphics {
             image.draw(this, x, y, w, h);
             //reset
             batch.end();
-            logGlError("drawAvatarImage(warp)");
             batch.setShader(null);
             batch.begin();
         } else if (!drawGrayscale) {
@@ -840,7 +818,6 @@ public class Graphics {
             image.draw(this, x, y, w, h);
             //reset
             batch.end();
-            logGlError("drawAvatarImage(grayscale)");
             batch.setShader(null);
             batch.begin();
         }
@@ -864,7 +841,6 @@ public class Graphics {
             image.draw(this, x, y, w, h);
             //reset
             batch.end();
-            logGlError("drawCardImage(FImage,grayscale)");
             batch.setShader(null);
             batch.begin();
         }
@@ -886,7 +862,6 @@ public class Graphics {
             batch.draw(image, adjustX(x), adjustY(y, h), w, h);
             //reset
             batch.end();
-            logGlError("drawCardImage(Texture,grayscale)");
             batch.setShader(null);
             batch.begin();
         }
@@ -909,7 +884,6 @@ public class Graphics {
                 batch.draw(image, adjustX(x), adjustY(y, h), w, h);
                 //reset
                 batch.end();
-                logGlError("drawCardImage(TextureRegion,grayscale)");
                 batch.setShader(null);
                 batch.begin();
             }
@@ -993,26 +967,19 @@ public class Graphics {
         if (image == null)
             return;
         float radius = ImageCache.getInstance().getRadius(image);
-        if (shaderRoundedRect.isCompiled()) {
-            batch.end();
-            shaderRoundedRect.bind();
-            shaderRoundedRect.setUniformf("u_resolution", image.getWidth(), image.getHeight());
-            shaderRoundedRect.setUniformf("edge_radius", (float)(image.getHeight() / image.getWidth()) * radius);
-            shaderRoundedRect.setUniformf("u_gray", drawGray ? 0.8f : 0f);
-            batch.setShader(shaderRoundedRect);
-            batch.begin();
-            //draw
-            batch.draw(image, adjustX(x), adjustY(y, h), w, h);
-            //reset
-            batch.end();
-            logGlError("drawCardRoundRect");
-            batch.setShader(null);
-            batch.begin();
-        } else {
-            // shaderRoundedRect failed to compile: fall back to plain batch draw so the
-            // card image is at least visible (no rounded corners, but not a black square).
-            batch.draw(image, adjustX(x), adjustY(y, h), w, h);
-        }
+        batch.end();
+        shaderRoundedRect.bind();
+        shaderRoundedRect.setUniformf("u_resolution", image.getWidth(), image.getHeight());
+        shaderRoundedRect.setUniformf("edge_radius", (float)(image.getHeight() / image.getWidth()) * radius);
+        shaderRoundedRect.setUniformf("u_gray", drawGray ? 0.8f : 0f);
+        batch.setShader(shaderRoundedRect);
+        batch.begin();
+        //draw
+        batch.draw(image, adjustX(x), adjustY(y, h), w, h);
+        //reset
+        batch.end();
+        batch.setShader(null);
+        batch.begin();
         if (foilEffect && !drawGray) {
             drawFoil(x, y, w, h, radius);
         }
@@ -1027,28 +994,21 @@ public class Graphics {
     public void drawCardRoundRect(Texture image, float x, float y, float w, float h, float originX, float originY, float rotation, float modR, boolean drawFoil) {
         if (image == null)
             return;
-        if (shaderRoundedRect.isCompiled()) {
-            batch.end();
-            shaderRoundedRect.bind();
-            shaderRoundedRect.setUniformf("u_resolution", image.getWidth(), image.getHeight());
-            shaderRoundedRect.setUniformf("edge_radius", (float)(image.getHeight() / image.getWidth()) * (ImageCache.getInstance().getRadius(image) * modR));
-            shaderRoundedRect.setUniformf("u_gray", 0f);
-            batch.setShader(shaderRoundedRect);
-            batch.begin();
-            //draw
-            drawRotatedImage(image, x, y, w, h, originX, originY, 0, 0, image.getWidth(), image.getHeight(), rotation);
-            if (drawFoil)
-                drawFoil(x, y, w, h, modR, true);
-            batch.end();
-            logGlError("drawCardRoundRect(rotated)");
-            batch.setShader(null);
-            batch.begin();
-        } else {
-            // Fallback: render without rounded corners so cards are visible.
-            drawRotatedImage(image, x, y, w, h, originX, originY, 0, 0, image.getWidth(), image.getHeight(), rotation);
-            if (drawFoil)
-                drawFoil(x, y, w, h, modR, true);
-        }
+        batch.end();
+        shaderRoundedRect.bind();
+        shaderRoundedRect.setUniformf("u_resolution", image.getWidth(), image.getHeight());
+        shaderRoundedRect.setUniformf("edge_radius", (float)(image.getHeight() / image.getWidth()) * (ImageCache.getInstance().getRadius(image) * modR));
+        shaderRoundedRect.setUniformf("u_gray", 0f);
+        batch.setShader(shaderRoundedRect);
+        batch.begin();
+        //draw
+        drawRotatedImage(image, x, y, w, h, originX, originY, 0, 0, image.getWidth(), image.getHeight(), rotation);
+        if (drawFoil)
+            drawFoil(x, y, w, h, modR, true);
+        //reset
+        batch.end();
+        batch.setShader(null);
+        batch.begin();
     }
 
     public void drawNoiseFade(TextureRegion image, float x, float y, float w, float h, Float time) {

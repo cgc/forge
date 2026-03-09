@@ -23,32 +23,32 @@ import java.util.HashSet;
 import java.util.Queue;
 import java.util.Set;
 
-import com.badlogic.gdx.graphics.Pixmap;
-import com.google.common.base.Supplier;
-import com.google.common.base.Suppliers;
-import com.google.common.collect.EvictingQueue;
-import com.google.common.collect.Queues;
-import com.google.common.collect.Sets;
-import forge.deck.DeckProxy;
-import forge.gui.GuiBase;
-import forge.item.PaperToken;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
+import com.google.common.collect.EvictingQueue;
+import com.google.common.collect.Queues;
+import com.google.common.collect.Sets;
 
 import forge.Forge;
 import forge.ImageKeys;
 import forge.card.CardEdition;
 import forge.card.CardRenderer;
 import forge.deck.Deck;
+import forge.deck.DeckProxy;
 import forge.game.card.CardView;
 import forge.game.player.IHasIcon;
+import forge.gui.GuiBase;
 import forge.item.InventoryItem;
 import forge.item.PaperCard;
+import forge.item.PaperToken;
 import forge.localinstance.properties.ForgeConstants;
 import forge.localinstance.properties.ForgePreferences;
 import forge.model.FModel;
@@ -349,19 +349,10 @@ public class ImageCache {
                 // Log the first 5 successfully-loaded card textures so that on iOS we can
                 // confirm textures are reaching the GPU with the expected dimensions/format.
                 if (counter <= 5) {
-                    int tw = cardTexture.getWidth();
-                    int th = cardTexture.getHeight();
-                    boolean widthPOT  = (tw  & (tw  - 1)) == 0;
-                    boolean heightPOT = (th & (th - 1)) == 0;
-                    // genMipMaps reflects the actual parameter used (iOS overrides to false even
-                    // when texture filtering is enabled, to avoid NPOT texture-incomplete black squares).
-                    boolean genMipMaps = Forge.getAssets().getTextureFilter().genMipMaps;
                     System.err.println("[ImageCache] loaded card texture #" + counter
                             + " path=" + fileName
-                            + " size=" + tw + "x" + th
-                            + " POT=" + (widthPOT && heightPOT)
-                            + " format=" + cardTexture.getTextureData().getFormat()
-                            + " genMipMaps=" + genMipMaps);
+                            + " size=" + cardTexture.getWidth() + "x" + cardTexture.getHeight()
+                            + " format=" + cardTexture.getTextureData().getFormat());
                 }
                 String setCode = imageKey.split("/")[0].trim().toUpperCase();
                 int radius;
