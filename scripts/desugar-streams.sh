@@ -43,7 +43,10 @@
 #
 # DEPENDENCIES
 # ------------
-# Requires: Java (javac + java), unzip, zip, curl (to download ASM on first run).
+# Requires: Java (javac + java), curl (to download ASM on first run).
+# JAR packing/unpacking uses the JDK 'jar' tool instead of the system unzip/zip
+# because macOS 'unzip' mangles non-ASCII UTF-8 filenames (e.g. the 'ø' in
+# SørensenIndexLinkPrediction.class from jgrapht-core-1.5.2).
 # ASM 9.7 is downloaded once from Maven Central and cached in
 # forge-gui-ios/local-repo/org/ow2/asm/ so subsequent runs are offline.
 
@@ -95,7 +98,9 @@ for arg in "$@"; do
         UNPACK_DIRS+=("$tmp_dir")
         # Record the original JAR path so we can repack it afterwards.
         echo "$arg" > "$tmp_dir/.source_jar"
-        unzip -q "$arg" -d "$tmp_dir"
+        # Use the JDK 'jar' tool instead of 'unzip': macOS unzip mangles
+        # non-ASCII UTF-8 filenames (e.g. 'ø' in SørensenIndexLinkPrediction).
+        (cd "$tmp_dir" && jar xf "$(cd "$(dirname "$arg")" && pwd)/$(basename "$arg")")
         DIRS_TO_TRANSFORM+=("$tmp_dir")
     else
         echo "[desugar-streams] WARNING: skipping '$arg' (not a directory or .jar file)" >&2
@@ -116,12 +121,14 @@ for tmp_dir in "${UNPACK_DIRS[@]+"${UNPACK_DIRS[@]}"}"; do
     rm "$tmp_dir/.source_jar"
     # Create a unique temp path for the repacked JAR.  We get a safe unique
     # name from mktemp (portable across GNU/Linux and BSD/macOS), remove the
-    # empty placeholder file mktemp creates, then add a .jar extension so zip
+    # empty placeholder file mktemp creates, then add a .jar extension so jar
     # creates a fresh archive.
     tmp_jar_base="$(mktemp)"
     rm -f "$tmp_jar_base"
     tmp_jar="${tmp_jar_base}.jar"
-    (cd "$tmp_dir" && zip -qr "$tmp_jar" .)
+    # Use the JDK 'jar' tool to repack: it preserves UTF-8 filenames correctly
+    # (macOS 'zip' has the same non-ASCII mangling problem as 'unzip').
+    (cd "$tmp_dir" && jar cf "$tmp_jar" .)
     mv "$tmp_jar" "$source_jar"
     echo "[desugar-streams] Repacked $source_jar"
 done

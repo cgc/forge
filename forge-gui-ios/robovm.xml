@@ -23,7 +23,6 @@
   <target>ios</target>
   <iosInfoPList>Info.plist.xml</iosInfoPList>
   <forceLinkClasses>
-    <pattern>org.apache.xalan.processor.TransformerFactoryImpl</pattern>
     <pattern>java.util.logging.**</pattern>
     <pattern>com.esotericsoftware.minlog.Log</pattern>
     <!--
@@ -49,6 +48,7 @@
       compiled and registered automatically without force-linking.
     -->
     <pattern>com.badlogic.gdx.scenes.scene2d.ui.*</pattern>
+    <pattern>com.badlogic.gdx.physics.box2d.*</pattern>
     <pattern>com.android.okhttp.HttpsHandler</pattern>
     <!--
       The Android/MobiVM SSL security providers are referenced exclusively via
@@ -61,6 +61,9 @@
     <pattern>com.android.org.conscrypt.**</pattern>
     <pattern>com.android.org.bouncycastle.**</pattern>
     <pattern>org.apache.harmony.security.**</pattern>
+    <pattern>org.apache.xalan.processor.TransformerFactoryImpl</pattern>
+    <pattern>com.badlogic.gdx.controllers.IosControllerManager</pattern>
+    <pattern>com.ray3k.tenpatch.TenPatchDrawable</pattern>
   </forceLinkClasses>
   <frameworks>
     <framework>UIKit</framework>
