@@ -393,7 +393,83 @@ show "FORNAME-CHK" "Class.forName() calls — verify each loaded class is in the
 show "SVC-LOAD-CHK" "ServiceLoader.load() calls — verify service implementations are in binary" \
     '\bServiceLoader\.load\('
 
-# ── Section 4: summary count of all java.nio.file.* imports ──────────────────
+# ── Section 3d: WrappedRuntimeException — Xalan serializer dynamic class names ─
+# Xalan's SerializerFactory.getSerializer(props) reads a content-handler class
+# name from a .properties resource file (e.g. output_xml.properties contains
+# "org.apache.xml.serializer.ToXMLStream" for XML output).  The class name is
+# passed to ObjectFactory.createObject(className) which uses Class.forName().
+# This is NOT libcore/bootstrap context — it IS app-classloader context — so the
+# class CAN be found once it is compiled into the binary.
+# The problem: the class is only referenced by a String in a properties file,
+# never by bytecode, so Soot never includes it in the AOT binary.
+#
+# Known instances and their status:
+#
+# org.apache.xml.serializer.ToXMLStream  (for XML output — used by XmlUtil)
+#   Status: FIXED — XALAN_TOXML_CLASS literal + new ToXMLStream() in preWarmXalan()
+#           in forge-gui-ios Main.java.
+#
+# Other serializer output classes (HTML, text, unknown) are in the same JAR.
+# They would need the same fix if Xalan is ever used for those output methods.
+# Current Forge code only uses XML output, so only ToXMLStream is needed.
+#
+# Note: Xalan's OutputPropertiesFactory also loads serializer classes for
+# method="html" (ToHTMLStream), method="text" (ToTextStream),
+# method="unknown" (ToUnknownStream).  None of these are used by Forge currently.
+
+cat <<'S3D'
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 3d  –  Xalan serializer dynamic class loading (WrappedRuntimeException)
+ Xalan's SerializerFactory loads output-handler class names from .properties
+ resource files.  These classes have NO bytecode references and are NOT compiled
+ into the AOT binary by Soot unless explicitly forced.
+ Fix: class-literal (.class) + direct new in preWarmXalan() in Main.java.
+   ToXMLStream   (XML output, used by XmlUtil) — FIXED in Main.java preWarmXalan()
+   ToHTMLStream  (HTML output)  — not used by Forge; no fix needed yet
+   ToTextStream  (text output)  — not used by Forge; no fix needed yet
+   ToUnknownStream (unknown)    — not used by Forge; no fix needed yet
+────────────────────────────────────────────────────────────────────────────────
+S3D
+
+# Source-level grep: check for any Xalan transformer usage paths that might
+# trigger serializer output methods other than XML.
+show "XALAN-XSLT"  "XSLT transform calls that could trigger Xalan serializer loading" \
+    '\bTransformer\.transform\b|\bTransformer\b.*\.transform\b'
+
+# ── Section 3e: UnsatisfiedLinkError — missing gdx-*-platform:natives-ios ─────
+# libGDX modules split their code into two artifacts:
+#   gdx-foo         — pure Java API (types, interfaces, method signatures)
+#   gdx-foo-platform:natives-ios — native C/JNI implementation as xcframework
+# Adding only the Java API dependency compiles fine but at runtime every `native`
+# JNI method throws UnsatisfiedLinkError (the native library was never linked).
+#
+# Known libGDX modules and their native artifact ids:
+#   gdx                → gdx-platform:natives-ios             (ADDED)
+#   gdx-freetype       → gdx-freetype-platform:natives-ios    (ADDED)
+#   gdx-box2d          → gdx-box2d-platform:natives-ios       (ADDED — World.newWorld fix)
+#   gdx-bullet         → gdx-bullet-platform:natives-ios      (not used by Forge)
+#   gdx-controllers    → gdx-controllers-ios                  (added; pure Java)
+#
+# If a new UnsatisfiedLinkError appears for a com.badlogic.gdx.* native method,
+# check whether the corresponding *-platform:natives-ios is in forge-gui-ios/pom.xml.
+
+cat <<'S3E'
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 3e  –  libGDX native-symbols inventory (UnsatisfiedLinkError risk)
+ Each libGDX module that uses JNI needs a *-platform:natives-ios dependency in
+ forge-gui-ios/pom.xml.  Missing entries cause UnsatisfiedLinkError at runtime.
+   gdx-platform:natives-ios           — ADDED (gl/graphics JNI symbols)
+   gdx-freetype-platform:natives-ios  — ADDED (FreeType font JNI symbols)
+   gdx-box2d-platform:natives-ios     — ADDED (Box2D physics JNI symbols)
+ If a new UnsatisfiedLinkError for com.badlogic.gdx.* appears, check pom.xml.
+────────────────────────────────────────────────────────────────────────────────
+S3E
+
+# Source-level grep: list gdx-* module imports to cross-check against pom.xml
+show "GDX-NATIVE-CHK" "libGDX Box2D / Bullet usage — verify natives-ios dep is in pom.xml" \
+    '\bcom\.badlogic\.gdx\.physics\.'
 
 cat <<'S4'
 

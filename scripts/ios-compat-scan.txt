@@ -4,7 +4,7 @@
  Scope: forge-core, forge-game, forge-ai, forge-gui, forge-gui-mobile
  Note:  forge-gui-ios excluded (it is the adaptation / fix layer).
 ════════════════════════════════════════════════════════════════════════════════
-Generated: 2026-03-09 16:13 UTC
+Generated: 2026-03-09 18:03 UTC
 
 ────────────────────────────────────────────────────────────────────────────────
  SECTION 1  –  Call sites covered by StreamDesugar.java (safe on iOS)
@@ -394,6 +394,39 @@ Generated: 2026-03-09 16:13 UTC
 
   [SVC-LOAD-CHK] ServiceLoader.load() calls — verify service implementations are in binary
     (none found)
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 3d  –  Xalan serializer dynamic class loading (WrappedRuntimeException)
+ Xalan's SerializerFactory loads output-handler class names from .properties
+ resource files.  These classes have NO bytecode references and are NOT compiled
+ into the AOT binary by Soot unless explicitly forced.
+ Fix: class-literal (.class) + direct new in preWarmXalan() in Main.java.
+   ToXMLStream   (XML output, used by XmlUtil) — FIXED in Main.java preWarmXalan()
+   ToHTMLStream  (HTML output)  — not used by Forge; no fix needed yet
+   ToTextStream  (text output)  — not used by Forge; no fix needed yet
+   ToUnknownStream (unknown)    — not used by Forge; no fix needed yet
+────────────────────────────────────────────────────────────────────────────────
+
+  [XALAN-XSLT] XSLT transform calls that could trigger Xalan serializer loading
+    (none found)
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 3e  –  libGDX native-symbols inventory (UnsatisfiedLinkError risk)
+ Each libGDX module that uses JNI needs a *-platform:natives-ios dependency in
+ forge-gui-ios/pom.xml.  Missing entries cause UnsatisfiedLinkError at runtime.
+   gdx-platform:natives-ios           — ADDED (gl/graphics JNI symbols)
+   gdx-freetype-platform:natives-ios  — ADDED (FreeType font JNI symbols)
+   gdx-box2d-platform:natives-ios     — ADDED (Box2D physics JNI symbols)
+ If a new UnsatisfiedLinkError for com.badlogic.gdx.* appears, check pom.xml.
+────────────────────────────────────────────────────────────────────────────────
+
+  [GDX-NATIVE-CHK] libGDX Box2D / Bullet usage — verify natives-ios dep is in pom.xml
+    forge-gui-mobile/src/forge/adventure/stage/MapStage.java:15:import com.badlogic.gdx.physics.box2d.*;
+    forge-gui-mobile/src/forge/adventure/stage/MapStage.java:54:    public com.badlogic.gdx.physics.box2d.World gdxWorld;
+    forge-gui-mobile/src/forge/adventure/util/pathfinding/Box2dRaycastCollisionDetector.java:8:import com.badlogic.gdx.physics.box2d.Fixture;
+    forge-gui-mobile/src/forge/adventure/util/pathfinding/Box2dRaycastCollisionDetector.java:9:import com.badlogic.gdx.physics.box2d.RayCastCallback;
+    forge-gui-mobile/src/forge/adventure/util/pathfinding/Box2dRaycastCollisionDetector.java:10:import com.badlogic.gdx.physics.box2d.World;
+    forge-gui-mobile/src/forge/adventure/util/pathfinding/NavigationMap.java:5:import com.badlogic.gdx.physics.box2d.*;
 
 ────────────────────────────────────────────────────────────────────────────────
  SECTION 4  –  All java.nio.file.* imports (inventory)

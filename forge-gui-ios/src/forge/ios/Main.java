@@ -70,8 +70,34 @@ public class Main extends IOSApplication.Delegate {
             org.apache.xalan.processor.TransformerFactoryImpl.class;
 
     /**
-     * Pre-warms Xalan's {@code TransformerFactoryImpl} so that Soot's call-graph
-     * analysis includes its constructor in the AOT binary.
+     * Class-literal reference to {@code ToXMLStream} — forces Soot to compile the
+     * XML serializer output class into the AOT binary.
+     *
+     * <p>When a {@code Transformer} performs an XML transform (e.g.
+     * {@link forge.util.XmlUtil#saveDocument}), Xalan's
+     * {@code TransformerIdentityImpl.createResultContentHandler()} calls
+     * {@code SerializerFactory.getSerializer(props)} which loads the content-handler
+     * class by name from the output-method properties:
+     * {@code "org.apache.xml.serializer.ToXMLStream"}.  That string is in a
+     * {@code .properties} resource file — there is no bytecode reference to the
+     * class anywhere in the call graph, so Soot never AOT-compiles it.
+     *
+     * <p>At runtime, {@code SerializerFactory} calls
+     * {@code Class.forName("org.apache.xml.serializer.ToXMLStream")} from Xalan app
+     * code.  Unlike the {@code TransformerFactory} bootstrap-classloader issue, this
+     * {@code Class.forName()} runs in app-classloader context and CAN see app classes
+     * — but only if the class was compiled into the binary.  Without this literal (and
+     * the direct {@code new} in {@link #preWarmXalan()}), the class is absent and
+     * {@code SerializerFactory} throws
+     * {@code WrappedRuntimeException: org.apache.xml.serializer.ToXMLStream}.
+     */
+    @SuppressWarnings("unused")
+    private static final Class<?> XALAN_TOXML_CLASS =
+            org.apache.xml.serializer.ToXMLStream.class;
+
+    /**
+     * Pre-warms Xalan's {@code TransformerFactoryImpl} and serializer output classes
+     * so that Soot's call-graph analysis includes their constructors in the AOT binary.
      *
      * <p>Called once at the start of {@link #createApplication()} before any Forge
      * code runs.  A direct {@code new TransformerFactoryImpl()} emits
@@ -81,6 +107,10 @@ public class Main extends IOSApplication.Delegate {
      * above) and reflection-based instantiation in
      * {@code TransformerFactory.newInstance()} fails with
      * {@code NoClassDefFoundError} even though the class is registered.
+     *
+     * <p>Similarly, a direct {@code new ToXMLStream()} forces Soot to compile the
+     * serializer class that {@code SerializerFactory.getSerializer()} loads by name
+     * for XML output transforms.
      *
      * <p>Any exception is swallowed; if Xalan is truly broken on this device we
      * prefer to discover the failure at the actual XML call site rather than
@@ -100,6 +130,15 @@ public class Main extends IOSApplication.Delegate {
             nslog("preWarmXalan: registered " + tf.getClass().getName());
         } catch (Throwable t) {
             nslog("preWarmXalan: TransformerFactoryImpl init failed: " + t);
+        }
+        // Pre-warm ToXMLStream: SerializerFactory.getSerializer() loads this class by name
+        // from a .properties resource file.  Without a direct reference here Soot never
+        // compiles it and Class.forName() fails at runtime with WrappedRuntimeException.
+        try {
+            new org.apache.xml.serializer.ToXMLStream();
+            nslog("preWarmXalan: ToXMLStream compiled OK");
+        } catch (Throwable t) {
+            nslog("preWarmXalan: ToXMLStream init failed: " + t);
         }
     }
 

@@ -49,13 +49,19 @@ guidelines in §4 if the approach or tooling changes.
 | Font disposal crash on iOS | `FSkinFont` attempted to dispose a font that was still in use | Added `!GuiBase.isIOS()` guard in `FSkinFont.java` dispose path |
 | `ClassCastException: SupplierUtil$$Lambda cannot be cast to java.io.Serializable` | JGraphT 1.5.2 uses serializable-lambda intersection casts (`INVOKEDYNAMIC` via `LambdaMetafactory.altMetafactory` + `CHECKCAST java/io/Serializable`); RoboVM AOT does not make lambda proxies implement `Serializable` | StreamDesugar **Pattern 65**: strip `CHECKCAST java/io/Serializable` immediately after `INVOKEDYNAMIC`; jgrapht-core JAR added to desugar-streams inputs in `pom.xml` |
 | `NoClassDefFoundError: org.apache.xalan.processor.TransformerFactoryImpl` | robovmx's Android-based libcore `TransformerFactory.newInstance()` hard-codes a `Class.forName("org.apache.xalan.processor.TransformerFactoryImpl")` fallback; Xalan is absent from robovm-rt; `forceLinkClasses` in `robovm.xml` was silently ignored by Soot for this third-party JAR. **Root cause (two-part)**: (1) `LDC <class>` (class literal) only registers the class in the AOT binary's class table; it does NOT emit `INVOKESPECIAL`, so Soot doesn't AOT-compile the constructor → `preWarmXalan()` was added to force the direct `new` so Soot compiles the constructor. (2) Even after the constructor is compiled, `TransformerFactory.newInstance()` (libcore code) uses `Class.forName()` from the **bootstrap classloader context**, which in robovmx cannot see Xalan (an app dependency, loaded by the app classloader). The class IS in the binary and can be constructed directly from app code — but libcore's `Class.forName()` still fails. | Added `xalan:xalan:2.7.3` + `xalan:serializer:2.7.3` Maven deps, `static final XALAN_TF_CLASS` literal + `preWarmXalan()` in `Main.java` (stores `TransformerFactoryImpl.class` in `StreamUtil.transformerFactoryClass`), **and** StreamDesugar **Pattern 66**: rewrites every `TransformerFactory.newInstance()` call site → `StreamUtil.transformerFactoryNewInstance()`, which uses the pre-stored class reference via `cls.newInstance()` — bypassing the broken `Class.forName()` path in libcore entirely |
+| `WrappedRuntimeException: org.apache.xml.serializer.ToXMLStream` | Xalan's `SerializerFactory.getSerializer()` loads the XML output-handler class by name from a `.properties` resource file; the string `"org.apache.xml.serializer.ToXMLStream"` has no bytecode reference, so Soot never AOT-compiles the class. At runtime `Class.forName()` (called from Xalan app code — not libcore, so classloader context is correct) fails because the class was never emitted into the binary. | Added `static final XALAN_TOXML_CLASS = org.apache.xml.serializer.ToXMLStream.class` literal and `new org.apache.xml.serializer.ToXMLStream()` in `preWarmXalan()` in `Main.java`. The class literal registers it in the class table; the direct `new` forces Soot to compile the constructor and all transitively-called code. No StreamDesugar pattern needed (classloader context is already correct — this is Xalan app code, not libcore). |
+| `UnsatisfiedLinkError: com.badlogic.gdx.physics.box2d.World.newWorld(FFZ)J` | Box2D JNI native symbols are absent — the native Box2D library was not linked. The Java API (`gdx-box2d`) was present but the corresponding iOS native xcframework (`gdx-box2d-platform:natives-ios`) was missing from `forge-gui-ios/pom.xml`. Same root cause as the earlier `IOSGLES20.glTexImage2DJNI` crash (fixed by adding `gdx-platform:natives-ios`). | Added `gdx-box2d-platform:1.13.5:natives-ios` Maven dependency to `forge-gui-ios/pom.xml`. RoboVM's Maven plugin extracts the xcframework and links the native Box2D symbols into the binary. |
 
 ### Current state
 
 The app builds, passes CI lint, and produces an installable IPA.  It starts, loads the card
 database (`CardDb.initialize()`), and reaches the game engine (JGraphT graphs are constructed
-without crashing).  Audio is intentionally disabled while the launch sequence is being
-stabilised.  More crashes are expected as deeper gameplay code paths are exercised on device.
+without crashing).  XML serialization (via `XmlUtil.saveDocument`) now works (Xalan's
+`ToXMLStream` serializer class is force-compiled into the binary).  Adventure mode's Box2D
+physics initialisation now works (native Box2D JNI symbols linked via
+`gdx-box2d-platform:natives-ios`).  Audio is intentionally disabled while the launch sequence
+is being stabilised.  More crashes are expected as deeper gameplay code paths are exercised on
+device.
 
 ---
 
@@ -347,7 +353,23 @@ simulator is confirmed.  Do not add patterns speculatively.
                uses `cls.newInstance()` on the stored reference — bypassing the broken
                `Class.forName()` path in libcore entirely.
        Run `scripts/ios-compat-scan.sh` (Section 3b) to find all JAXP factory calls.
+   - `WrappedRuntimeException: some.class.Name` from Xalan/JAXP code — a class loaded by name
+     from a properties resource file (not from libcore, but from Xalan app code itself).
+     Example: `SerializerFactory.getSerializer()` loads `org.apache.xml.serializer.ToXMLStream`
+     from `output_xml.properties`; the string has no bytecode reference so Soot never compiles
+     the class.  Since this is Xalan app code (not libcore bootstrap), `Class.forName()` CAN
+     see app classes once compiled.  Fix: add class-literal + direct `new` in `preWarmXalan()`
+     (or a similar preWarm method) — no StreamDesugar pattern needed.
    - `NoSuchMethodError` → missing method on an existing class → bytecode rewrite (§2a).
+   - `UnsatisfiedLinkError: some.gdx.Class.nativeMethod` → native JNI symbols missing.
+     The Java class exists but its native C implementation is absent.  For libGDX modules,
+     this means the corresponding `*-platform:natives-ios` xcframework was not added to
+     `forge-gui-ios/pom.xml`.  Pattern: if `gdx-foo` (Java) is a transitive dependency but
+     `gdx-foo-platform:natives-ios` is not explicitly declared, add it.  Known affected
+     modules and their native artifact ids:
+       - `gdx` → `gdx-platform:natives-ios` (already added)
+       - `gdx-freetype` → `gdx-freetype-platform:natives-ios` (already added)
+       - `gdx-box2d` → `gdx-box2d-platform:natives-ios` (added for `World.newWorld`)
    - `ClassCastException` in `<clinit>` involving `Serializable` → serializable-lambda
      intersection cast → StreamDesugar Pattern 65 + add JAR to pom.xml desugar inputs.
    - Other `ClassCastException` / `ExceptionInInitializerError` → inspect the static

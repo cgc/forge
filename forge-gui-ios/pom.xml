@@ -192,6 +192,12 @@
             <classifier>natives-ios</classifier>
         </dependency>
         <dependency>
+            <groupId>com.badlogicgames.gdx</groupId>
+            <artifactId>gdx-box2d-platform</artifactId>
+            <version>1.13.5</version>
+            <classifier>natives-ios</classifier>
+        </dependency>
+        <dependency>
             <groupId>com.badlogicgames.gdx-controllers</groupId>
             <artifactId>gdx-controllers-ios</artifactId>
             <version>2.2.4</version>
