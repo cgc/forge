@@ -184,6 +184,11 @@
             <version>1.13.5</version>
             <classifier>natives-ios</classifier>
         </dependency>
+        <dependency>
+            <groupId>com.badlogicgames.gdx-controllers</groupId>
+            <artifactId>gdx-controllers-ios</artifactId>
+            <version>2.2.4</version>
+        </dependency>
         <!-- java.lang.Record stub: robovmx's robovm-rt includes full Java 8 APIs but
              does not yet include java.lang.Record (added in Java 16).  This minimal
              stub JAR supplies the Record abstract class so that record classes load
