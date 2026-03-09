@@ -254,10 +254,8 @@ public enum FSkinTexture implements FImage {
     public void draw(Graphics g, float x, float y, float w, float h) {
         if (!isloaded)
             load();
-        if (hasError) {
-            System.err.println("[FSkinTexture] draw() skipped due to load error: " + filename);
+        if (hasError)
             return;
-        }
         if (repeat) {
             g.drawRepeatingImage(texture, x, y, w, h);
         } else {

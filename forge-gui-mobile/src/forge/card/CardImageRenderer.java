@@ -445,8 +445,7 @@ public class CardImageRenderer {
     }
 
     private static void drawSplitCard(CardView card, FImageComplex cardArt, Graphics g, float x, float y, float w, float h, boolean altState, boolean isFaceDown) {
-        Texture forgeArtTexture = forgeArt.getTexture();
-        if (forgeArtTexture != null && cardArt.getTexture() == forgeArtTexture) {
+        if (cardArt.getTexture() == forgeArt.getTexture()) {
             g.drawImage(cardArt, x, y, w, h);
             return;
         }

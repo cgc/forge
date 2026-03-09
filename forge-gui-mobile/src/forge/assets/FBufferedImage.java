@@ -48,14 +48,12 @@ public abstract class FBufferedImage extends FImageComplex {
 
     @Override
     public TextureRegion getTextureRegion() {
-        FrameBuffer fb = checkFrameBuffer();
-        return fb == null ? null : new TextureRegion(fb.getColorBufferTexture());
+        return new TextureRegion(checkFrameBuffer().getColorBufferTexture());
     }
 
     @Override
     public Texture getTexture() {
-        FrameBuffer fb = checkFrameBuffer();
-        return fb == null ? null : fb.getColorBufferTexture();
+        return checkFrameBuffer().getColorBufferTexture();
     }
 
     public void clear() {
@@ -69,15 +67,6 @@ public abstract class FBufferedImage extends FImageComplex {
 
     public FrameBuffer checkFrameBuffer() {
         if (frameBuffer == null) {
-            if (width <= 0 || height <= 0) {
-                // This happens when the FBufferedImage was constructed before the skin was loaded
-                // (e.g. FSkinImage.CARDART reported 0 dimensions at static-init time).
-                // Trying to create a 0×0 FrameBuffer would throw a GdxRuntimeException and
-                // leave the card black with no error message reaching the device log.
-                System.err.println("[FBufferedImage] skipping FrameBuffer creation: zero dimensions ("
-                        + width + "x" + height + ") -- card art placeholder will be blank");
-                return null;
-            }
             Gdx.gl.glDisable(GL20.GL_SCISSOR_TEST); //prevent buffered image being clipped
 
             //render texture to frame buffer if needed
@@ -112,13 +101,10 @@ public abstract class FBufferedImage extends FImageComplex {
 
     @Override
     public void draw(Graphics g, float x, float y, float w, float h) {
-        Texture tex = getTexture();
-        if (tex == null)
-            return; // 0-dimension frame buffer — nothing to draw
         if (opacity < 1) {
             g.setAlphaComposite(opacity);
         }
-        g.drawFlippedImage(tex, x, y, w, h); //need to draw image flipped because of how FrameBuffer works
+        g.drawFlippedImage(getTexture(), x, y, w, h); //need to draw image flipped because of how FrameBuffer works
         if (opacity < 1) {
             g.resetAlphaComposite();
         }
