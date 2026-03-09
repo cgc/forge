@@ -308,7 +308,7 @@
                 </os>
             </activation>
             <properties>
-                <ios.simulator.arch>arm64</ios.simulator.arch>
+                <ios.simulator.arch>arm64-simulator</ios.simulator.arch>
             </properties>
         </profile>
     </profiles>
