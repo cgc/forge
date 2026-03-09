@@ -4,7 +4,7 @@
  Scope: forge-core, forge-game, forge-ai, forge-gui, forge-gui-mobile
  Note:  forge-gui-ios excluded (it is the adaptation / fix layer).
 ════════════════════════════════════════════════════════════════════════════════
-Generated: 2026-03-09 12:52 UTC
+Generated: 2026-03-09 16:13 UTC
 
 ────────────────────────────────────────────────────────────────────────────────
  SECTION 1  –  Call sites covered by StreamDesugar.java (safe on iOS)
@@ -287,8 +287,8 @@ Generated: 2026-03-09 12:52 UTC
 
   [ICU] NativeConverter direct references
     forge-core/src/main/java/forge/util/StreamUtil.java:270:    // call sites that trigger Android ICU charset encoding (NativeConverter) which
-    forge-core/src/main/java/forge/util/StreamUtil.java:355:     * triggering Android ICU charset encoding ({@code NativeConverter}).
-    forge-core/src/main/java/forge/util/StreamUtil.java:356:     * On iOS, {@code NativeConverter}'s native methods are dead-stripped by the
+    forge-core/src/main/java/forge/util/StreamUtil.java:427:     * triggering Android ICU charset encoding ({@code NativeConverter}).
+    forge-core/src/main/java/forge/util/StreamUtil.java:428:     * On iOS, {@code NativeConverter}'s native methods are dead-stripped by the
 
   [ICU] Charset.defaultCharset() — uses ICU on Android/robovm-rt
     (none found)
@@ -298,19 +298,41 @@ Generated: 2026-03-09 12:52 UTC
  robovmx's libcore FactoryFinder has hardcoded fallback class names for each
  JAXP factory type.  If the fallback class is absent the first call to
  *.newInstance() throws NoClassDefFoundError (not NoSuchMethodError).
+
+ Two-layer root cause for factories whose impl is NOT in robovm-rt:
+   Layer 1 (AOT): force-link alone is unreliable — Soot may skip third-party JARs.
+     Fix: "new Impl()" direct call + class-literal in Main.preWarmXxx() forces
+     Soot to AOT-compile the constructor and registers the class in the class table.
+   Layer 2 (bootstrap classloader): FactoryFinder calls Class.forName() from the
+     bootstrap classloader, which only sees robovm-rt.a classes.  App deps are
+     invisible even if compiled into the binary.
+     Fix: StreamDesugar pattern rewrites the *.newInstance() call site to a
+     StreamUtil helper that uses a pre-stored Class reference (from app-code context
+     where the AOT linker resolves app-class references directly).
+
    TransformerFactory  → org.apache.xalan.processor.TransformerFactoryImpl
-       FIXED: xalan:xalan:2.7.3 + xalan:serializer:2.7.3 in forge-gui-ios/pom.xml
-              AND static XALAN_TF_CLASS class-literal in forge-gui-ios Main.java.
-              (force-link in robovm.xml alone was NOT enough — Soot skipped the class)
+       FIXED (two-part):
+         Part 1: xalan:xalan:2.7.3 + xalan:serializer:2.7.3 in forge-gui-ios/pom.xml
+                 + XALAN_TF_CLASS literal + Main.preWarmXalan() "new TFImpl()"
+                 → AOT-compiles constructor; registers class in class table.
+         Part 2: StreamDesugar Pattern 66 + StreamUtil.transformerFactoryNewInstance()
+                 → bypasses bootstrap Class.forName() via pre-stored Class reference.
    DocumentBuilderFactory → org.apache.xerces.jaxp.DocumentBuilderFactoryImpl
-       Safe: Xerces is part of Android AOSP libcore and bundled in robovmx's robovm-rt.
+       Safe: Xerces IS in Android AOSP libcore and compiled into robovmx's robovm-rt.a.
+             The bootstrap classloader CAN find org.apache.xerces.* — no fix needed.
    SAXParserFactory    → org.apache.xerces.jaxp.SAXParserFactoryImpl
        Safe: Same as DocumentBuilderFactory.
- If new JAXP factories appear under JAXP-CHK below, apply the same pattern:
-   Maven dep + static class-literal in Main.java (do NOT rely on force-link alone).
+ If new JAXP factories appear under JAXP-CHK below, apply the two-part fix above
+ (do NOT rely on force-link alone; do NOT stop at Part 1).
 ────────────────────────────────────────────────────────────────────────────────
 
-  [JAXP-FIXED] TransformerFactory.newInstance() — FIXED via xalan dep + class literal in Main.java
+  [JAXP-FIXED] TransformerFactory.newInstance() — FIXED via Pattern 66 + StreamUtil.transformerFactoryNewInstance()
+    forge-core/src/main/java/forge/util/StreamUtil.java:354:    // Pattern 66: TransformerFactory.newInstance() fails in robovmx with
+    forge-core/src/main/java/forge/util/StreamUtil.java:356:    // app binary.  Root cause: TransformerFactory.newInstance() (in libcore/rt)
+    forge-core/src/main/java/forge/util/StreamUtil.java:367:    // StreamDesugar Pattern 66 rewrites every TransformerFactory.newInstance() call
+    forge-core/src/main/java/forge/util/StreamUtil.java:392:     * <p>On robovmx, {@code TransformerFactory.newInstance()} uses
+    forge-core/src/main/java/forge/util/StreamUtil.java:405:     * <p>Falls back to {@code TransformerFactory.newInstance()} on non-iOS
+    forge-core/src/main/java/forge/util/StreamUtil.java:422:        return javax.xml.transform.TransformerFactory.newInstance();
     forge-gui/src/main/java/forge/util/XmlUtil.java:38:            final Transformer t = TransformerFactory.newInstance().newTransformer();
     forge-gui/src/main/java/forge/util/XmlUtil.java:50:        Transformer t = TransformerFactory.newInstance().newTransformer();
 
@@ -333,6 +355,12 @@ Generated: 2026-03-09 12:52 UTC
     (none found)
 
   [JAXP-CHK] Other *Factory.newInstance() calls — verify fallback class is in robovmx robovm-rt
+    forge-core/src/main/java/forge/util/StreamUtil.java:354:    // Pattern 66: TransformerFactory.newInstance() fails in robovmx with
+    forge-core/src/main/java/forge/util/StreamUtil.java:356:    // app binary.  Root cause: TransformerFactory.newInstance() (in libcore/rt)
+    forge-core/src/main/java/forge/util/StreamUtil.java:367:    // StreamDesugar Pattern 66 rewrites every TransformerFactory.newInstance() call
+    forge-core/src/main/java/forge/util/StreamUtil.java:392:     * <p>On robovmx, {@code TransformerFactory.newInstance()} uses
+    forge-core/src/main/java/forge/util/StreamUtil.java:405:     * <p>Falls back to {@code TransformerFactory.newInstance()} on non-iOS
+    forge-core/src/main/java/forge/util/StreamUtil.java:422:        return javax.xml.transform.TransformerFactory.newInstance();
     forge-gui/src/main/java/forge/localinstance/achievements/AchievementCollection.java:148:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
     forge-gui/src/main/java/forge/localinstance/achievements/AchievementCollection.java:169:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
     forge-gui/src/main/java/forge/deck/io/DeckPreferences.java:128:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
@@ -359,6 +387,9 @@ Generated: 2026-03-09 12:52 UTC
 ────────────────────────────────────────────────────────────────────────────────
 
   [FORNAME-CHK] Class.forName() calls — verify each loaded class is in the binary
+    forge-core/src/main/java/forge/util/StreamUtil.java:357:    // uses Class.forName() from the bootstrap classloader context, which in
+    forge-core/src/main/java/forge/util/StreamUtil.java:366:    // bypassing the broken Class.forName() path in libcore entirely.
+    forge-core/src/main/java/forge/util/StreamUtil.java:393:     * {@code Class.forName("org.apache.xalan.processor.TransformerFactoryImpl")}
     forge-gui-mobile/src/forge/adventure/util/SaveFileData.java:341:                localClass = Class.forName(resultClassDescriptor.getName());
 
   [SVC-LOAD-CHK] ServiceLoader.load() calls — verify service implementations are in binary

@@ -48,9 +48,15 @@
 #   CompletableFuture.completeOnTimeout    → Pattern 62  (Java 9; absent from robovm-rt CF)
 #   Collection.parallelStream()            → Pattern 63  (ForkJoinPool.commonPool() crash)
 #   Executors.newWorkStealingPool()        → Pattern 64  (ForkJoinPool crash)
-#   TransformerFactory.newInstance()       → FIXED via xalan:xalan:2.7.3 Maven dep +
-#                                              XALAN_TF_CLASS static literal in Main.java
-#                                              (force-link alone was not enough; see Section 3b)
+#   Serializable lambda CHECKCAST          → Pattern 65  (ClassCastException in JGraphT)
+#   TransformerFactory.newInstance()       → Pattern 66 + StreamUtil.transformerFactoryNewInstance()
+#                                              Root cause: robovmx's libcore FactoryFinder uses
+#                                              Class.forName() from the bootstrap classloader, which
+#                                              cannot see Xalan (an app dep outside robovm-rt).
+#                                              A direct new + class-literal in Main.preWarmXalan()
+#                                              compiles the constructor into the binary; Pattern 66
+#                                              rewrites the call site to bypass libcore's broken
+#                                              Class.forName() path entirely (see Section 3b).
 #
 # SECTION 3b covers the JAXP factory newInstance() NoClassDefFoundError category.
 # SECTION 3c covers Class.forName() calls that load classes by name at runtime.
@@ -258,21 +264,39 @@ show "ICU"  "Charset.defaultCharset() — uses ICU on Android/robovm-rt" \
 # fallbacks for each factory type.  If the fallback class is absent from the
 # runtime library a NoClassDefFoundError is thrown.
 #
-# Note: force-linking alone (robovm.xml <forceLinkClasses>) is NOT sufficient to
-# guarantee a class from a third-party JAR is compiled into the binary — Soot may
-# silently skip classes from JARs that contain other problematic code.  The fix
-# for TransformerFactory adds a direct class-literal reference in Main.java which
-# creates an unconditional static dependency that the AOT linker cannot drop.
+# Root cause detail (two-layer problem for TransformerFactory):
+#   Layer 1 – AOT compilation: force-linking alone (robovm.xml <forceLinkClasses>)
+#   is NOT sufficient to guarantee a class from a third-party JAR is compiled into
+#   the binary — Soot may silently skip classes from JARs that contain other
+#   problematic code.  A direct "new Foo()" call or class-literal reference in
+#   compiled code creates an unconditional static dependency the AOT linker cannot
+#   drop.  Main.preWarmXalan() uses "new TransformerFactoryImpl()" to force-compile
+#   the constructor and XALAN_TF_CLASS to register the class in the AOT class table.
+#   Layer 2 – Bootstrap classloader: even after the constructor is compiled, Android's
+#   FactoryFinder calls Class.forName() from the bootstrap classloader context (which
+#   only sees classes compiled into robovm-rt.a).  Xalan is an app dependency, NOT
+#   in robovm-rt, so Class.forName() fails with NoClassDefFoundError even though the
+#   class was successfully constructed from app code.
+#   Fix: StreamDesugar Pattern 66 rewrites every TransformerFactory.newInstance()
+#   call site to StreamUtil.transformerFactoryNewInstance(), which uses a class
+#   reference pre-stored by Main.preWarmXalan() (obtained from app-code context
+#   where the AOT linker resolves app-class references directly).  cls.newInstance()
+#   on an already-resolved Class reference does NOT go through a classloader lookup.
 #
 # TransformerFactory.newInstance()
 #   Fallback: org.apache.xalan.processor.TransformerFactoryImpl  (Xalan 2.x)
-#   Status:   FIXED — xalan:xalan:2.7.3 + xalan:serializer:2.7.3 in forge-gui-ios/pom.xml;
-#             AND XALAN_TF_CLASS static literal in Main.java (force-link was not reliable).
+#   Status:   FIXED (two-part):
+#             Part 1: xalan:xalan:2.7.3 + xalan:serializer:2.7.3 in pom.xml;
+#                     XALAN_TF_CLASS literal + Main.preWarmXalan() (new TFImpl)
+#                     → AOT-compiles constructor and registers class.
+#             Part 2: StreamDesugar Pattern 66 + StreamUtil.transformerFactoryNewInstance()
+#                     → bypasses libcore's broken Class.forName() bootstrap path.
 #
 # DocumentBuilderFactory.newInstance()
 #   Fallback: org.apache.xerces.jaxp.DocumentBuilderFactoryImpl (Xerces)
 #   Status:   Safe — Xerces is part of Android's AOSP libcore; bundled in robovmx's robovm-rt.
-#             No Maven dep or class literal needed.
+#             No Maven dep or class literal needed.  The bootstrap classloader CAN find
+#             org.apache.xerces.* because they are compiled into robovm-rt.a itself.
 #
 # SAXParserFactory.newInstance()
 #   Fallback: org.apache.xerces.jaxp.SAXParserFactoryImpl (Xerces)
@@ -281,9 +305,10 @@ show "ICU"  "Charset.defaultCharset() — uses ICU on Android/robovm-rt" \
 # Any NEW JAXP factory call found below (tag JAXP-CHK) that is NOT
 # DocumentBuilderFactory or SAXParserFactory must be investigated:
 #   1. Does robovmx's robovm-rt bundle the fallback implementation class?
-#      (If yes: safe, add it to the JAXP-SAFE list above and in the heredoc below.)
-#   2. If not: add the Maven dep + a static class-literal reference in Main.java
-#      following the same pattern as XALAN_TF_CLASS.
+#      (If yes: safe — the bootstrap classloader can find it; add to JAXP-SAFE.)
+#   2. If not (external Maven dep, like Xalan): apply the two-part fix:
+#      Part 1: add Maven dep + XALAN_TF_CLASS-style literal + preWarm() call.
+#      Part 2: add StreamDesugar pattern to bypass the Class.forName() path.
 
 cat <<'S3B'
 
@@ -292,20 +317,36 @@ cat <<'S3B'
  robovmx's libcore FactoryFinder has hardcoded fallback class names for each
  JAXP factory type.  If the fallback class is absent the first call to
  *.newInstance() throws NoClassDefFoundError (not NoSuchMethodError).
+
+ Two-layer root cause for factories whose impl is NOT in robovm-rt:
+   Layer 1 (AOT): force-link alone is unreliable — Soot may skip third-party JARs.
+     Fix: "new Impl()" direct call + class-literal in Main.preWarmXxx() forces
+     Soot to AOT-compile the constructor and registers the class in the class table.
+   Layer 2 (bootstrap classloader): FactoryFinder calls Class.forName() from the
+     bootstrap classloader, which only sees robovm-rt.a classes.  App deps are
+     invisible even if compiled into the binary.
+     Fix: StreamDesugar pattern rewrites the *.newInstance() call site to a
+     StreamUtil helper that uses a pre-stored Class reference (from app-code context
+     where the AOT linker resolves app-class references directly).
+
    TransformerFactory  → org.apache.xalan.processor.TransformerFactoryImpl
-       FIXED: xalan:xalan:2.7.3 + xalan:serializer:2.7.3 in forge-gui-ios/pom.xml
-              AND static XALAN_TF_CLASS class-literal in forge-gui-ios Main.java.
-              (force-link in robovm.xml alone was NOT enough — Soot skipped the class)
+       FIXED (two-part):
+         Part 1: xalan:xalan:2.7.3 + xalan:serializer:2.7.3 in forge-gui-ios/pom.xml
+                 + XALAN_TF_CLASS literal + Main.preWarmXalan() "new TFImpl()"
+                 → AOT-compiles constructor; registers class in class table.
+         Part 2: StreamDesugar Pattern 66 + StreamUtil.transformerFactoryNewInstance()
+                 → bypasses bootstrap Class.forName() via pre-stored Class reference.
    DocumentBuilderFactory → org.apache.xerces.jaxp.DocumentBuilderFactoryImpl
-       Safe: Xerces is part of Android AOSP libcore and bundled in robovmx's robovm-rt.
+       Safe: Xerces IS in Android AOSP libcore and compiled into robovmx's robovm-rt.a.
+             The bootstrap classloader CAN find org.apache.xerces.* — no fix needed.
    SAXParserFactory    → org.apache.xerces.jaxp.SAXParserFactoryImpl
        Safe: Same as DocumentBuilderFactory.
- If new JAXP factories appear under JAXP-CHK below, apply the same pattern:
-   Maven dep + static class-literal in Main.java (do NOT rely on force-link alone).
+ If new JAXP factories appear under JAXP-CHK below, apply the two-part fix above
+ (do NOT rely on force-link alone; do NOT stop at Part 1).
 ────────────────────────────────────────────────────────────────────────────────
 S3B
 
-show "JAXP-FIXED" "TransformerFactory.newInstance() — FIXED via xalan dep + class literal in Main.java" \
+show "JAXP-FIXED" "TransformerFactory.newInstance() — FIXED via Pattern 66 + StreamUtil.transformerFactoryNewInstance()" \
     '\bTransformerFactory\.newInstance\(\)'
 show "JAXP-SAFE"  "DocumentBuilderFactory.newInstance() — safe (Xerces bundled in robovmx robovm-rt)" \
     '\bDocumentBuilderFactory\.newInstance\(\)'
@@ -333,7 +374,7 @@ show "JAXP-CHK"   "Other *Factory.newInstance() calls — verify fallback class 
 #
 # javax.xml.transform.TransformerFactory (internal to robovmx libcore)
 #   NOT a Forge source call — Android's FactoryFinder does Class.forName internally.
-#   FIXED: see Section 3b above.
+#   FIXED: see Section 3b above (two-part: preWarmXalan + StreamDesugar Pattern 66).
 
 cat <<'S3C'
 
