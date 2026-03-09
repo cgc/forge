@@ -47,6 +47,7 @@ guidelines in §4 if the approach or tooling changes.
 | Texture filtering crash on iOS | `Assets.java` enables anisotropic texture filtering unconditionally; the relevant OpenGL extension is unavailable on some iOS GPU configurations | Added `!GuiBase.isIOS()` guard around `textureParameter` setup in `Assets.java` |
 | Font disposal crash on iOS | `FSkinFont` attempted to dispose a font that was still in use | Added `!GuiBase.isIOS()` guard in `FSkinFont.java` dispose path |
 | `ClassCastException: SupplierUtil$$Lambda cannot be cast to java.io.Serializable` | JGraphT 1.5.2 uses serializable-lambda intersection casts (`INVOKEDYNAMIC` via `LambdaMetafactory.altMetafactory` + `CHECKCAST java/io/Serializable`); RoboVM AOT does not make lambda proxies implement `Serializable` | StreamDesugar **Pattern 65**: strip `CHECKCAST java/io/Serializable` immediately after `INVOKEDYNAMIC`; jgrapht-core JAR added to desugar-streams inputs in `pom.xml` |
+| `NoClassDefFoundError: org.apache.xalan.processor.TransformerFactoryImpl` | robovmx's Android-based libcore `TransformerFactory.newInstance()` hard-codes a `Class.forName("org.apache.xalan.processor.TransformerFactoryImpl")` fallback; Xalan is absent from robovm-rt; `forceLinkClasses` in `robovm.xml` was silently ignored by Soot for this third-party JAR | Added `xalan:xalan:2.7.3` + `xalan:serializer:2.7.3` Maven deps **and** a `static final XALAN_TF_CLASS = org.apache.xalan.processor.TransformerFactoryImpl.class` literal in `Main.java` — the class-literal creates an unconditional static dependency the AOT linker cannot drop |
 
 ### Current state
 
@@ -317,14 +318,24 @@ simulator is confirmed.  Do not add patterns speculatively.
 
 1. Capture the full stack trace from `idevicesyslog` or Console.app.
 2. Identify the crash type:
-   - `NoClassDefFoundError` → missing class → stub JAR (§2b).
+   - `NoClassDefFoundError` — two sub-cases:
+     - **Missing Forge class / stub class** → stub JAR (§2b).
+     - **JAXP factory `*.newInstance()` can't find its fallback implementation** — Android's
+       libcore `FactoryFinder` hard-codes `Class.forName("some.external.impl")`.  Fix:
+       (a) add the Maven dep that provides the implementation class, AND
+       (b) add a `static final Class<?> FOO_CLASS = some.external.impl.class` literal
+           in `Main.java`.  A class-literal creates an unconditional static dependency
+           that the AOT linker **must** follow; `forceLinkClasses` in `robovm.xml` is
+           NOT sufficient — Soot may silently skip classes from third-party JARs.
+       Run `scripts/ios-compat-scan.sh` (Section 3b) to find all JAXP factory calls.
    - `NoSuchMethodError` → missing method on an existing class → bytecode rewrite (§2a).
    - `ClassCastException` in `<clinit>` involving `Serializable` → serializable-lambda
      intersection cast → StreamDesugar Pattern 65 + add JAR to pom.xml desugar inputs.
    - Other `ClassCastException` / `ExceptionInInitializerError` → inspect the static
      initialiser of the failing class for lambda casts or missing APIs.
-3. Run `scripts/ios-bytecode-scan.sh` to check whether `ApiScan` flagged the call site
-   as `RISK:HIGH` or `SERIALIZABLE_LAMBDA`.
+3. Run `scripts/ios-compat-scan.sh` (source-level) to find JAXP factory and `Class.forName`
+   patterns (Sections 3b and 3c).  Run `scripts/ios-bytecode-scan.sh` to check whether
+   `ApiScan` flagged the call site as `RISK:HIGH` or `SERIALIZABLE_LAMBDA`.
 4. Add the minimal fix at the lowest level in the hierarchy above.
 5. Push to a branch; CI will run `test-ios-build.yml` (Maven compile check) automatically.
 6. When the IPA build succeeds, test on the simulator via `ios-simulator-screenshot.yml` and

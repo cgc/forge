@@ -4,7 +4,7 @@
  Scope: forge-core, forge-game, forge-ai, forge-gui, forge-gui-mobile
  Note:  forge-gui-ios excluded (it is the adaptation / fix layer).
 ════════════════════════════════════════════════════════════════════════════════
-Generated: 2026-03-09 10:48 UTC
+Generated: 2026-03-09 12:52 UTC
 
 ────────────────────────────────────────────────────────────────────────────────
  SECTION 1  –  Call sites covered by StreamDesugar.java (safe on iOS)
@@ -300,17 +300,21 @@ Generated: 2026-03-09 10:48 UTC
  *.newInstance() throws NoClassDefFoundError (not NoSuchMethodError).
    TransformerFactory  → org.apache.xalan.processor.TransformerFactoryImpl
        FIXED: xalan:xalan:2.7.3 + xalan:serializer:2.7.3 in forge-gui-ios/pom.xml
+              AND static XALAN_TF_CLASS class-literal in forge-gui-ios Main.java.
+              (force-link in robovm.xml alone was NOT enough — Soot skipped the class)
    DocumentBuilderFactory → org.apache.xerces.jaxp.DocumentBuilderFactoryImpl
-       Safe: Xerces is bundled in robovmx's robovm-rt.
+       Safe: Xerces is part of Android AOSP libcore and bundled in robovmx's robovm-rt.
    SAXParserFactory    → org.apache.xerces.jaxp.SAXParserFactoryImpl
-       Safe: Xerces is bundled in robovmx's robovm-rt.
+       Safe: Same as DocumentBuilderFactory.
+ If new JAXP factories appear under JAXP-CHK below, apply the same pattern:
+   Maven dep + static class-literal in Main.java (do NOT rely on force-link alone).
 ────────────────────────────────────────────────────────────────────────────────
 
-  [JAXP-FIXED] TransformerFactory.newInstance() — FIXED via xalan:xalan:2.7.3 dependency
+  [JAXP-FIXED] TransformerFactory.newInstance() — FIXED via xalan dep + class literal in Main.java
     forge-gui/src/main/java/forge/util/XmlUtil.java:38:            final Transformer t = TransformerFactory.newInstance().newTransformer();
     forge-gui/src/main/java/forge/util/XmlUtil.java:50:        Transformer t = TransformerFactory.newInstance().newTransformer();
 
-  [JAXP-SAFE] DocumentBuilderFactory.newInstance() — safe (Xerces bundled in robovmx)
+  [JAXP-SAFE] DocumentBuilderFactory.newInstance() — safe (Xerces bundled in robovmx robovm-rt)
     forge-gui/src/main/java/forge/localinstance/achievements/AchievementCollection.java:148:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
     forge-gui/src/main/java/forge/localinstance/achievements/AchievementCollection.java:169:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
     forge-gui/src/main/java/forge/deck/io/DeckPreferences.java:128:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
@@ -325,10 +329,10 @@ Generated: 2026-03-09 10:48 UTC
     forge-gui/src/main/java/forge/util/XmlReader.java:22:        DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
     forge-gui/src/main/java/forge/util/XmlWriter.java:23:        DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
 
-  [JAXP-SAFE] SAXParserFactory.newInstance() — safe (Xerces bundled in robovmx)
+  [JAXP-SAFE] SAXParserFactory.newInstance() — safe (Xerces bundled in robovmx robovm-rt)
     (none found)
 
-  [JAXP-CHK] Other JAXP factory newInstance() calls — verify fallback class is in robovmx
+  [JAXP-CHK] Other *Factory.newInstance() calls — verify fallback class is in robovmx robovm-rt
     forge-gui/src/main/java/forge/localinstance/achievements/AchievementCollection.java:148:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
     forge-gui/src/main/java/forge/localinstance/achievements/AchievementCollection.java:169:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
     forge-gui/src/main/java/forge/deck/io/DeckPreferences.java:128:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
@@ -344,6 +348,21 @@ Generated: 2026-03-09 10:48 UTC
     forge-gui/src/main/java/forge/util/XmlWriter.java:23:        DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
     forge-gui/src/main/java/forge/util/XmlUtil.java:38:            final Transformer t = TransformerFactory.newInstance().newTransformer();
     forge-gui/src/main/java/forge/util/XmlUtil.java:50:        Transformer t = TransformerFactory.newInstance().newTransformer();
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 3c  –  Class.forName() / ServiceLoader — dynamic class loading
+ Class.forName() with a string that does not correspond to a Forge class, or
+ with any name resolved at runtime from external input, may throw
+ NoClassDefFoundError on iOS if that class was not compiled into the binary.
+ Note: force-link is not reliable for third-party JAR classes; prefer adding a
+ static class-literal (.class) reference in Main.java for each such class.
+────────────────────────────────────────────────────────────────────────────────
+
+  [FORNAME-CHK] Class.forName() calls — verify each loaded class is in the binary
+    forge-gui-mobile/src/forge/adventure/util/SaveFileData.java:341:                localClass = Class.forName(resultClassDescriptor.getName());
+
+  [SVC-LOAD-CHK] ServiceLoader.load() calls — verify service implementations are in binary
+    (none found)
 
 ────────────────────────────────────────────────────────────────────────────────
  SECTION 4  –  All java.nio.file.* imports (inventory)

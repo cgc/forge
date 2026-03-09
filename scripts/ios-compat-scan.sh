@@ -48,9 +48,12 @@
 #   CompletableFuture.completeOnTimeout    → Pattern 62  (Java 9; absent from robovm-rt CF)
 #   Collection.parallelStream()            → Pattern 63  (ForkJoinPool.commonPool() crash)
 #   Executors.newWorkStealingPool()        → Pattern 64  (ForkJoinPool crash)
-#   TransformerFactory.newInstance()       → FIXED via xalan:xalan:2.7.3 Maven dep (NoClassDefFoundError)
+#   TransformerFactory.newInstance()       → FIXED via xalan:xalan:2.7.3 Maven dep +
+#                                              XALAN_TF_CLASS static literal in Main.java
+#                                              (force-link alone was not enough; see Section 3b)
 #
 # SECTION 3b covers the JAXP factory newInstance() NoClassDefFoundError category.
+# SECTION 3c covers Class.forName() calls that load classes by name at runtime.
 #
 # Usage:  bash scripts/ios-compat-scan.sh [repo-root]
 # ════════════════════════════════════════════════════════════════════════════
@@ -255,21 +258,32 @@ show "ICU"  "Charset.defaultCharset() — uses ICU on Android/robovm-rt" \
 # fallbacks for each factory type.  If the fallback class is absent from the
 # runtime library a NoClassDefFoundError is thrown.
 #
+# Note: force-linking alone (robovm.xml <forceLinkClasses>) is NOT sufficient to
+# guarantee a class from a third-party JAR is compiled into the binary — Soot may
+# silently skip classes from JARs that contain other problematic code.  The fix
+# for TransformerFactory adds a direct class-literal reference in Main.java which
+# creates an unconditional static dependency that the AOT linker cannot drop.
+#
 # TransformerFactory.newInstance()
 #   Fallback: org.apache.xalan.processor.TransformerFactoryImpl  (Xalan 2.x)
-#   Status:   FIXED — xalan:xalan:2.7.3 + xalan:serializer:2.7.3 added as compile deps in forge-gui-ios/pom.xml.
+#   Status:   FIXED — xalan:xalan:2.7.3 + xalan:serializer:2.7.3 in forge-gui-ios/pom.xml;
+#             AND XALAN_TF_CLASS static literal in Main.java (force-link was not reliable).
 #
 # DocumentBuilderFactory.newInstance()
 #   Fallback: org.apache.xerces.jaxp.DocumentBuilderFactoryImpl (Xerces)
-#   Status:   Safe — robovmx bundles Xerces in robovm-rt.
+#   Status:   Safe — Xerces is part of Android's AOSP libcore; bundled in robovmx's robovm-rt.
+#             No Maven dep or class literal needed.
 #
 # SAXParserFactory.newInstance()
 #   Fallback: org.apache.xerces.jaxp.SAXParserFactoryImpl (Xerces)
-#   Status:   Safe — robovmx bundles Xerces in robovm-rt.
+#   Status:   Safe — same as DocumentBuilderFactory.
 #
-# Any new JAXP factory call found below that is NOT DocumentBuilderFactory or
-# SAXParserFactory should be investigated: verify that robovmx provides the
-# fallback class, or add an iOS-only stub under forge-gui-ios/src/.
+# Any NEW JAXP factory call found below (tag JAXP-CHK) that is NOT
+# DocumentBuilderFactory or SAXParserFactory must be investigated:
+#   1. Does robovmx's robovm-rt bundle the fallback implementation class?
+#      (If yes: safe, add it to the JAXP-SAFE list above and in the heredoc below.)
+#   2. If not: add the Maven dep + a static class-literal reference in Main.java
+#      following the same pattern as XALAN_TF_CLASS.
 
 cat <<'S3B'
 
@@ -280,21 +294,63 @@ cat <<'S3B'
  *.newInstance() throws NoClassDefFoundError (not NoSuchMethodError).
    TransformerFactory  → org.apache.xalan.processor.TransformerFactoryImpl
        FIXED: xalan:xalan:2.7.3 + xalan:serializer:2.7.3 in forge-gui-ios/pom.xml
+              AND static XALAN_TF_CLASS class-literal in forge-gui-ios Main.java.
+              (force-link in robovm.xml alone was NOT enough — Soot skipped the class)
    DocumentBuilderFactory → org.apache.xerces.jaxp.DocumentBuilderFactoryImpl
-       Safe: Xerces is bundled in robovmx's robovm-rt.
+       Safe: Xerces is part of Android AOSP libcore and bundled in robovmx's robovm-rt.
    SAXParserFactory    → org.apache.xerces.jaxp.SAXParserFactoryImpl
-       Safe: Xerces is bundled in robovmx's robovm-rt.
+       Safe: Same as DocumentBuilderFactory.
+ If new JAXP factories appear under JAXP-CHK below, apply the same pattern:
+   Maven dep + static class-literal in Main.java (do NOT rely on force-link alone).
 ────────────────────────────────────────────────────────────────────────────────
 S3B
 
-show "JAXP-FIXED" "TransformerFactory.newInstance() — FIXED via xalan:xalan:2.7.3 dependency" \
+show "JAXP-FIXED" "TransformerFactory.newInstance() — FIXED via xalan dep + class literal in Main.java" \
     '\bTransformerFactory\.newInstance\(\)'
-show "JAXP-SAFE"  "DocumentBuilderFactory.newInstance() — safe (Xerces bundled in robovmx)" \
+show "JAXP-SAFE"  "DocumentBuilderFactory.newInstance() — safe (Xerces bundled in robovmx robovm-rt)" \
     '\bDocumentBuilderFactory\.newInstance\(\)'
-show "JAXP-SAFE"  "SAXParserFactory.newInstance() — safe (Xerces bundled in robovmx)" \
+show "JAXP-SAFE"  "SAXParserFactory.newInstance() — safe (Xerces bundled in robovmx robovm-rt)" \
     '\bSAXParserFactory\.newInstance\(\)'
-show "JAXP-CHK"   "Other JAXP factory newInstance() calls — verify fallback class is in robovmx" \
-    '\b[A-Z][a-zA-Z]*Factory\.newInstance\(\)' 
+show "JAXP-CHK"   "Other *Factory.newInstance() calls — verify fallback class is in robovmx robovm-rt" \
+    '\b[A-Z][a-zA-Z]*Factory\.newInstance\(\)'
+
+# ── Section 3c: Class.forName() — dynamic class loading ───────────────────────
+# Class.forName() loads a class by its binary name at runtime.  On RoboVM AOT,
+# a class is only available if it was compiled into the binary.  Classes reached
+# only via Class.forName() (not via any static bytecode reference) are NOT
+# automatically compiled — they must either be:
+#   a) reached via a static bytecode reference from compiled code, or
+#   b) explicitly force-linked (robovm.xml <forceLinkClasses>) — BUT see the note
+#      above: force-link can be silently dropped for third-party JAR classes.
+#   c) referenced by a direct class-literal (.class) in compiled code (safest).
+#
+# Findings from static analysis:
+#
+# SaveFileData.DecompressibleInputStream.readClassDescriptor()
+#   Calls Class.forName(resultClassDescriptor.getName()) where the name is read
+#   from a Java ObjectInputStream (Forge save files).  The deserialized classes are
+#   always Forge's own classes (already compiled into the binary).  SAFE.
+#
+# javax.xml.transform.TransformerFactory (internal to robovmx libcore)
+#   NOT a Forge source call — Android's FactoryFinder does Class.forName internally.
+#   FIXED: see Section 3b above.
+
+cat <<'S3C'
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 3c  –  Class.forName() / ServiceLoader — dynamic class loading
+ Class.forName() with a string that does not correspond to a Forge class, or
+ with any name resolved at runtime from external input, may throw
+ NoClassDefFoundError on iOS if that class was not compiled into the binary.
+ Note: force-link is not reliable for third-party JAR classes; prefer adding a
+ static class-literal (.class) reference in Main.java for each such class.
+────────────────────────────────────────────────────────────────────────────────
+S3C
+
+show "FORNAME-CHK" "Class.forName() calls — verify each loaded class is in the binary" \
+    '\bClass\.forName\('
+show "SVC-LOAD-CHK" "ServiceLoader.load() calls — verify service implementations are in binary" \
+    '\bServiceLoader\.load\('
 
 # ── Section 4: summary count of all java.nio.file.* imports ──────────────────
 
