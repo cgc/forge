@@ -289,35 +289,13 @@ public class CardStorageReader {
         return entries;
     }
 
-    private static final int LOAD_TIMEOUT_MINUTES = 5;
-
-    private static void dumpAllThreadStacks() {
-        System.err.println("=== Thread dump (card loading timed out) ===");
-        Thread.getAllStackTraces().forEach((t, stack) -> {
-            System.err.println("Thread \"" + t.getName() + "\" (state: " + t.getState() + "):");
-            for (StackTraceElement ste : stack) {
-                System.err.println("\tat " + ste);
-            }
-        });
-        System.err.println("=== End thread dump ===");
-    }
-
     private void executeLoadTask(final Collection<CardRules> result, final List<Callable<List<CardRules>>> tasks, final CountDownLatch cdl) {
         try {
             if (useThreadPool) {
                 final ExecutorService executor = ThreadUtil.getComputingPool(0.5f);
-                final List<Future<List<CardRules>>> parts = executor.invokeAll(tasks, LOAD_TIMEOUT_MINUTES, TimeUnit.MINUTES);
-                final boolean anyTimedOut = parts.stream().anyMatch(Future::isCancelled);
-                if (anyTimedOut) {
-                    executor.shutdownNow();
-                    dumpAllThreadStacks();
-                    throw new RuntimeException("Card loading timed out after " + LOAD_TIMEOUT_MINUTES + " minutes");
-                }
+                final List<Future<List<CardRules>>> parts = executor.invokeAll(tasks);
                 executor.shutdown();
-                if (!cdl.await(LOAD_TIMEOUT_MINUTES, TimeUnit.MINUTES)) {
-                    dumpAllThreadStacks();
-                    throw new RuntimeException("Card loading timed out after " + LOAD_TIMEOUT_MINUTES + " minutes");
-                }
+                cdl.await();
                 for (final Future<List<CardRules>> pp : parts) {
                     result.addAll(pp.get());
                 }
