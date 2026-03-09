@@ -350,6 +350,78 @@ public class StreamUtil {
         return java.nio.file.Files.copy(src, dst, opts);
     }
 
+    // ── iOS TransformerFactory desugaring ──────────────────────────────────────
+    // Pattern 66: TransformerFactory.newInstance() fails in robovmx with
+    // NoClassDefFoundError even though the Xalan class is compiled into the
+    // app binary.  Root cause: TransformerFactory.newInstance() (in libcore/rt)
+    // uses Class.forName() from the bootstrap classloader context, which in
+    // robovmx can only see classes compiled into the rt library — it cannot
+    // reach Xalan (an app dependency).  Direct "new TransformerFactoryImpl()"
+    // from app code works because the AOT call is resolved at link time, not
+    // through a classloader lookup.
+    //
+    // Fix: Main.preWarmXalan() creates a TransformerFactoryImpl instance in app
+    // code (where it works) and stores its Class here.  transformerFactoryNewInstance()
+    // uses that stored Class reference to create new instances via cls.newInstance(),
+    // bypassing the broken Class.forName() path in libcore entirely.
+    // StreamDesugar Pattern 66 rewrites every TransformerFactory.newInstance() call
+    // site to call this method instead.
+
+    /**
+     * Pre-warmed {@code TransformerFactory} class, set by {@code Main.preWarmXalan()}
+     * before any game-loop code runs.
+     *
+     * <p>Written once on the main thread during {@code createApplication()}, before
+     * any game-loop threads start.  {@code volatile} is sufficient to ensure the
+     * written value is visible to threads that subsequently read it — no further
+     * synchronisation is required because the single-threaded startup sequence
+     * guarantees the write happens-before any concurrent reads.
+     *
+     * <p>Using a raw {@code Class} type avoids a compile-time dependency on Xalan in
+     * {@code forge-core}.  On non-iOS platforms this field remains {@code null} and
+     * {@link #transformerFactoryNewInstance()} falls back to the standard
+     * {@link javax.xml.transform.TransformerFactory#newInstance()}.
+     */
+    @SuppressWarnings("rawtypes")
+    public static volatile Class transformerFactoryClass = null;
+
+    /**
+     * Pattern 66: iOS-safe replacement for
+     * {@link javax.xml.transform.TransformerFactory#newInstance()}.
+     *
+     * <p>On robovmx, {@code TransformerFactory.newInstance()} uses
+     * {@code Class.forName("org.apache.xalan.processor.TransformerFactoryImpl")}
+     * from libcore code.  That call uses the bootstrap classloader which was
+     * compiled as a fixed set of rt classes and cannot see Xalan (an app dependency).
+     * The result is a {@code NoClassDefFoundError} even though the Xalan class has
+     * been successfully AOT-compiled into the app binary.
+     *
+     * <p>This replacement uses a class reference pre-stored by
+     * {@code Main.preWarmXalan()} (obtained from a directly-created instance in
+     * app-code context, where the AOT linker resolves the reference correctly).
+     * {@code cls.newInstance()} on an already-resolved {@code Class} reference
+     * does not go through a classloader lookup and therefore succeeds.
+     *
+     * <p>Falls back to {@code TransformerFactory.newInstance()} on non-iOS
+     * platforms where {@code transformerFactoryClass} is {@code null} and the
+     * standard mechanism works correctly.
+     */
+    @SuppressWarnings("unchecked")
+    public static javax.xml.transform.TransformerFactory transformerFactoryNewInstance() {
+        Class cls = transformerFactoryClass;
+        if (cls != null) {
+            try {
+                return (javax.xml.transform.TransformerFactory) cls.newInstance();
+            } catch (Exception e) {
+                // cls.newInstance() failed unexpectedly — log to stderr for diagnostics
+                // and fall through to the standard mechanism below, which will produce
+                // its own (more informative) error if it also fails.
+                System.err.println("[StreamUtil] transformerFactoryNewInstance: cls.newInstance() failed: " + e);
+            }
+        }
+        return javax.xml.transform.TransformerFactory.newInstance();
+    }
+
     /**
      * Minimal {@link Path} implementation that wraps a {@link File} without
      * triggering Android ICU charset encoding ({@code NativeConverter}).

@@ -133,6 +133,20 @@ import java.nio.file.attribute.BasicFileAttributes;
  *       as its declared functional-interface type; only Java-object serialisation
  *       of the lambda itself is lost, which is not needed on iOS.
  *   </li>
+ *   <li>{@code TransformerFactory.newInstance()} →
+ *       {@code StreamUtil.transformerFactoryNewInstance()} (Pattern 66)<br>
+ *       {@code TransformerFactory.newInstance()} in robovmx's libcore uses
+ *       {@code Class.forName("org.apache.xalan.processor.TransformerFactoryImpl")}
+ *       from the bootstrap classloader context, which cannot see Xalan (an app
+ *       dependency).  The result is {@code NoClassDefFoundError} even though
+ *       {@code TransformerFactoryImpl} is compiled into the app binary and can
+ *       be constructed directly from app code.
+ *       {@code Main.preWarmXalan()} creates an instance in app-code context and
+ *       stores its class in {@code StreamUtil.transformerFactoryClass}.
+ *       {@code StreamUtil.transformerFactoryNewInstance()} uses that pre-warmed
+ *       class reference to create new instances via {@code cls.newInstance()},
+ *       bypassing the broken {@code Class.forName()} path in libcore entirely.
+ *   </li>
  * </ol>
  *
  * <p>The transformation is idempotent: class files whose call sites already
@@ -391,6 +405,26 @@ public class StreamDesugar {
                     super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
                             "executorsNewWorkStealingPool",
                             "()Ljava/util/concurrent/ExecutorService;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 66: TransformerFactory.newInstance() — robovmx's libcore
+                // implementation uses Class.forName() from the bootstrap classloader context,
+                // which cannot see Xalan (an app dependency).  The result is
+                // NoClassDefFoundError even though TransformerFactoryImpl is compiled into
+                // the app binary and can be constructed directly from app code.
+                // StreamUtil.transformerFactoryNewInstance() uses a class reference
+                // pre-stored by Main.preWarmXalan() (obtained in app-code context, where
+                // the AOT linker resolves references to app classes correctly), bypassing
+                // the broken Class.forName() path in libcore entirely.
+                if (opcode == Opcodes.INVOKESTATIC
+                        && "javax/xml/transform/TransformerFactory".equals(owner)
+                        && "newInstance".equals(name)
+                        && "()Ljavax/xml/transform/TransformerFactory;".equals(descriptor)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "transformerFactoryNewInstance",
+                            "()Ljavax/xml/transform/TransformerFactory;", false);
                     modified = true;
                     return;
                 }

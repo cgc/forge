@@ -88,7 +88,16 @@ public class Main extends IOSApplication.Delegate {
      */
     private void preWarmXalan() {
         try {
-            new org.apache.xalan.processor.TransformerFactoryImpl();
+            org.apache.xalan.processor.TransformerFactoryImpl tf =
+                    new org.apache.xalan.processor.TransformerFactoryImpl();
+            // Store the class in StreamUtil so that StreamUtil.transformerFactoryNewInstance()
+            // can create new instances without going through Class.forName() from libcore.
+            // TransformerFactory.newInstance() (in robovmx's libcore) uses Class.forName()
+            // from the bootstrap classloader context, which cannot see Xalan (an app dep).
+            // Using the Class reference obtained here (from app-code context, where the AOT
+            // linker resolves the reference directly) avoids that broken lookup path entirely.
+            forge.util.StreamUtil.transformerFactoryClass = tf.getClass();
+            nslog("preWarmXalan: registered " + tf.getClass().getName());
         } catch (Throwable t) {
             nslog("preWarmXalan: TransformerFactoryImpl init failed: " + t);
         }

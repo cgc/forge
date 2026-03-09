@@ -48,7 +48,7 @@ guidelines in §4 if the approach or tooling changes.
 | Texture filtering crash on iOS | `Assets.java` enables anisotropic texture filtering unconditionally; the relevant OpenGL extension is unavailable on some iOS GPU configurations | Added `!GuiBase.isIOS()` guard around `textureParameter` setup in `Assets.java` |
 | Font disposal crash on iOS | `FSkinFont` attempted to dispose a font that was still in use | Added `!GuiBase.isIOS()` guard in `FSkinFont.java` dispose path |
 | `ClassCastException: SupplierUtil$$Lambda cannot be cast to java.io.Serializable` | JGraphT 1.5.2 uses serializable-lambda intersection casts (`INVOKEDYNAMIC` via `LambdaMetafactory.altMetafactory` + `CHECKCAST java/io/Serializable`); RoboVM AOT does not make lambda proxies implement `Serializable` | StreamDesugar **Pattern 65**: strip `CHECKCAST java/io/Serializable` immediately after `INVOKEDYNAMIC`; jgrapht-core JAR added to desugar-streams inputs in `pom.xml` |
-| `NoClassDefFoundError: org.apache.xalan.processor.TransformerFactoryImpl` | robovmx's Android-based libcore `TransformerFactory.newInstance()` hard-codes a `Class.forName("org.apache.xalan.processor.TransformerFactoryImpl")` fallback; Xalan is absent from robovm-rt; `forceLinkClasses` in `robovm.xml` was silently ignored by Soot for this third-party JAR. **Root cause**: `LDC <class>` (class literal) only registers the class in the AOT binary's class table — it does NOT emit an `INVOKESPECIAL` that makes the constructor reachable in Soot's call-graph, so the constructor's native code is never compiled. `clazz.newInstance()` in `TransformerFactory.newInstance()` then crashes because the constructor code is absent. | Added `xalan:xalan:2.7.3` + `xalan:serializer:2.7.3` Maven deps, `static final XALAN_TF_CLASS` literal (belt-and-suspenders for class-table registration), **and** `preWarmXalan()` called from `createApplication()` in `Main.java` — the `new TransformerFactoryImpl()` therein emits `INVOKESPECIAL <init>`, forcing Soot to AOT-compile the constructor and all its transitive callees |
+| `NoClassDefFoundError: org.apache.xalan.processor.TransformerFactoryImpl` | robovmx's Android-based libcore `TransformerFactory.newInstance()` hard-codes a `Class.forName("org.apache.xalan.processor.TransformerFactoryImpl")` fallback; Xalan is absent from robovm-rt; `forceLinkClasses` in `robovm.xml` was silently ignored by Soot for this third-party JAR. **Root cause (two-part)**: (1) `LDC <class>` (class literal) only registers the class in the AOT binary's class table; it does NOT emit `INVOKESPECIAL`, so Soot doesn't AOT-compile the constructor → `preWarmXalan()` was added to force the direct `new` so Soot compiles the constructor. (2) Even after the constructor is compiled, `TransformerFactory.newInstance()` (libcore code) uses `Class.forName()` from the **bootstrap classloader context**, which in robovmx cannot see Xalan (an app dependency, loaded by the app classloader). The class IS in the binary and can be constructed directly from app code — but libcore's `Class.forName()` still fails. | Added `xalan:xalan:2.7.3` + `xalan:serializer:2.7.3` Maven deps, `static final XALAN_TF_CLASS` literal + `preWarmXalan()` in `Main.java` (stores `TransformerFactoryImpl.class` in `StreamUtil.transformerFactoryClass`), **and** StreamDesugar **Pattern 66**: rewrites every `TransformerFactory.newInstance()` call site → `StreamUtil.transformerFactoryNewInstance()`, which uses the pre-stored class reference via `cls.newInstance()` — bypassing the broken `Class.forName()` path in libcore entirely |
 
 ### Current state
 
@@ -336,6 +336,16 @@ simulator is confirmed.  Do not add patterns speculatively.
            A class-literal alone is NOT sufficient.
            `forceLinkClasses` in `robovm.xml` is also NOT sufficient — Soot may silently skip
            classes from third-party JARs.
+           **IMPORTANT**: Even after the constructor is compiled, `FactoryFinder` (libcore code)
+           calls `Class.forName()` from the **bootstrap classloader context**, which cannot see
+           app-dependency classes.  The class can be constructed successfully from app code (direct
+           `new`) but the `Class.forName()` inside libcore still fails.  To fix this:
+           (c) store the class in a public field of a `forge-core` class (e.g.
+               `StreamUtil.transformerFactoryClass = tf.getClass()`) from the `preWarmXxx()` call,
+               AND add a StreamDesugar pattern (e.g. Pattern 66) that rewrites the
+               `FactoryName.newInstance()` call sites in app code to a `StreamUtil` helper that
+               uses `cls.newInstance()` on the stored reference — bypassing the broken
+               `Class.forName()` path in libcore entirely.
        Run `scripts/ios-compat-scan.sh` (Section 3b) to find all JAXP factory calls.
    - `NoSuchMethodError` → missing method on an existing class → bytecode rewrite (§2a).
    - `ClassCastException` in `<clinit>` involving `Serializable` → serializable-lambda
