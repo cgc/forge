@@ -272,6 +272,40 @@ public class Forge implements ApplicationListener {
             if (totalDeviceRAM > 5000) //devices with more than 10GB RAM will have 600 Cache size, 400 Cache size for morethan 5GB RAM
                 cacheSize = totalDeviceRAM > 10000 ? 600 : 400;
         }
+        if (GuiBase.isIOS()) {
+            // iOS enforces a strict per-process active-memory limit (jetsam / memorystatus),
+            // typically ~50% of physical RAM.  On a 4 GB iPhone SE 3rd gen this is ~2 GB.
+            // Unlike Android (which can page memory), iOS will SIGKILL the app instantly
+            // when the limit is exceeded with no chance to recover.
+            //
+            // Card textures are the largest single controllable memory pool: at ~1 MB per
+            // card (RGB888, 488×680) the default cache of 300 cards ≈ 300 MB.  Reducing
+            // the ceiling here directly lowers peak memory during drafts, where the user
+            // cycles through hundreds of unique cards in succession.
+            //
+            // The tiers below leave at least ~300-400 MB headroom below the iOS kill limit
+            // for the JVM heap (card DB, AI evaluation, game objects) and font/skin textures.
+            final int iosCacheCap;
+            if (totalDeviceRAM <= 0) {
+                // RAM unknown (detection failed or pre-detection build): use a safe default
+                // that fits within the tightest plausible iOS memory budget.
+                iosCacheCap = 150;
+            } else if (totalDeviceRAM <= 4096) {
+                // ≤ 4 GB devices: iPhone SE 2nd/3rd gen, iPhone 11, 12 mini, etc.
+                // iOS kill limit ≈ 2 GB.
+                iosCacheCap = 100;
+            } else if (totalDeviceRAM <= 6144) {
+                // ≤ 6 GB devices: iPhone 13, 14, etc.
+                // iOS kill limit ≈ 3 GB.
+                iosCacheCap = 175;
+            } else {
+                // > 6 GB devices: iPhone 15 Pro, 16, etc.
+                // Kill limit ≈ 4+ GB; keep close to desktop default.
+                iosCacheCap = 250;
+            }
+            if (cacheSize > iosCacheCap)
+                cacheSize = iosCacheCap;
+        }
         if (!initialized) {
             initialized = true;
 
@@ -483,7 +517,7 @@ public class Forge implements ApplicationListener {
     }
 
     protected void afterDbLoaded() {
-        if (GuiBase.isAndroid() && autoCache)
+        if ((GuiBase.isAndroid() && autoCache) || (GuiBase.isIOS() && totalDeviceRAM > 0))
             getSplashScreen().getProgressBar().setDescription(getLocalizer().getMessage("lblFinishingStartup") + "\nDetected RAM: " + totalDeviceRAM + "MB. Cache size: " + cacheSize);
         else
             getSplashScreen().getProgressBar().setDescription(getLocalizer().getMessage("lblFinishingStartup"));

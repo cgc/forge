@@ -15,6 +15,7 @@ import org.robovm.apple.foundation.Foundation;
 import org.robovm.apple.foundation.NSAutoreleasePool;
 import org.robovm.apple.foundation.NSBundle;
 import org.robovm.apple.foundation.NSException;
+import org.robovm.apple.foundation.NSProcessInfo;
 import org.robovm.apple.foundation.NSString;
 import org.robovm.apple.foundation.NSThread;
 import org.robovm.apple.glkit.GLKViewDrawableColorFormat;
@@ -395,7 +396,22 @@ public class Main extends IOSApplication.Delegate {
         config.useAudio = false;
         boolean isLandscape = false;
         nslog("createApplication: calling Forge.getApp()");
-        final ApplicationListener app = Forge.getApp(null, new IOSClipboard(), new IOSAdapter(assetsDir), assetsDir, false, !isLandscape, 0, false, 0);
+        // Detect physical memory so Forge can scale the card-texture cache size down
+        // for constrained iOS devices.  iOS enforces a per-process active-memory limit
+        // of roughly 50% of physical RAM (≈ 2 GB on a 4 GB iPhone SE 3rd gen); exceeding
+        // it causes an instant jetsam SIGKILL with no warning.
+        // NSProcessInfo.getSharedProcessInfo().getPhysicalMemory() returns bytes as a long.
+        int iosPhysicalRAMMB = 0;
+        try {
+            long physicalBytes = NSProcessInfo.getSharedProcessInfo().getPhysicalMemory();
+            // physicalBytes / (1024² ) fits in an int for any plausible device (max ~2 TB = 2M MB,
+            // well below Integer.MAX_VALUE ≈ 2.1G MB), but clamp defensively.
+            iosPhysicalRAMMB = (int) Math.min(physicalBytes / (1024L * 1024L), Integer.MAX_VALUE);
+            nslog("createApplication: physicalMemory=" + physicalBytes + " bytes (" + iosPhysicalRAMMB + " MB)");
+        } catch (Throwable t) {
+            nslog("createApplication: physicalMemory detection failed: " + t);
+        }
+        final ApplicationListener app = Forge.getApp(null, new IOSClipboard(), new IOSAdapter(assetsDir), assetsDir, false, !isLandscape, iosPhysicalRAMMB, false, 0);
         nslog("createApplication: Forge.getApp() returned " + (app == null ? "null" : app.getClass().getName()));
         // The generic isUsingAppDirectory check in Forge.getApp() matches the Android
         // package name ("forge.app") in the OBB path, but the iOS bundle is named
