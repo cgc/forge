@@ -46,6 +46,33 @@ import java.util.jar.JarFile;
  *       StreamUtil helper for each one found in a live code path.</li>
  * </ul>
  *
+ * <h2>Native method declaration scan (RISK:NATIVE)</h2>
+ * In addition to call-site scanning, this tool also detects {@code native} method
+ * <em>declarations</em> in scanned classes.  On iOS with RoboVM's AOT compiler,
+ * each {@code native} method generates a JNI trampoline that holds a function
+ * pointer to the C implementation.  If the JNI library that provides the symbol
+ * is <em>not</em> linked into the app binary (e.g. a missing
+ * {@code *-platform:natives-ios} xcframework in {@code forge-gui-ios/pom.xml}),
+ * the function pointer remains {@code null}.  Calling that method at runtime
+ * dereferences the null pointer → {@code EXC_BAD_ACCESS (KERN_INVALID_ADDRESS
+ * at 0x0)}, which is the same crash pattern as
+ * {@code NativeConverter.resetCharToByte} (fixed by StreamDesugar Pattern 50).
+ *
+ * <p>Classes whose package prefix belongs to the JDK/Android/RoboVM runtime
+ * (java.*, javax.*, sun.*, android.*, com.android.*, org.robovm.*) are excluded
+ * since their native symbols are always provided by robovm-rt.  Everything else
+ * — including libgdx JARs, Xalan, and any other dependency JARs passed on the
+ * command line — is reported in the {@code RISK:NATIVE} section.
+ *
+ * <p>For each native method listed, verify that the corresponding JNI library is
+ * declared in {@code forge-gui-ios/pom.xml} as a {@code *-platform:natives-ios}
+ * xcframework dependency.  Past examples:
+ * <ul>
+ *   <li>{@code com.badlogic.gdx.*} JNI methods → {@code gdx-platform:natives-ios}</li>
+ *   <li>{@code com.badlogic.gdx.graphics.g2d.freetype.*} → {@code gdx-freetype-platform:natives-ios}</li>
+ *   <li>{@code com.badlogic.gdx.physics.box2d.*} → {@code gdx-box2d-platform:natives-ios}</li>
+ * </ul>
+ *
  * <h2>Usage</h2>
  * <pre>
  *   java -cp asm.jar:. ApiScan &lt;dir|jar&gt; [&lt;dir2|jar2&gt; ...]
@@ -76,6 +103,17 @@ public class ApiScan {
 
     /** Locations (className.methodName) of serializable-lambda INVOKEDYNAMIC instructions. */
     static final List<String> SERIALIZABLE_LAMBDA_LOCATIONS = new ArrayList<>();
+
+    /**
+     * Native method declarations found in scanned classes, excluding JDK/Android/RoboVM
+     * built-ins.  Each entry is "internalClassName.methodName descriptor".
+     *
+     * <p>Every entry represents a JNI trampoline that RoboVM AOT-compiles into the
+     * binary.  If the corresponding native C symbol is absent from any linked library
+     * or xcframework, the trampoline's function pointer is {@code null}, and calling
+     * the method at runtime causes {@code EXC_BAD_ACCESS (KERN_INVALID_ADDRESS at 0x0)}.
+     */
+    static final List<String> NATIVE_METHOD_LOCATIONS = new ArrayList<>();
 
     static final class ApiEntry {
         final String owner;
@@ -385,6 +423,17 @@ public class ApiScan {
             @Override
             public MethodVisitor visitMethod(int access, String mName, String mDesc,
                                               String signature, String[] exceptions) {
+                // Detect native method declarations.
+                // On iOS with RoboVM AOT, each native method generates a JNI trampoline
+                // that holds a C function pointer.  If the JNI library providing that
+                // symbol is not linked (e.g. a missing *-platform:natives-ios xcframework
+                // in forge-gui-ios/pom.xml), the pointer stays null and calling the method
+                // at runtime causes EXC_BAD_ACCESS at 0x0.
+                // Exclude JDK/Android/RoboVM packages: their native symbols are always
+                // provided by robovm-rt's static library.
+                if ((access & Opcodes.ACC_NATIVE) != 0 && !isBuiltinClass(currentClass)) {
+                    NATIVE_METHOD_LOCATIONS.add(currentClass + "." + mName + " " + mDesc);
+                }
                 return new MethodVisitor(Opcodes.ASM9) {
                     @Override
                     public void visitMethodInsn(int opcode, String owner, String name,
@@ -431,6 +480,28 @@ public class ApiScan {
         }
     }
 
+    /**
+     * Returns {@code true} if {@code internalName} belongs to a package whose native
+     * symbols are always provided by robovmx's robovm-rt static library, so that a
+     * {@code native} method declaration in that class is inherently safe on iOS.
+     *
+     * <p>Excluded prefixes (JDK / Android libcore / RoboVM runtime):
+     * {@code java/}, {@code javax/}, {@code sun/}, {@code com/sun/},
+     * {@code android/}, {@code com/android/}, {@code dalvik/},
+     * {@code libcore/}, {@code org/robovm/}.
+     */
+    private static boolean isBuiltinClass(String internalName) {
+        return internalName.startsWith("java/")
+            || internalName.startsWith("javax/")
+            || internalName.startsWith("sun/")
+            || internalName.startsWith("com/sun/")
+            || internalName.startsWith("android/")
+            || internalName.startsWith("com/android/")
+            || internalName.startsWith("dalvik/")
+            || internalName.startsWith("libcore/")
+            || internalName.startsWith("org/robovm/");
+    }
+
     // ── Report ────────────────────────────────────────────────────────────────
 
     private static void printReport() {
@@ -448,17 +519,20 @@ public class ApiScan {
                                   .mapToInt(hg -> hg.locations.size()).sum();
 
         printDivider();
-        System.out.println(" iOS Bytecode API Scan — Java 9-11 call sites in compiled classes");
+        System.out.println(" iOS Bytecode API Scan — Java 9-11 call sites + native method declarations");
         System.out.println(" Scans for method calls that will NoSuchMethodError on iOS if not");
         System.out.println(" patched by StreamDesugar or natively provided by robovmx robovm-rt.");
-        System.out.println(" Also scans for serializable-lambda INVOKEDYNAMIC (Pattern 65 target).");
+        System.out.println(" Also scans for native method declarations (RISK:NATIVE — EXC_BAD_ACCESS at 0x0");
+        System.out.println(" if the JNI library/xcframework is not linked) and for serializable-lambda");
+        System.out.println(" INVOKEDYNAMIC (Pattern 65 target).");
         printDivider();
         System.out.println();
         System.out.printf(" Summary: %d RISK:HIGH call sites, %d CLAIMED, %d PATCHED,"
-                        + " %d serializable-lambda site(s)%n%n",
+                        + " %d native declaration(s), %d serializable-lambda site(s)%n%n",
                 riskCount,
                 byCategory.get(Category.CLAIMED).stream().mapToInt(hg -> hg.locations.size()).sum(),
                 byCategory.get(Category.PATCHED).stream().mapToInt(hg -> hg.locations.size()).sum(),
+                NATIVE_METHOD_LOCATIONS.size(),
                 SERIALIZABLE_LAMBDA_LOCATIONS.size());
 
         printSection("RISK:HIGH — NOT patched, NOT claimed; action required if reachable on iOS",
@@ -467,6 +541,7 @@ public class ApiScan {
                 byCategory.get(Category.CLAIMED), "CLAIMED");
         printSection("PATCHED  — rewritten at build time by StreamDesugar.java (safe)",
                 byCategory.get(Category.PATCHED), "PATCHED");
+        printNativeMethodSection();
         printSerializableLambdaSection();
 
         printDivider();
@@ -478,6 +553,13 @@ public class ApiScan {
             System.out.println("   3. Re-run scripts/desugar-streams.sh");
         } else {
             System.out.println(" No RISK:HIGH call sites found — all Java 9-11 APIs are patched or claimed.");
+        }
+        if (!NATIVE_METHOD_LOCATIONS.isEmpty()) {
+            System.out.println(" RISK:NATIVE: " + NATIVE_METHOD_LOCATIONS.size()
+                    + " native declaration(s) found (see section above).");
+            System.out.println(" For each one: verify that the JNI library is linked in");
+            System.out.println(" forge-gui-ios/pom.xml as a *-platform:natives-ios xcframework dependency.");
+            System.out.println(" An unlinked native method will crash with EXC_BAD_ACCESS at 0x0.");
         }
         if (!SERIALIZABLE_LAMBDA_LOCATIONS.isEmpty()) {
             System.out.println(" SERIALIZABLE LAMBDAS: " + SERIALIZABLE_LAMBDA_LOCATIONS.size()
@@ -498,6 +580,38 @@ public class ApiScan {
                 System.out.printf("           %d call site(s):%n", hg.locations.size());
                 for (String loc : hg.locations) {
                     System.out.println("    " + loc.replace('/', '.'));
+                }
+            }
+        }
+        System.out.println();
+    }
+
+    private static void printNativeMethodSection() {
+        System.out.println("────────────────────────────────────────────────────────────────────────────────");
+        System.out.println(" RISK:NATIVE — native method declarations in non-JDK/non-Android classes");
+        System.out.println("   Each entry is a JNI trampoline compiled into the iOS binary.");
+        System.out.println("   If the JNI library/xcframework providing the native symbol is not linked");
+        System.out.println("   in forge-gui-ios/pom.xml the function pointer is null at runtime.");
+        System.out.println("   Calling the method → EXC_BAD_ACCESS (KERN_INVALID_ADDRESS at 0x0).");
+        System.out.println("   JDK/Android/RoboVM built-ins are excluded (provided by robovm-rt).");
+        System.out.println("────────────────────────────────────────────────────────────────────────────────");
+        if (NATIVE_METHOD_LOCATIONS.isEmpty()) {
+            System.out.println("  (none found in scanned classes)");
+        } else {
+            // Group by class name for readability
+            Map<String, List<String>> byClass = new LinkedHashMap<>();
+            for (String loc : NATIVE_METHOD_LOCATIONS) {
+                int dot = loc.indexOf('.');
+                String cls  = dot >= 0 ? loc.substring(0, dot) : loc;
+                String meth = dot >= 0 ? loc.substring(dot + 1) : loc;
+                byClass.computeIfAbsent(cls, k -> new ArrayList<>()).add(meth);
+            }
+            System.out.printf("  %d native declaration(s) in %d class(es):%n",
+                    NATIVE_METHOD_LOCATIONS.size(), byClass.size());
+            for (Map.Entry<String, List<String>> e : byClass.entrySet()) {
+                System.out.println("  " + e.getKey().replace('/', '.'));
+                for (String m : e.getValue()) {
+                    System.out.println("    " + m);
                 }
             }
         }

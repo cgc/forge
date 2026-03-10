@@ -143,27 +143,31 @@ public class Main extends IOSApplication.Delegate {
     }
 
     /**
-     * IOSGraphics subclass that makes {@code requestRendering()} safe to call from any
-     * thread by dispatching the UIKit call to the main GCD queue.
+     * IOSGraphics subclass that makes {@code requestRendering()} and
+     * {@code setContinuousRendering()} safe to call from any thread by dispatching
+     * the UIKit calls to the main GCD queue.
      *
      * <p>In robovmx (experiment/2-libcore-10) ObjC bridge calls use direct
      * function-pointer (IMP) dispatch instead of {@code objc_msgSend}.  As a result
      * robovmx no longer silently marshals UIKit calls to the main thread the way
      * MobiVM 2.3.23 did.  {@link IOSGraphics#requestRendering()} calls
      * {@code viewController.setPaused(false)} (a {@code GLKViewController} UIKit
-     * method) when {@code isContinuous == false}.  If that call is made from a
-     * background thread:
+     * method) when {@code isContinuous == false}, and
+     * {@link IOSGraphics#setContinuousRendering(boolean)} calls
+     * {@code view.setPaused(!isContinuous)} (a {@code GLKView} UIKit method).
+     * If either call is made from a background thread:
      * <ul>
      *   <li><b>iOS simulator</b> – resolves to a null ObjC trampoline → {@code pc=0x0}
      *       crash (Thread N Crashed: 0 ??? 0x0).</li>
-     *   <li><b>Physical device</b> – UIKit silently ignores the call; the GL render loop
-     *       stays paused, so any subsequent {@code WaitRunnable.invokeAndWait()} call
-     *       deadlocks permanently (app frozen).</li>
+     *   <li><b>Physical device</b> – can cause {@code EXC_BAD_ACCESS} or silently
+     *       ignore the call, leaving the GL render loop in the wrong state and
+     *       causing any subsequent {@code WaitRunnable.invokeAndWait()} to deadlock.</li>
      * </ul>
      *
-     * <p>This subclass intercepts {@code requestRendering()} and, when called from a
-     * non-main thread, posts the actual work to the main GCD queue so that
-     * {@code viewController.setPaused()} is always called from the correct thread.
+     * <p>This subclass intercepts both methods and, when called from a non-main
+     * thread, posts the actual work to the main GCD queue so that
+     * {@code viewController.setPaused()} / {@code view.setPaused()} are always
+     * called from the correct thread.
      */
     private static final class SafeIOSGraphics extends IOSGraphics {
         /**
@@ -205,6 +209,38 @@ public class Main extends IOSApplication.Delegate {
          */
         private void doRequestRendering() {
             super.requestRendering();
+        }
+
+        /**
+         * Thread-safe override of {@link IOSGraphics#setContinuousRendering(boolean)}.
+         *
+         * <p>In robovmx's direct function-pointer (IMP) dispatch mode,
+         * {@code IOSGraphics.setContinuousRendering()} calls
+         * {@code view.setPaused(!isContinuous)} — a {@code GLKView} UIKit method
+         * that must always execute on the main thread.  Calling it from a background
+         * thread resolves to a null ObjC trampoline on the iOS simulator
+         * ({@code pc=0x0} crash) and causes an {@code EXC_BAD_ACCESS} on physical
+         * devices.  This override mirrors the pattern used for
+         * {@link #requestRendering()}: dispatch to the main GCD queue whenever the
+         * caller is not already on the main thread.
+         */
+        @Override
+        public void setContinuousRendering(boolean isContinuous) {
+            if (NSThread.getCurrentThread().isMainThread()) {
+                doSetContinuousRendering(isContinuous);
+            } else {
+                final boolean cont = isContinuous;
+                DispatchQueue.getMainQueue().async(() -> doSetContinuousRendering(cont));
+            }
+        }
+
+        /**
+         * Calls {@link IOSGraphics#setContinuousRendering(boolean)} on the current
+         * thread.  Separated from {@link #setContinuousRendering(boolean)} so it can
+         * be used as a lambda in the GCD dispatch block.
+         */
+        private void doSetContinuousRendering(boolean isContinuous) {
+            super.setContinuousRendering(isContinuous);
         }
     }
 
@@ -329,21 +365,23 @@ public class Main extends IOSApplication.Delegate {
         // (device: UIKit checks the thread internally and aborts the operation).
         //
         // Scope assessment — what robovmx's direct dispatch impacts in Forge:
-        //   • The only Forge bg-thread UIKit call path is:
+        //   • The primary Forge bg-thread UIKit call paths are:
         //       bg thread → Gdx.app.postRunnable() → IOSApplication.postRunnable()
         //           → IOSGraphics.requestRendering()
         //           → (when isContinuous==false) viewController.setPaused(false)  ← UIKit
-        //     This is the crash/hang that was new to this branch.
+        //       any thread → Gdx.graphics.setContinuousRendering(boolean)
+        //           → IOSGraphics.setContinuousRendering()
+        //           → view.setPaused(!isContinuous)                               ← UIKit
         //   • All other ObjC calls in Forge happen on the main thread:
         //       Foundation.log/NSLog, NSBundle, UIScreen, UIApplication, UIPasteboard,
         //       IOSFiles static init, computeBounds(), lifecycle callbacks.
         //   • Foundation.log() (NSLog) is thread-safe per Apple documentation. ✓
         //   • setupAccelerometer() and setupCompass() are overridden to no-ops below. ✓
         //
-        // General fix: SafeIOSGraphics (see top of this file) overrides
-        // requestRendering() to dispatch to the main GCD queue when called from a
-        // background thread.  This makes ALL requestRendering() calls safe regardless
-        // of the isContinuous state.
+        // General fix: SafeIOSGraphics (see top of this file) overrides both
+        // requestRendering() and setContinuousRendering() to dispatch to the main
+        // GCD queue when called from a background thread.  This makes ALL
+        // UIKit-touching calls through IOSGraphics safe regardless of calling thread.
         //
         // Defence-in-depth fix: Forge.create() calls startContinuousRendering() before
         // the background DB-load thread starts, keeping isContinuous=true so that

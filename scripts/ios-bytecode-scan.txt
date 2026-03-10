@@ -1,9 +1,15 @@
 ════════════════════════════════════════════════════════════════════════════════
- iOS Bytecode API Scan — Java 9-11 call sites in compiled classes
+ iOS Bytecode API Scan — Java 9-11 call sites + native method declarations
  Scans for method calls that will NoSuchMethodError on iOS if not
  patched by StreamDesugar or natively provided by robovmx robovm-rt.
- Also scans for serializable-lambda INVOKEDYNAMIC (Pattern 65 target).
+ Also scans for native method declarations (RISK:NATIVE — EXC_BAD_ACCESS at 0x0
+ if the JNI library/xcframework is not linked) and for serializable-lambda
+ INVOKEDYNAMIC (Pattern 65 target).
 ════════════════════════════════════════════════════════════════════════════════
+
+ NOTE: This file was generated before native method scanning was added to ApiScan.
+ Re-run to get RISK:NATIVE section (requires libgdx JARs in ~/.m2):
+   bash scripts/ios-bytecode-scan.sh > scripts/ios-bytecode-scan.txt
 
  Summary: 0 RISK:HIGH call sites, 47 CLAIMED, 27 PATCHED, 86 serializable-lambda site(s)
 
