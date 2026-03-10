@@ -278,18 +278,21 @@ public class Forge implements ApplicationListener {
             // Unlike Android (which can page memory), iOS will SIGKILL the app instantly
             // when the limit is exceeded with no chance to recover.
             //
-            // Card textures are the largest single controllable memory pool: at ~1 MB per
-            // card (RGB888, 488×680) the default cache of 300 cards ≈ 300 MB.  Reducing
+            // Card textures are the largest single controllable memory pool: at ~1.3 MB per
+            // card (RGBA8888, 488×680 → 488×680×4 bytes) the default cache of 300 cards ≈ 381 MB.  Reducing
             // the ceiling here directly lowers peak memory during drafts, where the user
             // cycles through hundreds of unique cards in succession.
             //
-            // The tiers below leave at least ~300-400 MB headroom below the iOS kill limit
-            // for the JVM heap (card DB, AI evaluation, game objects) and font/skin textures.
+            // A RoboVM heapMaximum is also set in robovm.xml (1280 m) to cap the JVM heap.
+            // The tiers below are sized to leave ~300-500 MB headroom below the iOS kill
+            // limit after accounting for the JVM heap cap, skin/font textures, and the
+            // GL driver's own buffers.
             final int iosCacheCap;
             if (totalDeviceRAM <= 0) {
-                // RAM unknown (detection failed or pre-detection build): use a safe default
-                // that fits within the tightest plausible iOS memory budget.
-                iosCacheCap = 150;
+                // RAM unknown (detection failed or pre-detection build): use the same
+                // conservative cap as the ≤ 4 GB tier, because the tightest plausible
+                // device (iPhone SE 3rd gen, 4 GB) is also the most common iOS target.
+                iosCacheCap = 100;
             } else if (totalDeviceRAM <= 4096) {
                 // ≤ 4 GB devices: iPhone SE 2nd/3rd gen, iPhone 11, 12 mini, etc.
                 // iOS kill limit ≈ 2 GB.
@@ -297,11 +300,11 @@ public class Forge implements ApplicationListener {
             } else if (totalDeviceRAM <= 6144) {
                 // ≤ 6 GB devices: iPhone 13, 14, etc.
                 // iOS kill limit ≈ 3 GB.
-                iosCacheCap = 175;
+                iosCacheCap = 150;
             } else {
-                // > 6 GB devices: iPhone 15 Pro, 16, etc.
-                // Kill limit ≈ 4+ GB; keep close to desktop default.
-                iosCacheCap = 250;
+                // > 6 GB devices: iPhone 15 Pro, 16+.
+                // Kill limit ≈ 4+ GB; still below desktop default of 300.
+                iosCacheCap = 200;
             }
             if (cacheSize > iosCacheCap)
                 cacheSize = iosCacheCap;
