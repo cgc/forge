@@ -3,29 +3,6 @@
   <mainClass>${app.mainclass}</mainClass>
   <os>ios</os>
   <arch>arm64</arch>
-  <!--
-    Cap the Java GC heap so the RoboVM runtime never claims enough memory to
-    trigger the iOS per-process active-memory kill (jetsam).
-
-    Without an explicit limit the RoboVM GC grows the heap unboundedly.
-    On a 4 GB iPhone SE 3rd gen the OS enforces an ~2098 MB ActiveHard limit;
-    the JVM heap alone was growing past that during booster drafts (large card
-    database + draft-AI evaluation objects + runtime temps).
-
-    Memory budget at heapMaximum=1280m on a 4 GB device:
-      1280 MB  Java GC heap  (heapMaximum)
-      ~200 MB  native / GPU  (textures capped at 100 cards by Forge.java)
-      ~618 MB  headroom below the 2098 MB jetsam kill limit
-
-    On larger devices the limit is automatically raised by Forge.java
-    based on NSProcessInfo.getPhysicalMemory() (see Main.java).  The value
-    here is the hard floor used when RAM detection fails or the iOS-specific
-    heap-cap code in Forge.java is not reached.
-
-    heapInitial is kept at the RoboVM default (not set here) to avoid
-    reserving a large contiguous block at launch on low-memory devices.
-  -->
-  <heapMaximum>1280m</heapMaximum>
   <resources>
     <resource>
       <directory>../forge-gui</directory>
