@@ -99,6 +99,15 @@ public class ReadDraftRankings {
     } // readFile()
 
     /**
+     * Return true if this instance has ranking data for the given edition code.
+     * Used by {@link DraftRankCache} to distinguish a successfully-loaded
+     * per-edition file from one that was missing or empty.
+     */
+    public boolean hasRankingsForEdition(String edition) {
+        return draftRankings != null && draftRankings.containsKey(edition);
+    }
+
+    /**
      * Get the relative ranking for the given card name in the given edition.
      * 
      * @param cardName
