@@ -1,11 +1,11 @@
 package forge.ios;
 
-import org.robovm.rt.VM;
 import org.robovm.rt.bro.Bro;
 import org.robovm.rt.bro.annotation.Bridge;
 import org.robovm.rt.bro.annotation.GlobalValue;
 import org.robovm.rt.bro.annotation.Library;
 import org.robovm.rt.bro.annotation.Pointer;
+import sun.misc.Unsafe;
 
 /**
  * Mach kernel bindings for reading the iOS process physical-footprint.
@@ -44,6 +44,23 @@ class MachMemInfo {
         Bro.bind(MachMemInfo.class);
     }
 
+    /**
+     * {@code sun.misc.Unsafe} instance used for off-heap memory management.
+     * Available in robovmx (Android-based runtime) and never null on a
+     * functioning device; null only if the reflective lookup fails, in which
+     * case {@link #getPhysicalFootprintMB()} returns {@code -1}.
+     */
+    private static final Unsafe UNSAFE;
+    static {
+        Unsafe u = null;
+        try {
+            java.lang.reflect.Field f = Unsafe.class.getDeclaredField("theUnsafe");
+            f.setAccessible(true);
+            u = (Unsafe) f.get(null);
+        } catch (Throwable ignored) { /* leave null; getPhysicalFootprintMB() guards */ }
+        UNSAFE = u;
+    }
+
     /** Current task Mach port ({@code mach_task_self_} global variable). */
     @GlobalValue(symbol = "mach_task_self_")
     private static native int machTaskSelf();
@@ -64,8 +81,7 @@ class MachMemInfo {
      * Returns the process physical footprint in megabytes, or a negative
      * value on failure:
      * <ul>
-     *   <li>{@code -1} — exception thrown or native allocation failed
-     *       ({@code VM.allocateMemory} returned 0).</li>
+     *   <li>{@code -1} — exception thrown, or {@code Unsafe} not available.</li>
      *   <li>Negative {@code kern_return_t} — the Mach call returned a
      *       non-zero status; negate the return value to get the raw Mach
      *       error code (e.g. {@code KERN_INVALID_ARGUMENT = 4},
@@ -77,30 +93,25 @@ class MachMemInfo {
      * memory — not just what {@link Runtime#totalMemory()} reports.
      */
     static long getPhysicalFootprintMB() {
+        if (UNSAFE == null) return -1;
         long bufAddr = 0, cntAddr = 0;
         try {
             // Allocate 160 bytes (40 natural_t words) — enough for TASK_VM_INFO
             // rev1 (38 words = 152 bytes), with 8 bytes of headroom.
             // phys_footprint is at byte offset 144 (mach_vm_size_t = uint64).
-            bufAddr = VM.allocateMemory(160);
-            cntAddr = VM.allocateMemory(4);
-            // VM.allocateMemory() returns 0 on allocation failure (no throw).
-            // Passing 0 to taskInfo or VM.setInt would write/read address 0
-            // and crash; bail out with -1 instead.
-            if (bufAddr == 0 || cntAddr == 0) {
-                return -1;
-            }
-            VM.setInt(cntAddr, 40); // capacity passed as natural_t-word count
+            bufAddr = UNSAFE.allocateMemory(160);
+            cntAddr = UNSAFE.allocateMemory(4);
+            UNSAFE.putInt(cntAddr, 40); // capacity passed as natural_t-word count
             int kr = taskInfo(machTaskSelf(), 22 /* TASK_VM_INFO */, bufAddr, cntAddr);
             if (kr == 0) { // KERN_SUCCESS
-                return VM.getLong(bufAddr + 144) >> 20; // bytes → MB
+                return UNSAFE.getLong(bufAddr + 144) >> 20; // bytes → MB
             }
             return -(long) kr; // return negative kern_return_t for diagnosis
         } catch (Throwable t) {
             return -1;
         } finally {
-            if (bufAddr != 0) VM.freeMemory(bufAddr);
-            if (cntAddr != 0) VM.freeMemory(cntAddr);
+            if (bufAddr != 0) UNSAFE.freeMemory(bufAddr);
+            if (cntAddr != 0) UNSAFE.freeMemory(cntAddr);
         }
     }
 }
