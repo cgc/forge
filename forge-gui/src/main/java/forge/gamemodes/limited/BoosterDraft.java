@@ -509,6 +509,7 @@ public class BoosterDraft implements IBoosterDraft {
             this.addLog("Round " + this.nextBoosterGroup + " is starting...");
         }
         this.currentBoosterSize = firstPlayer.packQueue.peek().size();
+        DraftRankCache.logHeap("round-" + nextBoosterGroup + "-start");
         return true;
     }
 
