@@ -70,6 +70,7 @@ public class BoosterDraft implements IBoosterDraft {
     private int currentBoosterSize = 0;
     private int currentBoosterPick = 0;
 
+    private int humanPickCount = 0; // counts packs offered to the human player; used by pick-level heap logging
     private final Map<String, Float> draftPicks = new TreeMap<>();
     static final List<CustomLimited> customs = new ArrayList<>();
     protected LimitedPoolType draftFormat;
@@ -478,6 +479,7 @@ public class BoosterDraft implements IBoosterDraft {
             localPlayer.debugPrint(String.valueOf(nextChoice));
         }
 
+        DraftRankCache.logHeap("pick-" + (++humanPickCount));
         return result;
     }
 
