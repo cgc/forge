@@ -21,11 +21,26 @@
 
             mvn ... -P ios-device -Drobovm.debug=true -Drobovm.iosSkipSigning=true
 
+          (robovm.debugPort defaults to 5005; override with -Drobovm.debugPort=<port>
+          if that port is already in use on your machine.)
+
           -Drobovm.iosSkipSigning=true is fine for local profiling; if the app is installed
           via AltStore or Xcode it will be re-signed at install time.  Do NOT distribute
           a debug=true IPA via AltStore or TestFlight as JDWP exposes a debug listener port.
+
+          When debug=true, RoboVM requires a JDWP port to be specified (controlled by
+          robovm.debugPort below); the compiler throws:
+            CompilerException: Missing required debugger argument jdwpport
+          if no port is provided.
         -->
         <robovm.debug>false</robovm.debug>
+        <!--
+          JDWP listener port used when robovm.debug=true.
+          Default 5005 is the standard Java remote-debug port; override with
+          -Drobovm.debugPort=<port> if 5005 is already in use on your machine.
+          This value is ignored when robovm.debug=false.
+        -->
+        <robovm.debugPort>5005</robovm.debugPort>
     </properties>
 
     <parent>
@@ -285,8 +300,11 @@
                               Pass -Drobovm.debug=true to enable LLVM debug-info generation
                               so that the .app.dSYM contains real DWARF content for
                               Instruments / heaptrack memory profiling.
+                              debugPort is required by RoboVM when debug=true; it specifies
+                              the JDWP listener port (ignored when debug=false).
                             -->
                             <debug>${robovm.debug}</debug>
+                            <debugPort>${robovm.debugPort}</debugPort>
                         </configuration>
                         <!--
                           Patched robovm-dist-compiler: fixes four Soot bugs that crash
@@ -327,8 +345,9 @@
                             <propertiesFile>robovm.properties</propertiesFile>
                             <configFile>robovm.xml</configFile>
                             <arch>${ios.simulator.arch}</arch>
-                            <!-- See robovm.debug property above. -->
+                            <!-- See robovm.debug / robovm.debugPort properties above. -->
                             <debug>${robovm.debug}</debug>
+                            <debugPort>${robovm.debugPort}</debugPort>
                         </configuration>
                         <!-- Patched dist-compiler (same as ios-device profile above). -->
                         <dependencies>
