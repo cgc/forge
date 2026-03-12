@@ -62,6 +62,24 @@ jobs:
               exit 1
             fi
           fi
+          # Stage the dSYM bundle alongside the IPA so it can be uploaded as an artifact.
+          # RoboVM runs dsymutil on the linked binary before stripping it; the resulting
+          # .app.dSYM contains the DWARF section that Instruments, heaptrack, and atos
+          # use to resolve native addresses back to caller names.
+          # With the default build (robovm.debug=false) the dSYM is generated from the
+          # binary's existing symbol table but does NOT include source-file/line-number
+          # information -- tools can map addresses to mangled Java method names but not
+          # to Java source locations.  Build with -Drobovm.debug=true to emit full LLVM
+          # DWARF debug info, which produces human-readable method names and source lines.
+          DSYM=$(find forge-gui-ios -name "*.app.dSYM" -type d 2>/dev/null | head -1)
+          if [ -n "$DSYM" ]; then
+            echo "dSYM found: $DSYM"
+            # Zip the dSYM so it can be uploaded as a single artifact file.
+            (cd "$(dirname "$DSYM")" && zip -r "$GITHUB_WORKSPACE/forge-ios.app.dSYM.zip" "$(basename "$DSYM")")
+            echo "dSYM staged as forge-ios.app.dSYM.zip"
+          else
+            echo "::warning::No .app.dSYM bundle found; profiling symbolication will not be available."
+          fi
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
@@ -69,3 +87,10 @@ jobs:
           name: forge-ios-ipa
           path: forge-ios.ipa
           if-no-files-found: error
+
+      - name: Upload dSYM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: forge-ios-dsym
+          path: forge-ios.app.dSYM.zip
+          if-no-files-found: warn

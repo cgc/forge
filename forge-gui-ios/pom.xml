@@ -9,6 +9,23 @@
         <robovm.version>10.2.2.4-SNAPSHOT</robovm.version>
         <!-- Auto-detected via the apple-silicon profile below; override with -Dios.simulator.arch=... -->
         <ios.simulator.arch>x86_64</ios.simulator.arch>
+        <!--
+          When true, RoboVM's LLVM AOT compiler is invoked with -g so that DWARF debug
+          information is emitted for every compiled Java method.  This makes the generated
+          .app.dSYM bundle contain real address→name mappings, which profiling tools
+          (Instruments Allocations, heaptrack, atos) need to resolve caller names from
+          stack traces.
+
+          Default is false (release build: no debug info, smaller binary, faster compile).
+          Pass -Drobovm.debug=true on the Maven command line to produce a profiling build:
+
+            mvn ... -P ios-device -Drobovm.debug=true -Drobovm.iosSkipSigning=true
+
+          -Drobovm.iosSkipSigning=true is fine for local profiling; if the app is installed
+          via AltStore or Xcode it will be re-signed at install time.  Do NOT distribute
+          a debug=true IPA via AltStore or TestFlight as JDWP exposes a debug listener port.
+        -->
+        <robovm.debug>false</robovm.debug>
     </properties>
 
     <parent>
@@ -264,6 +281,12 @@
                             <propertiesFile>robovm.properties</propertiesFile>
                             <configFile>robovm.xml</configFile>
                             <arch>arm64</arch>
+                            <!--
+                              Pass -Drobovm.debug=true to enable LLVM debug-info generation
+                              so that the .app.dSYM contains real DWARF content for
+                              Instruments / heaptrack memory profiling.
+                            -->
+                            <debug>${robovm.debug}</debug>
                         </configuration>
                         <!--
                           Patched robovm-dist-compiler: fixes four Soot bugs that crash
@@ -304,6 +327,8 @@
                             <propertiesFile>robovm.properties</propertiesFile>
                             <configFile>robovm.xml</configFile>
                             <arch>${ios.simulator.arch}</arch>
+                            <!-- See robovm.debug property above. -->
+                            <debug>${robovm.debug}</debug>
                         </configuration>
                         <!-- Patched dist-compiler (same as ios-device profile above). -->
                         <dependencies>
