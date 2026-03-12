@@ -3,8 +3,6 @@ package forge.screens.limited;
 import forge.Forge;
 import org.apache.commons.lang3.StringUtils;
 
-import com.badlogic.gdx.Gdx;
-
 import forge.deck.Deck;
 import forge.deck.DeckGroup;
 import forge.deck.FDeckEditor;
@@ -27,25 +25,20 @@ public class DraftingProcessScreen extends FDeckEditor {
     protected FDraftLog draftLog;
 
     /**
-     * Logs current Java heap (via {@link DraftRankCache#logHeap}) and, if
-     * available, the libGDX native heap (GPU textures, native allocations) to
-     * stdout.  Output is visible on iOS via Console.app and on desktop via the
-     * terminal, making it easy to compare memory use between draft phases.
+     * Logs current Java heap and (on iOS) Mach physical footprint via
+     * {@link DraftRankCache#logHeap}.  Output is visible on iOS in Console.app
+     * and on desktop in the terminal.
      *
-     * <p>Outputs two lines when Gdx is initialised:
-     * <pre>
-     * [Forge/Draft-Mem] draft-start: used=142MB total=256MB editions=0
-     * [Forge/Draft-Mem] draft-start: native=38MB
-     * </pre>
+     * <p>On iOS, {@code logHeap} also emits a {@code phys=} line using the Mach
+     * {@code task_info} physical-footprint value set up in {@code Main}; this is
+     * the value jetsam monitors and is far more diagnostic than the Java heap
+     * alone.  The previous {@code native=} line (which called
+     * {@code Gdx.app.getNativeHeap()}) has been removed: on iOS that method
+     * delegates to {@code getJavaHeap()}, making it a duplicate of {@code used=}
+     * rather than a measurement of GPU or native memory.
      */
     private static void logMemory(String tag) {
-        DraftRankCache.logHeap(tag); // Java heap + loaded-edition count
-        try {
-            if (Gdx.app != null) {
-                System.out.println("[Forge/Draft-Mem] " + tag
-                        + ": native=" + (Gdx.app.getNativeHeap() >> 20) + "MB");
-            }
-        } catch (Exception ignored) { /* Gdx not yet initialised or unsupported */ }
+        DraftRankCache.logHeap(tag);
     }
 
     public DraftingProcessScreen(BoosterDraft draft, DeckEditorConfig editorConfig) {

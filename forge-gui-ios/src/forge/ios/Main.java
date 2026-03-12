@@ -37,6 +37,7 @@ import com.badlogic.gdx.backends.iosrobovm.IOSScreenBounds;
 import com.badlogic.gdx.graphics.glutils.HdpiMode;
 
 import forge.Forge;
+import forge.gamemodes.limited.DraftRankCache;
 import forge.gui.GuiBase;
 import forge.interfaces.IDeviceAdapter;
 
@@ -283,6 +284,28 @@ public class Main extends IOSApplication.Delegate {
         }
     }
 
+    /**
+     * Called by UIKit when the OS is running low on memory.  Logs the Java heap
+     * and the Mach physical footprint (the value jetsam monitors) via NSLog so
+     * that the warning appears in Console.app correlated with the crash log.
+     *
+     * <p>The default libGDX handler (called via {@code super}) prints "Received
+     * memory warning." which is what was previously visible in the logs.  Adding
+     * our own logging before the super-call gives us the actual memory numbers
+     * at warning time, making it possible to see how much headroom was left
+     * before the eventual jetsam kill.
+     */
+    @Override
+    public void didReceiveMemoryWarning(UIApplication application) {
+        Runtime rt = Runtime.getRuntime();
+        long usedMB  = (rt.totalMemory() - rt.freeMemory()) >> 20;
+        long totalMB = rt.totalMemory() >> 20;
+        nslog("didReceiveMemoryWarning: Java heap used=" + usedMB + "MB total=" + totalMB + "MB");
+        long physMB = MachMemInfo.getPhysicalFootprintMB();
+        nslog("didReceiveMemoryWarning: phys=" + physMB + "MB");
+        super.didReceiveMemoryWarning(application);
+    }
+
     @Override
     protected IOSApplication createApplication() {
         nslog("createApplication(): building IOSApplication");
@@ -295,6 +318,13 @@ public class Main extends IOSApplication.Delegate {
         // NoClassDefFoundError because the constructor's native code was never
         // compiled.
         preWarmXalan();
+
+        // Wire up the Mach physical-footprint supplier so that
+        // DraftRankCache.logHeap() reports the actual OS-level memory that
+        // iOS jetsam monitors alongside the Java heap numbers.
+        // MachMemInfo.getPhysicalFootprintMB() calls task_info(mach_task_self(),
+        // TASK_VM_INFO) and reads task_vm_info_data_t.phys_footprint at offset 144.
+        DraftRankCache.physicalFootprintMBSupplier = MachMemInfo::getPhysicalFootprintMB;
 
         // On iOS 8+, the app bundle (containing all resources) lives in a separate
         // read-only "Bundle container", while $HOME points to the writable "Data
