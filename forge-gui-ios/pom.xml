@@ -32,6 +32,9 @@
           robovm.debugPort below); the compiler throws:
             CompilerException: Missing required debugger argument jdwpport
           if no port is provided.
+          generateDsym (wired to the same value below) ensures dsymutil is only
+          invoked when DWARF info was actually emitted; without this guard dsymutil
+          exits 1 on a release binary and aborts the build.
         -->
         <robovm.debug>false</robovm.debug>
         <!--
@@ -302,9 +305,12 @@
                               Instruments / heaptrack memory profiling.
                               debugPort is required by RoboVM when debug=true; it specifies
                               the JDWP listener port (ignored when debug=false).
+                              generateDsym mirrors debug: skip dsymutil for release builds
+                              because dsymutil exits 1 on a binary with no DWARF info.
                             -->
                             <debug>${robovm.debug}</debug>
                             <debugPort>${robovm.debugPort}</debugPort>
+                            <generateDsym>${robovm.debug}</generateDsym>
                         </configuration>
                         <!--
                           Patched robovm-dist-compiler: fixes four Soot bugs that crash
@@ -345,9 +351,12 @@
                             <propertiesFile>robovm.properties</propertiesFile>
                             <configFile>robovm.xml</configFile>
                             <arch>${ios.simulator.arch}</arch>
-                            <!-- See robovm.debug / robovm.debugPort properties above. -->
+                            <!-- See robovm.debug / robovm.debugPort properties above.
+                                 generateDsym mirrors debug: skip dsymutil for release builds
+                                 because dsymutil exits 1 on a binary with no DWARF info. -->
                             <debug>${robovm.debug}</debug>
                             <debugPort>${robovm.debugPort}</debugPort>
+                            <generateDsym>${robovm.debug}</generateDsym>
                         </configuration>
                         <!-- Patched dist-compiler (same as ios-device profile above). -->
                         <dependencies>
