@@ -15,6 +15,7 @@ import org.robovm.apple.foundation.Foundation;
 import org.robovm.apple.foundation.NSAutoreleasePool;
 import org.robovm.apple.foundation.NSBundle;
 import org.robovm.apple.foundation.NSException;
+import org.robovm.apple.foundation.NSProcessInfo;
 import org.robovm.apple.foundation.NSString;
 import org.robovm.apple.foundation.NSThread;
 import org.robovm.apple.glkit.GLKViewDrawableColorFormat;
@@ -36,6 +37,7 @@ import com.badlogic.gdx.backends.iosrobovm.IOSScreenBounds;
 import com.badlogic.gdx.graphics.glutils.HdpiMode;
 
 import forge.Forge;
+import forge.gamemodes.limited.DraftRankCache;
 import forge.gui.GuiBase;
 import forge.interfaces.IDeviceAdapter;
 
@@ -143,27 +145,31 @@ public class Main extends IOSApplication.Delegate {
     }
 
     /**
-     * IOSGraphics subclass that makes {@code requestRendering()} safe to call from any
-     * thread by dispatching the UIKit call to the main GCD queue.
+     * IOSGraphics subclass that makes {@code requestRendering()} and
+     * {@code setContinuousRendering()} safe to call from any thread by dispatching
+     * the UIKit calls to the main GCD queue.
      *
      * <p>In robovmx (experiment/2-libcore-10) ObjC bridge calls use direct
      * function-pointer (IMP) dispatch instead of {@code objc_msgSend}.  As a result
      * robovmx no longer silently marshals UIKit calls to the main thread the way
      * MobiVM 2.3.23 did.  {@link IOSGraphics#requestRendering()} calls
      * {@code viewController.setPaused(false)} (a {@code GLKViewController} UIKit
-     * method) when {@code isContinuous == false}.  If that call is made from a
-     * background thread:
+     * method) when {@code isContinuous == false}, and
+     * {@link IOSGraphics#setContinuousRendering(boolean)} calls
+     * {@code view.setPaused(!isContinuous)} (a {@code GLKView} UIKit method).
+     * If either call is made from a background thread:
      * <ul>
      *   <li><b>iOS simulator</b> – resolves to a null ObjC trampoline → {@code pc=0x0}
      *       crash (Thread N Crashed: 0 ??? 0x0).</li>
-     *   <li><b>Physical device</b> – UIKit silently ignores the call; the GL render loop
-     *       stays paused, so any subsequent {@code WaitRunnable.invokeAndWait()} call
-     *       deadlocks permanently (app frozen).</li>
+     *   <li><b>Physical device</b> – can cause {@code EXC_BAD_ACCESS} or silently
+     *       ignore the call, leaving the GL render loop in the wrong state and
+     *       causing any subsequent {@code WaitRunnable.invokeAndWait()} to deadlock.</li>
      * </ul>
      *
-     * <p>This subclass intercepts {@code requestRendering()} and, when called from a
-     * non-main thread, posts the actual work to the main GCD queue so that
-     * {@code viewController.setPaused()} is always called from the correct thread.
+     * <p>This subclass intercepts both methods and, when called from a non-main
+     * thread, posts the actual work to the main GCD queue so that
+     * {@code viewController.setPaused()} / {@code view.setPaused()} are always
+     * called from the correct thread.
      */
     private static final class SafeIOSGraphics extends IOSGraphics {
         /**
@@ -206,6 +212,38 @@ public class Main extends IOSApplication.Delegate {
         private void doRequestRendering() {
             super.requestRendering();
         }
+
+        /**
+         * Thread-safe override of {@link IOSGraphics#setContinuousRendering(boolean)}.
+         *
+         * <p>In robovmx's direct function-pointer (IMP) dispatch mode,
+         * {@code IOSGraphics.setContinuousRendering()} calls
+         * {@code view.setPaused(!isContinuous)} — a {@code GLKView} UIKit method
+         * that must always execute on the main thread.  Calling it from a background
+         * thread resolves to a null ObjC trampoline on the iOS simulator
+         * ({@code pc=0x0} crash) and causes an {@code EXC_BAD_ACCESS} on physical
+         * devices.  This override mirrors the pattern used for
+         * {@link #requestRendering()}: dispatch to the main GCD queue whenever the
+         * caller is not already on the main thread.
+         */
+        @Override
+        public void setContinuousRendering(boolean isContinuous) {
+            if (NSThread.getCurrentThread().isMainThread()) {
+                doSetContinuousRendering(isContinuous);
+            } else {
+                final boolean cont = isContinuous;
+                DispatchQueue.getMainQueue().async(() -> doSetContinuousRendering(cont));
+            }
+        }
+
+        /**
+         * Calls {@link IOSGraphics#setContinuousRendering(boolean)} on the current
+         * thread.  Separated from {@link #setContinuousRendering(boolean)} so it can
+         * be used as a lambda in the GCD dispatch block.
+         */
+        private void doSetContinuousRendering(boolean isContinuous) {
+            super.setContinuousRendering(isContinuous);
+        }
     }
 
     // Thin NSLog wrapper usable at any point — does not require Gdx.app to be set.
@@ -246,6 +284,28 @@ public class Main extends IOSApplication.Delegate {
         }
     }
 
+    /**
+     * Called by UIKit when the OS is running low on memory.  Logs the Java heap
+     * and the Mach physical footprint (the value jetsam monitors) via NSLog so
+     * that the warning appears in Console.app correlated with the crash log.
+     *
+     * <p>The default libGDX handler (called via {@code super}) prints "Received
+     * memory warning." which is what was previously visible in the logs.  Adding
+     * our own logging before the super-call gives us the actual memory numbers
+     * at warning time, making it possible to see how much headroom was left
+     * before the eventual jetsam kill.
+     */
+    @Override
+    public void didReceiveMemoryWarning(UIApplication application) {
+        Runtime rt = Runtime.getRuntime();
+        long usedMB  = (rt.totalMemory() - rt.freeMemory()) >> 20;
+        long totalMB = rt.totalMemory() >> 20;
+        nslog("didReceiveMemoryWarning: Java heap used=" + usedMB + "MB total=" + totalMB + "MB");
+        long physMB = MachMemInfo.getPhysicalFootprintMB();
+        nslog("didReceiveMemoryWarning: phys=" + physMB + "MB");
+        super.didReceiveMemoryWarning(application);
+    }
+
     @Override
     protected IOSApplication createApplication() {
         nslog("createApplication(): building IOSApplication");
@@ -258,6 +318,13 @@ public class Main extends IOSApplication.Delegate {
         // NoClassDefFoundError because the constructor's native code was never
         // compiled.
         preWarmXalan();
+
+        // Wire up the Mach physical-footprint supplier so that
+        // DraftRankCache.logHeap() reports the actual OS-level memory that
+        // iOS jetsam monitors alongside the Java heap numbers.
+        // MachMemInfo.getPhysicalFootprintMB() calls task_info(mach_task_self(),
+        // TASK_VM_INFO) and reads task_vm_info_data_t.phys_footprint at offset 144.
+        DraftRankCache.physicalFootprintMBSupplier = MachMemInfo::getPhysicalFootprintMB;
 
         // On iOS 8+, the app bundle (containing all resources) lives in a separate
         // read-only "Bundle container", while $HOME points to the writable "Data
@@ -329,21 +396,23 @@ public class Main extends IOSApplication.Delegate {
         // (device: UIKit checks the thread internally and aborts the operation).
         //
         // Scope assessment — what robovmx's direct dispatch impacts in Forge:
-        //   • The only Forge bg-thread UIKit call path is:
+        //   • The primary Forge bg-thread UIKit call paths are:
         //       bg thread → Gdx.app.postRunnable() → IOSApplication.postRunnable()
         //           → IOSGraphics.requestRendering()
         //           → (when isContinuous==false) viewController.setPaused(false)  ← UIKit
-        //     This is the crash/hang that was new to this branch.
+        //       any thread → Gdx.graphics.setContinuousRendering(boolean)
+        //           → IOSGraphics.setContinuousRendering()
+        //           → view.setPaused(!isContinuous)                               ← UIKit
         //   • All other ObjC calls in Forge happen on the main thread:
         //       Foundation.log/NSLog, NSBundle, UIScreen, UIApplication, UIPasteboard,
         //       IOSFiles static init, computeBounds(), lifecycle callbacks.
         //   • Foundation.log() (NSLog) is thread-safe per Apple documentation. ✓
         //   • setupAccelerometer() and setupCompass() are overridden to no-ops below. ✓
         //
-        // General fix: SafeIOSGraphics (see top of this file) overrides
-        // requestRendering() to dispatch to the main GCD queue when called from a
-        // background thread.  This makes ALL requestRendering() calls safe regardless
-        // of the isContinuous state.
+        // General fix: SafeIOSGraphics (see top of this file) overrides both
+        // requestRendering() and setContinuousRendering() to dispatch to the main
+        // GCD queue when called from a background thread.  This makes ALL
+        // UIKit-touching calls through IOSGraphics safe regardless of calling thread.
         //
         // Defence-in-depth fix: Forge.create() calls startContinuousRendering() before
         // the background DB-load thread starts, keeping isContinuous=true so that
@@ -357,7 +426,22 @@ public class Main extends IOSApplication.Delegate {
         config.useAudio = false;
         boolean isLandscape = false;
         nslog("createApplication: calling Forge.getApp()");
-        final ApplicationListener app = Forge.getApp(null, new IOSClipboard(), new IOSAdapter(assetsDir), assetsDir, false, !isLandscape, 0, false, 0);
+        // Detect physical memory so Forge can scale the card-texture cache size down
+        // for constrained iOS devices.  iOS enforces a per-process active-memory limit
+        // of roughly 50% of physical RAM (≈ 2 GB on a 4 GB iPhone SE 3rd gen); exceeding
+        // it causes an instant jetsam SIGKILL with no warning.
+        // NSProcessInfo.getSharedProcessInfo().getPhysicalMemory() returns bytes as a long.
+        int iosPhysicalRAMMB = 0;
+        try {
+            long physicalBytes = NSProcessInfo.getSharedProcessInfo().getPhysicalMemory();
+            // physicalBytes / (1024² ) fits in an int for any plausible device (max ~2 TB = 2M MB,
+            // well below Integer.MAX_VALUE ≈ 2.1G MB), but clamp defensively.
+            iosPhysicalRAMMB = (int) Math.min(physicalBytes / (1024L * 1024L), Integer.MAX_VALUE);
+            nslog("createApplication: physicalMemory=" + physicalBytes + " bytes (" + iosPhysicalRAMMB + " MB)");
+        } catch (Throwable t) {
+            nslog("createApplication: physicalMemory detection failed: " + t);
+        }
+        final ApplicationListener app = Forge.getApp(null, new IOSClipboard(), new IOSAdapter(assetsDir), assetsDir, false, !isLandscape, iosPhysicalRAMMB, false, 0);
         nslog("createApplication: Forge.getApp() returned " + (app == null ? "null" : app.getClass().getName()));
         // The generic isUsingAppDirectory check in Forge.getApp() matches the Android
         // package name ("forge.app") in the OBB path, but the iOS bundle is named

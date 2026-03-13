@@ -62,6 +62,27 @@ jobs:
               exit 1
             fi
           fi
+          # Generate a dSYM bundle for symbolication.
+          # robovmx's Maven plugin does NOT support generateDsym — dsymutil must be run
+          # manually.  When built with -Drobovm.debug=true, DWARF info is embedded in the
+          # binary (forge.ios.Main inside the .app bundle); dsymutil extracts it into
+          # a separate .app.dSYM for use with atos or Instruments.
+          # app.name=Forge → bundle: Forge.app; app.executable=forge.ios.Main → binary.
+          APP=$(find forge-gui-ios -name "*.app" -type d -not -name "*.dSYM" 2>/dev/null | head -1)
+          if [ -n "$APP" ] && [ -f "$APP/forge.ios.Main" ]; then
+            DSYM="${APP}.dSYM"
+            echo "Running: dsymutil \"$APP/forge.ios.Main\" -o \"$DSYM\""
+            if dsymutil "$APP/forge.ios.Main" -o "$DSYM"; then
+              echo "dSYM generated: $DSYM"
+              (cd "$(dirname "$DSYM")" && zip -r "$GITHUB_WORKSPACE/forge-ios.app.dSYM.zip" "$(basename "$DSYM")")
+              echo "dSYM staged as forge-ios.app.dSYM.zip"
+              echo "To symbolicate: atos -arch arm64 -o Forge.app.dSYM/Contents/Resources/DWARF/forge.ios.Main -l <load-address> <address>"
+            else
+              echo "::warning::dsymutil failed (build may not have used -Drobovm.debug=true)."
+            fi
+          else
+            echo "::warning::No .app/forge.ios.Main binary found; dSYM cannot be generated."
+          fi
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
@@ -69,3 +90,10 @@ jobs:
           name: forge-ios-ipa
           path: forge-ios.ipa
           if-no-files-found: error
+
+      - name: Upload dSYM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: forge-ios-dsym
+          path: forge-ios.app.dSYM.zip
+          if-no-files-found: warn

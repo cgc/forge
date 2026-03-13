@@ -9,6 +9,17 @@ on:
       - 'forge-gui-mobile/**'
       - '.github/workflows/ios-simulator-screenshot.yml'
   workflow_dispatch:
+    inputs:
+      debug:
+        description: >
+          Build with LLVM debug info for symbolication (-Drobovm.debug=true).
+          Emits DWARF into the binary, runs dsymutil to produce a .app.dSYM bundle,
+          and uploads it as an artifact. Useful for symbolicating crash addresses with
+          `atos` or Instruments Allocations.  Also enables a JDWP listener on port 5005
+          (fine for profiling; do not distribute this build).
+        required: false
+        default: 'false'
+        type: boolean
 
 jobs:
   screenshot:
@@ -40,8 +51,22 @@ jobs:
           # when running a second mvn invocation against an already-installed (flattened) parent POM.
           # iphone-sim boots the simulator, installs and launches the app, then blocks —
           # run in background so the next step can poll for the booted state.
+          #
+          # Debug/symbolication mode (workflow_dispatch input debug=true):
+          #   -Drobovm.debug=true    → LLVM -g emits DWARF into every compiled method
+          #   debugPort=5005 (from pom.xml <robovm.debugPort>) → JDWP port, required when debug=true
+          #   generateDsym=true (auto, mirrors debug) → dsymutil runs → .app.dSYM
+          # The resulting dSYM is uploaded below and can be used with atos:
+          #   atos -arch arm64 -o Forge.app.dSYM/Contents/Resources/DWARF/Forge \
+          #        -l <load-address> <crash-address>
+          DEBUG_FLAGS=""
+          if [ "${{ inputs.debug }}" = "true" ]; then
+            # -Drobovm.debugPort is already set to 5005 via pom.xml <robovm.debugPort>
+            DEBUG_FLAGS="-Drobovm.debug=true"
+          fi
           mvn -U -B clean install -pl forge-gui-ios -am -P ios-simulator \
-            -Dmaven.test.skip=true &
+            -Dmaven.test.skip=true \
+            ${DEBUG_FLAGS} &
           echo "MVN_PID=$!" >> "$GITHUB_ENV"
 
       - name: Wait for simulator to boot and app to launch, then screenshot
@@ -86,10 +111,57 @@ jobs:
           [ -n "${MVN_PID}" ] && kill "${MVN_PID}" 2>/dev/null || true
           xcrun simctl shutdown all 2>/dev/null || true
 
+      - name: Generate and stage dSYM bundle
+        if: always()
+        run: |
+          # robovmx's Maven plugin does NOT support a generateDsym parameter; it is
+          # silently ignored.  When built with -Drobovm.debug=true, RoboVM embeds DWARF
+          # debug info directly in the binary (Forge.app/forge.ios.Main).
+          # Run dsymutil here to extract it into a separate .app.dSYM bundle for atos.
+          #
+          # Binary name comes from forge-gui-ios/robovm.properties:
+          #   app.name=Forge           → app bundle:  Forge.app
+          #   app.executable=forge.ios.Main  → binary: Forge.app/forge.ios.Main
+          APP=$(find forge-gui-ios/target -name "*.app" -type d \
+                     -not -name "*.dSYM" 2>/dev/null | head -1)
+          if [ -z "$APP" ]; then
+            echo "No .app bundle found in forge-gui-ios/target (build may not have completed)."
+            exit 0
+          fi
+          echo "App bundle: $APP"
+          BINARY="$APP/forge.ios.Main"
+          if [ ! -f "$BINARY" ]; then
+            echo "::warning::Expected binary $BINARY not found inside .app bundle."
+            ls "$APP/" 2>/dev/null || true
+            exit 0
+          fi
+          DSYM="${APP}.dSYM"
+          echo "Running: dsymutil \"$BINARY\" -o \"$DSYM\""
+          if dsymutil "$BINARY" -o "$DSYM"; then
+            echo "dsymutil succeeded: $DSYM"
+            (cd "$(dirname "$DSYM")" && zip -r "$GITHUB_WORKSPACE/forge-ios-simulator.app.dSYM.zip" "$(basename "$DSYM")")
+            echo "dSYM staged: forge-ios-simulator.app.dSYM.zip"
+            echo ""
+            echo "To symbolicate a simulator crash address:"
+            echo "  unzip forge-ios-simulator.app.dSYM.zip"
+            echo "  atos -arch arm64 -o Forge.app.dSYM/Contents/Resources/DWARF/forge.ios.Main -l <load-address> <crash-address>"
+            echo "  (Use -arch x86_64 instead of arm64 for Intel Mac simulator builds.)"
+          else
+            echo "::warning::dsymutil failed (binary may have no DWARF; was the build run with -Drobovm.debug=true?)."
+          fi
+
       - name: Upload screenshot
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: simulator-screenshot
           path: forge-screenshot.png
+          if-no-files-found: warn
+
+      - name: Upload dSYM artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: forge-ios-simulator-dsym
+          path: forge-ios-simulator.app.dSYM.zip
           if-no-files-found: warn
