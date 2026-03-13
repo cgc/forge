@@ -9,13 +9,13 @@
         <robovm.version>10.2.2.4-SNAPSHOT</robovm.version>
         <!--
           CPU architecture slice to use when building for the iOS Simulator.
-          Valid values: x86_64 (Intel Mac), arm64 (Apple Silicon Mac).
+          Valid values: x86_64 (Intel Mac), arm64-simulator (Apple Silicon Mac).
           Auto-detected via the apple-silicon profile below.
-          Override with -Dios.simulator.arch=arm64 (Apple Silicon) or
+          Override with -Dios.simulator.arch=arm64-simulator (Apple Silicon) or
           -Dios.simulator.arch=x86_64 (Intel Mac / CI) if auto-detection is wrong.
-          NOTE: use plain arm64, NOT arm64-simulator — RoboVM's <arch> parameter
-          takes a CPU architecture name; the -simulator environment suffix is
-          applied internally by the iphone-sim goal.
+          NOTE: arm64 requires the -simulator suffix. RoboVM's Arch.promoteTo(OS.ios)
+          only auto-promotes x86_64 → x86_64-simulator; arm64 is left as-is (device),
+          so passing plain arm64 throws "Not simulator arch specified arm64".
         -->
         <ios.simulator.arch>x86_64</ios.simulator.arch>
         <!--
@@ -388,8 +388,10 @@
                 </os>
             </activation>
             <properties>
-                <!-- arm64, NOT arm64-simulator: RoboVM <arch> is a CPU name only. -->
-                <ios.simulator.arch>arm64</ios.simulator.arch>
+                <!-- arm64-simulator, NOT plain arm64: Arch.promoteTo(OS.ios) only promotes
+                     x86_64 → x86_64-simulator; arm64 has no auto-promotion, so the iphone-sim
+                     goal would throw "Not simulator arch specified arm64" without the suffix. -->
+                <ios.simulator.arch>arm64-simulator</ios.simulator.arch>
             </properties>
         </profile>
     </profiles>
