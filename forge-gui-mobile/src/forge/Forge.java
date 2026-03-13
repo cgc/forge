@@ -536,7 +536,8 @@ public class Forge implements ApplicationListener {
                 getAssets().fallback_skins().put("transition", new Texture(transitionFile));
             if (titleBGFile.exists())
                 getAssets().fallback_skins().put("title", new Texture(titleBGFile));
-            AdventureScreen.preload();
+
+            if (!GuiBase.isIOS()) AdventureScreen.preload();
         } catch (Exception e) {
             e.printStackTrace();
         }
