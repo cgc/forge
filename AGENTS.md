@@ -52,6 +52,21 @@ guidelines in §4 if the approach or tooling changes.
 | `WrappedRuntimeException: org.apache.xml.serializer.ToXMLStream` | Xalan's `SerializerFactory.getSerializer()` loads the XML output-handler class by name from a `.properties` resource file; the string `"org.apache.xml.serializer.ToXMLStream"` has no bytecode reference, so Soot never AOT-compiles the class. At runtime `Class.forName()` (called from Xalan app code — not libcore, so classloader context is correct) fails because the class was never emitted into the binary. | Added `static final XALAN_TOXML_CLASS = org.apache.xml.serializer.ToXMLStream.class` literal and `new org.apache.xml.serializer.ToXMLStream()` in `preWarmXalan()` in `Main.java`. The class literal registers it in the class table; the direct `new` forces Soot to compile the constructor and all transitively-called code. No StreamDesugar pattern needed (classloader context is already correct — this is Xalan app code, not libcore). |
 | `UnsatisfiedLinkError: com.badlogic.gdx.physics.box2d.World.newWorld(FFZ)J` | Box2D JNI native symbols are absent — the native Box2D library was not linked. The Java API (`gdx-box2d`) was present but the corresponding iOS native xcframework (`gdx-box2d-platform:natives-ios`) was missing from `forge-gui-ios/pom.xml`. Same root cause as the earlier `IOSGLES20.glTexImage2DJNI` crash (fixed by adding `gdx-platform:natives-ios`). | Added `gdx-box2d-platform:1.13.5:natives-ios` Maven dependency to `forge-gui-ios/pom.xml`. RoboVM's Maven plugin extracts the xcframework and links the native Box2D symbols into the binary. |
 
+### Platform behaviour fixes (non-crash)
+
+These are not crash fixes but behavioural adjustments for correct or optimal iOS operation.
+They all live in `forge-gui-mobile` (shared mobile code) and are guarded by `GuiBase.isIOS()`.
+
+| Behaviour | Root cause | Fix | File |
+|---|---|---|---|
+| iOS resources are bundled in the IPA; no download/update flow needed | `AssetsDownloader.checkForUpdates()` attempts network update checks that are unnecessary on iOS (assets ship inside the IPA) | Early-return when `isIOS()` before download logic runs | `AssetsDownloader.java` |
+| iOS data container split (`$HOME` ≠ bundle dir) | On iOS 8+, the app bundle is a read-only "Bundle container" and `$HOME` is a separate writable "Data container"; `ForgeProfileProperties` must route mutable user data to `$HOME/Documents/` and caches to `$HOME/Library/Caches/` | Path detection via `home.contains("/Containers/Data/Application/")` and conditional routing | `ForgeProfileProperties.java` |
+| Card backgrounds disabled on iOS despite device being capable | `isAndroid()=true` on iOS but `androidVersion=0`, so the `androidVersion > 25` guard disables card BG; iOS devices are modern and should enable it | Added `\|\| GuiBase.isIOS()` override in Forge.java card-BG check | `Forge.java` |
+| iOS jetsam kills app if memory exceeds per-process limit | iOS enforces strict active-memory limits (~50% physical RAM); no swap/page — exceeding the limit causes instant SIGKILL | iOS-specific cache-size cap (100–200 cards based on device RAM tier) in Forge.java | `Forge.java` |
+| AdventureScreen preload causes memory pressure on iOS | Adventure mode preloads large textures; combined with Boehm GC (less aggressive than HotSpot) this pushes iOS over jetsam limits | Skip `AdventureScreen.preload()` when `isIOS()` | `Forge.java` |
+| Pixelated text on iOS Retina displays (2×/3× scale) | Default `Nearest` texture filter upscales each texel with no interpolation; at high pixel density this looks blocky | `applyFontFilter()` switches to `Linear` interpolation on iOS; hinting changed to `AutoSlight` for smoother Retina curves | `FSkinFont.java` |
+| GL diagnostic logging on iOS | Need to distinguish simulator (software renderer) from real device (Metal-backed GL) and confirm driver capabilities for debugging texture/rendering issues | Log GL_VENDOR, GL_RENDERER, GL_VERSION, extensions, NPOT support, max texture size on iOS startup | `Forge.java` |
+
 ### Current state
 
 The app builds, passes CI lint, and produces an installable IPA.  It starts, loads the card
@@ -104,7 +119,7 @@ INVOKEDYNAMIC get ()Ljava/util/function/Supplier;
 CHECKCAST java/util/function/Supplier
 ```
 
-The current patterns (49–65) are documented in the Javadoc at the top of
+The current patterns (49–66) are documented in the Javadoc at the top of
 `scripts/StreamDesugar.java`.  Both `target/classes/` directories and JAR artefacts must be
 transformed because RoboVM's Maven plugin resolves inter-module dependencies to the packaged
 JARs, not to raw class directories.  Third-party JARs (e.g. jgrapht-core) are listed as
@@ -136,7 +151,7 @@ otherwise.
 
 The bytecode rewriter redirects call sites to static methods in `StreamUtil`.  This class
 provides implementations of every rewritten API that work on both standard JDK builds and
-robovmx's runtime (~415 lines).  It is compiled as part of `forge-core` (not as a stub) so
+robovmx's runtime (~486 lines).  It is compiled as part of `forge-core` (not as a stub) so
 RoboVM AOT-compiles it correctly.
 
 Key contents:
@@ -145,6 +160,9 @@ Key contents:
 - Thread-pool helpers for `CompletableFuture.supplyAsync` and `completeOnTimeout` that avoid
   `ForkJoinPool` entirely (Patterns 61–62).
 - `predicateNot`, `stringIsBlank`, `stringRepeat`, `executorsNewWorkStealingPool` (Patterns 58–60, 64).
+- `transformerFactoryNewInstance()`: uses a pre-stored `Class` reference from
+  `Main.preWarmXalan()` to instantiate `TransformerFactory` without going through the broken
+  libcore `Class.forName()` path (Pattern 66).
 
 ### 2d. robovm-soot patching — `scripts/patch-robovm-soot.sh`
 
@@ -187,16 +205,38 @@ The current output is committed as `scripts/ios-bytecode-scan.txt`.
 
 `GuiBase.isIOS()` (added to `forge-gui`) drives iOS-specific branches in shared modules:
 
+- `Forge.java` (`forge-gui-mobile`): `setIsAndroid(true)` and `setIsIOS(true)` for iOS at
+  startup (lines 178–180).  `isAndroid()` is true on iOS because the libGDX application type
+  is `ApplicationType.iOS` and the init code deliberately sets both flags.
 - `FSkin`, `Assets`, `AssetsDownloader`: use `Gdx.files.internal()` on iOS (same as Android)
-  instead of `Gdx.files.classpath()`.
-- `Assets.java`: skip anisotropic texture filtering on iOS.
-- `FSkinFont.java`: skip font disposal on iOS (avoids a use-after-free crash).
+  instead of `Gdx.files.classpath()`.  The `|| GuiBase.isIOS()` in these guards is technically
+  redundant since `isAndroid()` is already `true` on iOS (see §5 cleanup plan).
+- `AssetsDownloader.java`: early-return when `isIOS()` to skip resource update/download
+  checks (iOS resources are bundled in the IPA).
+- `Assets.java`: skip anisotropic texture filtering with mipmaps on iOS (GLES2 does not
+  support mipmaps on NPOT textures; `GL_OES_texture_npot` is absent); uses a bilinear-only
+  fallback path instead.
+- `FSkinFont.java`: skip font disposal on iOS (avoids a use-after-free crash).  Also adds
+  `applyFontFilter()` (switches to `Linear` texture filtering on iOS Retina displays to avoid
+  pixelated text) and sets `Hinting.AutoSlight` for smoother glyph rendering at high DPI.
 - `Config.resPath()`: returns `ForgeConstants.ASSETS_DIR` for iOS.
+- `Forge.java` card background: `|| GuiBase.isIOS()` guard enables card backgrounds on iOS
+  despite `androidVersion=0` (iOS devices are modern and should enable this feature).
+- `Forge.java` jetsam memory management: iOS-specific cache-size caps (100–200 cards based on
+  device RAM tier) to stay within iOS's strict per-process memory limits.
+- `Forge.java` AdventureScreen preload: skipped on iOS to reduce memory pressure under
+  Boehm GC.
+- `Forge.java` GL diagnostic logging: on iOS startup, logs GL_VENDOR, GL_RENDERER,
+  GL_VERSION, GL_SHADING_LANGUAGE_VERSION, NPOT support, extensions, and max texture size to
+  help distinguish simulator vs real device and debug rendering issues.
+- `ForgeProfileProperties.java`: detects iOS data-container layout (`$HOME` contains
+  `/Containers/Data/Application/` but is separate from the read-only bundle); routes mutable
+  user data to `$HOME/Documents/forge/` and caches to `$HOME/Library/Caches/forge/`.
 - `HostedMatch.java`: `game.AI_CAN_USE_TIMEOUT` is enabled on iOS despite `isAndroid()` being
   `true`.  robovmx's runtime library is derived from Android's class library, which causes
   `GuiBase.isAndroid()` to fire for iOS builds.  The guard corrects for this:
   `game.AI_CAN_USE_TIMEOUT = !GuiBase.isAndroid() || GuiBase.isIOS() || ...`
-- `Main.java`: calls `GuiBase.setIsIOS(true)` and `GuiBase.setIsAndroid(true)` at startup;
+- `Main.java` (`forge-gui-ios`): calls `GuiBase.setIsIOS(true)` indirectly via `Forge.create()`;
   uses `NSBundle.getMainBundle().getBundlePath()` for the read-only bundle path and routes user
   data to `$HOME/Documents/` and caches to `$HOME/Library/Caches/`.
 
@@ -209,7 +249,7 @@ code unnecessarily or may create unnecessary maintenance surface.
 
 ### 3a. `forge-core/src/main/java/forge/util/StreamUtil.java` iOS additions
 
-`StreamUtil.java` has grown to ~415 lines to support iOS desugaring.  This is a **shared**
+`StreamUtil.java` has grown to ~486 lines to support iOS desugaring.  This is a **shared**
 utility class in `forge-core`, which means it ships in every Forge build (desktop, Android,
 server).  The additions (`IosFilePath`, CompletableFuture helpers, etc.) are purely for iOS
 compatibility and are dead code on all other platforms.
@@ -225,6 +265,10 @@ Android code path for iOS.  This is correct and minimal, but it is still a sourc
 shared mobile module.  If future refactoring abstracts the file-access strategy behind the
 `IDeviceAdapter`, these guards could be removed entirely.
 
+**Note (redundancy):** Since `Forge.create()` sets `isAndroid(true)` on iOS (line 178–179),
+the `|| GuiBase.isIOS()` part of these guards is always redundant — `isAndroid()` alone would
+already be `true` on iOS.  See §5 cleanup plan for the proposed simplification.
+
 ### 3c. `forge-gui-mobile/src/forge/adventure/util/Config.java` — inline `Files.exists(Paths.get(...))`
 
 ```java
@@ -239,7 +283,7 @@ are transformed regardless of which paths actually execute — the dead branch i
 
 ### 3d. `scripts/StreamDesugar.java` pattern discipline
 
-The transformer currently has 17 active patterns (49–65).  Each new pattern adds a small
+The transformer currently has 18 active patterns (49–66).  Each new pattern adds a small
 compilation overhead and a potential source of bugs.
 
 **Recommendation:** Add new patterns only when a concrete runtime crash on a real device or
@@ -382,3 +426,149 @@ simulator is confirmed.  Do not add patterns speculatively.
 6. When the IPA build succeeds, test on the simulator via `ios-simulator-screenshot.yml` and
    then on a physical device.
 7. Update this document to reflect the new fix.
+
+---
+
+## 5. Cleanup plan
+
+This section catalogues every change made outside `forge-gui-ios` as part of the iOS port,
+evaluates each for necessity, and proposes concrete cleanup actions.  The goal is to minimise
+the diff against upstream Forge so that future merges are easier.
+
+### 5a. Complete inventory of files changed outside `forge-gui-ios`
+
+| Module | File | What changed | Necessary? |
+|---|---|---|---|
+| `forge-core` | `StreamUtil.java` | +~300 lines of iOS desugaring helpers (IosFilePath, thread pools, TransformerFactory wrapper) | **Yes** — unavoidable; bytecode rewriter targets these methods. Dead code on non-iOS but harmless. |
+| `forge-gui` | `GuiBase.java` | Added `isIOSport` field, `setIsIOS()`, `isIOS()` | **Yes** — platform detection flag; 3 lines. |
+| `forge-gui` | `HostedMatch.java` | `\|\| GuiBase.isIOS()` guard on `AI_CAN_USE_TIMEOUT` | **Simplifiable** — see §5b. |
+| `forge-gui` | `ForgeProfileProperties.java` | iOS data-container path detection (7 lines, no `isIOS()` call) | **Yes** — correct on all platforms (checks `$HOME` path pattern, not a flag). |
+| `forge-gui-mobile` | `Forge.java` | `setIsIOS(true)`, GL logging, card-BG guard, jetsam cache cap, AdventureScreen skip, cache display | **Mostly yes** — GL logging is diagnostic-only (see §5c). |
+| `forge-gui-mobile` | `Config.java` | `\|\| GuiBase.isIOS()` on `resPath()` | **Redundant** — see §5b. |
+| `forge-gui-mobile` | `Assets.java` | `\|\| GuiBase.isIOS()` for fallback skin + NPOT mipmap workaround | **Partially redundant** — `\|\| isIOS()` is redundant on asset loading lines; NPOT mipmap workaround is necessary. |
+| `forge-gui-mobile` | `FSkin.java` | `\|\| GuiBase.isIOS()` for `useFallbackDir()` | **Redundant** — see §5b. |
+| `forge-gui-mobile` | `FSkinFont.java` | `applyFontFilter()` + hinting + dispose guard | **Yes** — Retina-specific rendering fix; correctly guarded. |
+| `forge-gui-mobile` | `AssetsDownloader.java` | Early-return for iOS + `\|\| GuiBase.isIOS()` for build.txt | **Partially redundant** — early-return is necessary; `\|\| isIOS()` on build.txt is redundant. |
+| `scripts/` | `StreamDesugar.java`, `ApiScan.java`, `desugar-streams.sh`, `build-java-stubs.sh`, `install-robovmx.sh`, `patch-robovm-soot.sh`, `ios-bytecode-scan.sh`, `ios-compat-scan.sh` | Build-time tooling for iOS | **Yes** — all are iOS-only build scripts, no impact on upstream. |
+| `patches/` | `robovm-soot/0001–0004.patch` | Soot AOT compiler fixes for Java records | **Yes** — iOS-only build artefacts. |
+| root | `pom.xml` | Added `forge-gui-ios` module | **Yes** — module registration. |
+
+### 5b. Redundant `isIOS()` guards that can be removed
+
+Since `Forge.create()` (line 178–179) sets `isAndroid(true)` for both Android and iOS,
+every guard of the form `GuiBase.isAndroid() || GuiBase.isIOS()` is redundant — the
+`|| GuiBase.isIOS()` part never changes the result.
+
+**Proposed changes (5 locations, pure simplification, no behaviour change):**
+
+| File | Line | Current | Proposed |
+|---|---|---|---|
+| `Config.java` | 127 | `(GuiBase.isAndroid() \|\| GuiBase.isIOS())` | `GuiBase.isAndroid()` |
+| `Assets.java` | 62 | `if (GuiBase.isAndroid() \|\| GuiBase.isIOS())` | `if (GuiBase.isAndroid())` |
+| `Assets.java` | 67 | `if (GuiBase.isAndroid() \|\| GuiBase.isIOS())` | `if (GuiBase.isAndroid())` |
+| `FSkin.java` | 112 | `(GuiBase.isAndroid() \|\| GuiBase.isIOS())` | `GuiBase.isAndroid()` |
+| `AssetsDownloader.java` | 66 | `(GuiBase.isAndroid() \|\| GuiBase.isIOS())` | `GuiBase.isAndroid()` |
+
+**Risk:** None.  `isAndroid()` is always `true` when `isIOS()` is `true`.  This is tested by
+confirming that the only calls to `setIsAndroid()` and `setIsIOS()` are in `Forge.create()`
+(lines 178–180), where `isAndroid` is set to `true` for `ApplicationType.iOS`.
+
+### 5c. `isIOS()` guards that CANNOT be folded into `isAndroid()`
+
+These guards express iOS-specific behaviour that has no Android equivalent and must remain:
+
+| File | Guard | Why it must remain |
+|---|---|---|
+| `AssetsDownloader.java:41` | `if (GuiBase.isIOS()) { ... return; }` | iOS bundles resources in IPA; must skip download entirely. Android downloads OBBs. |
+| `Forge.java:184` | `if (GuiBase.isIOS()) { /* GL logging */ }` | iOS-only diagnostic logging (could be made conditional via a debug flag — see §5d). |
+| `Forge.java:214` | `\|\| GuiBase.isIOS()` in card-BG check | iOS has `androidVersion=0`, so the `androidVersion > 25` check fails. Could be eliminated by passing a high API level for iOS (see §5e). |
+| `Forge.java:275` | `if (GuiBase.isIOS()) { /* jetsam */ }` | iOS-specific memory management (jetsam limits). No Android equivalent. |
+| `Forge.java:523` | `(GuiBase.isIOS() && totalDeviceRAM > 0)` | Cache display on iOS. Different condition from Android's `autoCache` check. |
+| `Forge.java:541` | `if (!GuiBase.isIOS()) AdventureScreen.preload()` | iOS memory pressure under Boehm GC. |
+| `FSkinFont.java:451` | `if (... \|\| !GuiBase.isIOS()) return` | Retina display font filtering — iOS display-specific. |
+| `FSkinFont.java:486` | `if (GuiBase.isIOS())` | Retina display hinting — iOS display-specific. |
+| `Assets.java:252` | `&& !GuiBase.isIOS()` | NPOT mipmap limitation on iOS GLES2. |
+| `HostedMatch.java:172` | `\|\| GuiBase.isIOS()` | `androidVersion=0` on iOS, so `getAndroidAPILevel() > 30` fails. Could be eliminated by passing a high API level (see §5e). |
+
+### 5d. Candidate changes for conditional removal (diagnostic code)
+
+These changes are not bugs but add iOS-specific diagnostic output.  They could be made
+conditional on a debug/verbose flag if the logging is considered too noisy for production:
+
+| Code | Location | Assessment |
+|---|---|---|
+| GL info logging (GL_VENDOR, GL_RENDERER, etc.) | `Forge.java:184–211` | **Keep for now.** Useful while the iOS port is stabilising. Could later be gated on a `forge.ios.verbose` system property or removed entirely once the port is mature. |
+| `logStartupDiagnostics()` (path existence checks) | `Forge.java:471–520` | **Keep for now.** Already optimised to run on a background thread. Same reasoning as above. |
+| `forge_boot.txt` breadcrumb | `Main.java:522` | **Keep.** Essential for diagnosing silent JVM startup failures on iOS. Lives in `forge-gui-ios` so no upstream impact. |
+| `nslog()` breadcrumbs (27 call sites) | `Main.java` | **Keep.** All in `forge-gui-ios`, no upstream impact.  These map to `os_log` and are the primary crash-triage tool. |
+
+**Conclusion:** No debug-only changes outside `forge-gui-ios` are candidates for immediate
+revert.  The GL logging and startup diagnostics in `Forge.java` add ~40 lines to the shared
+mobile module but are valuable during the stabilisation phase.
+
+### 5e. Potential future simplification: set iOS `androidVersion` to a high value
+
+Currently iOS passes `0` as the `AndroidAPI` parameter to `Forge.getApp()` (see
+`Main.java:444`).  If this were changed to a high value (e.g. `999`), two `isIOS()` guards
+could be eliminated:
+
+| Guard | Current | If `androidVersion=999` |
+|---|---|---|
+| `HostedMatch.java:172` | `!\|isAndroid() \|\| isIOS() \|\| getAndroidAPILevel() > 30` | `!isAndroid() \|\| getAndroidAPILevel() > 30` — works because 999 > 30 |
+| `Forge.java:214` card-BG | `!isAndroid() \|\| isIOS() \|\| (androidVersion > 25 && RAM > 3400)` | `!isAndroid() \|\| (androidVersion > 25 && RAM > 3400)` — works only if RAM > 3400; would **change behaviour** for low-RAM iOS devices |
+
+**Assessment:**
+- `HostedMatch.java:172` — **safe to simplify** if `androidVersion=999`.
+- `Forge.java:214` — **NOT safe** unless the RAM check is also adjusted.  Currently iOS always
+  enables card backgrounds; with `androidVersion=999` it would require `RAM > 3400`, which
+  may exclude some iPhones (e.g. 4 GB iPhone SE 3rd gen).
+
+**Recommendation:** Changing `androidVersion` for iOS is a semantic stretch — the field means
+"Android SDK API level" and 999 is not a real API level.  The two guards it would eliminate
+are minor.  **Defer this change** unless a larger refactoring of platform detection is
+undertaken (e.g. introducing a `PlatformCapabilities` enum).
+
+### 5f. Summary of proposed cleanup actions
+
+Priority order (safest first):
+
+1. **Remove 5 redundant `|| isIOS()` guards** (§5b) — pure simplification, zero behaviour
+   change, reduces iOS diff in `forge-gui-mobile` by 5 lines across 4 files.
+
+2. **No debug reverts needed** (§5d) — all diagnostic code is either inside `forge-gui-ios`
+   (no upstream impact) or is valuable during stabilisation.
+
+3. **Defer `androidVersion=999` approach** (§5e) — minor benefit, semantic concerns,
+   potential behaviour change for card-BG on low-RAM devices.
+
+4. **Keep all StreamUtil / StreamDesugar / stub / soot-patch infrastructure** — these are
+   unavoidable for the iOS port and live in scripts/ or forge-core (shared but harmless).
+
+5. **Keep all remaining `isIOS()` guards** (§5c) — each expresses a genuine iOS-specific
+   behaviour that cannot be folded into existing Android checks.
+
+### 5g. Full list of files touched outside `forge-gui-ios` (for upstream merge tracking)
+
+When merging from upstream Forge, these files may have conflicts:
+
+**`forge-core`** (1 file):
+- `src/main/java/forge/util/StreamUtil.java` — iOS helpers appended at end of file
+
+**`forge-gui`** (3 files):
+- `src/main/java/forge/gui/GuiBase.java` — 3 lines added (isIOS flag)
+- `src/main/java/forge/gamemodes/match/HostedMatch.java` — 1 line modified (AI timeout guard)
+- `src/main/java/forge/localinstance/properties/ForgeProfileProperties.java` — 7 lines added (path detection)
+
+**`forge-gui-mobile`** (6 files):
+- `src/forge/Forge.java` — ~60 lines added (init, logging, memory, preload)
+- `src/forge/adventure/util/Config.java` — 1 line modified
+- `src/forge/assets/Assets.java` — 2 lines modified + 8 lines added (NPOT workaround)
+- `src/forge/assets/AssetsDownloader.java` — 3 lines added (early return + build.txt)
+- `src/forge/assets/FSkin.java` — 1 line modified
+- `src/forge/assets/FSkinFont.java` — ~20 lines added (font filter + hinting)
+
+**Root** (1 file):
+- `pom.xml` — 1 line added (`forge-gui-ios` module)
+
+**Total: 12 files outside `forge-gui-ios`**, of which 5 have only 1-line changes that can
+be further reduced by removing redundant `|| isIOS()` (see §5b).
