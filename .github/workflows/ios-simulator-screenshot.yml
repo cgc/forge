@@ -111,29 +111,43 @@ jobs:
           [ -n "${MVN_PID}" ] && kill "${MVN_PID}" 2>/dev/null || true
           xcrun simctl shutdown all 2>/dev/null || true
 
-      - name: Locate and stage dSYM bundle
+      - name: Generate and stage dSYM bundle
         if: always()
         run: |
-          # RoboVM writes the dSYM alongside the .app in target/robovm/ when generateDsym=true
-          # (i.e. when built with -Drobovm.debug=true).  Without debug mode no dSYM is produced.
-          DSYM_COUNT=$(find forge-gui-ios/target -name "*.app.dSYM" -type d 2>/dev/null | wc -l)
-          if [ "${DSYM_COUNT}" -gt 1 ]; then
-            echo "::warning::Multiple .app.dSYM bundles found (${DSYM_COUNT}); using the first one."
-            find forge-gui-ios/target -name "*.app.dSYM" -type d 2>/dev/null
+          # robovmx's Maven plugin does NOT support a generateDsym parameter; it is
+          # silently ignored.  When built with -Drobovm.debug=true, RoboVM embeds DWARF
+          # debug info directly in the binary (Forge.app/forge.ios.Main).
+          # Run dsymutil here to extract it into a separate .app.dSYM bundle for atos.
+          #
+          # Binary name comes from forge-gui-ios/robovm.properties:
+          #   app.name=Forge           → app bundle:  Forge.app
+          #   app.executable=forge.ios.Main  → binary: Forge.app/forge.ios.Main
+          APP=$(find forge-gui-ios/target -name "*.app" -type d \
+                     -not -name "*.dSYM" 2>/dev/null | head -1)
+          if [ -z "$APP" ]; then
+            echo "No .app bundle found in forge-gui-ios/target (build may not have completed)."
+            exit 0
           fi
-          DSYM=$(find forge-gui-ios/target -name "*.app.dSYM" -type d 2>/dev/null | head -1)
-          if [ -n "$DSYM" ]; then
-            echo "dSYM found: $DSYM"
-            # Zip so it uploads as a single artifact file.
+          echo "App bundle: $APP"
+          BINARY="$APP/forge.ios.Main"
+          if [ ! -f "$BINARY" ]; then
+            echo "::warning::Expected binary $BINARY not found inside .app bundle."
+            ls "$APP/" 2>/dev/null || true
+            exit 0
+          fi
+          DSYM="${APP}.dSYM"
+          echo "Running: dsymutil \"$BINARY\" -o \"$DSYM\""
+          if dsymutil "$BINARY" -o "$DSYM"; then
+            echo "dsymutil succeeded: $DSYM"
             (cd "$(dirname "$DSYM")" && zip -r "$GITHUB_WORKSPACE/forge-ios-simulator.app.dSYM.zip" "$(basename "$DSYM")")
             echo "dSYM staged: forge-ios-simulator.app.dSYM.zip"
-            echo "To symbolicate an address from a simulator crash report or Instruments:"
+            echo ""
+            echo "To symbolicate a simulator crash address:"
             echo "  unzip forge-ios-simulator.app.dSYM.zip"
-            echo "  atos -arch arm64 -o Forge.app.dSYM/Contents/Resources/DWARF/Forge \\"
-            echo "       -l <load-address> <crash-address>"
-            echo "(app binary name 'Forge' comes from app.name in forge-gui-ios/robovm.properties)"
+            echo "  atos -arch arm64 -o Forge.app.dSYM/Contents/Resources/DWARF/forge.ios.Main -l <load-address> <crash-address>"
+            echo "  (Use -arch x86_64 instead of arm64 for Intel Mac simulator builds.)"
           else
-            echo "No .app.dSYM found (expected: build was run without -Drobovm.debug=true)."
+            echo "::warning::dsymutil failed (binary may have no DWARF; was the build run with -Drobovm.debug=true?)."
           fi
 
       - name: Upload screenshot

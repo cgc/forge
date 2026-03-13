@@ -62,23 +62,26 @@ jobs:
               exit 1
             fi
           fi
-          # Stage the dSYM bundle alongside the IPA so it can be uploaded as an artifact.
-          # RoboVM runs dsymutil on the linked binary before stripping it; the resulting
-          # .app.dSYM contains the DWARF section that Instruments, heaptrack, and atos
-          # use to resolve native addresses back to caller names.
-          # With the default build (robovm.debug=false) the dSYM is generated from the
-          # binary's existing symbol table but does NOT include source-file/line-number
-          # information -- tools can map addresses to mangled Java method names but not
-          # to Java source locations.  Build with -Drobovm.debug=true to emit full LLVM
-          # DWARF debug info, which produces human-readable method names and source lines.
-          DSYM=$(find forge-gui-ios -name "*.app.dSYM" -type d 2>/dev/null | head -1)
-          if [ -n "$DSYM" ]; then
-            echo "dSYM found: $DSYM"
-            # Zip the dSYM so it can be uploaded as a single artifact file.
-            (cd "$(dirname "$DSYM")" && zip -r "$GITHUB_WORKSPACE/forge-ios.app.dSYM.zip" "$(basename "$DSYM")")
-            echo "dSYM staged as forge-ios.app.dSYM.zip"
+          # Generate a dSYM bundle for symbolication.
+          # robovmx's Maven plugin does NOT support generateDsym — dsymutil must be run
+          # manually.  When built with -Drobovm.debug=true, DWARF info is embedded in the
+          # binary (forge.ios.Main inside the .app bundle); dsymutil extracts it into
+          # a separate .app.dSYM for use with atos or Instruments.
+          # app.name=Forge → bundle: Forge.app; app.executable=forge.ios.Main → binary.
+          APP=$(find forge-gui-ios -name "*.app" -type d -not -name "*.dSYM" 2>/dev/null | head -1)
+          if [ -n "$APP" ] && [ -f "$APP/forge.ios.Main" ]; then
+            DSYM="${APP}.dSYM"
+            echo "Running: dsymutil \"$APP/forge.ios.Main\" -o \"$DSYM\""
+            if dsymutil "$APP/forge.ios.Main" -o "$DSYM"; then
+              echo "dSYM generated: $DSYM"
+              (cd "$(dirname "$DSYM")" && zip -r "$GITHUB_WORKSPACE/forge-ios.app.dSYM.zip" "$(basename "$DSYM")")
+              echo "dSYM staged as forge-ios.app.dSYM.zip"
+              echo "To symbolicate: atos -arch arm64 -o Forge.app.dSYM/Contents/Resources/DWARF/forge.ios.Main -l <load-address> <address>"
+            else
+              echo "::warning::dsymutil failed (build may not have used -Drobovm.debug=true)."
+            fi
           else
-            echo "::warning::No .app.dSYM bundle found; profiling symbolication will not be available."
+            echo "::warning::No .app/forge.ios.Main binary found; dSYM cannot be generated."
           fi
 
       - name: Upload IPA artifact

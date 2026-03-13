@@ -20,10 +20,24 @@
         <ios.simulator.arch>x86_64</ios.simulator.arch>
         <!--
           When true, RoboVM's LLVM AOT compiler is invoked with -g so that DWARF debug
-          information is emitted for every compiled Java method.  This makes the generated
-          .app.dSYM bundle contain real address→name mappings, which profiling tools
-          (Instruments Allocations, heaptrack, atos) need to resolve caller names from
-          stack traces.
+          information is embedded in the binary for every compiled Java method.  This allows
+          profiling tools (Instruments Allocations, heaptrack, atos) to resolve native
+          addresses back to Java method names in stack traces.
+
+          IMPORTANT: robovmx's Maven plugin does NOT support a generateDsym parameter.
+          After building with -Drobovm.debug=true, the DWARF info is embedded directly in
+          the binary (e.g. Forge.app/forge.ios.Main).  Run dsymutil manually to extract it
+          into a separate .dSYM bundle for use with atos or Instruments:
+
+            dsymutil Forge.app/forge.ios.Main -o Forge.app.dSYM
+            atos -arch arm64 -o Forge.app.dSYM/Contents/Resources/DWARF/forge.ios.Main \
+                 -l <load-address> <crash-address>
+
+          (app.name=Forge, app.executable=forge.ios.Main in forge-gui-ios/robovm.properties)
+
+          For simulator symbolication: trigger the ios-simulator-screenshot workflow via
+          workflow_dispatch with debug=true.  It builds, runs dsymutil automatically, and
+          uploads the dSYM as an artifact alongside the screenshot.
 
           Default is false (release build: no debug info, smaller binary, faster compile).
           Pass -Drobovm.debug=true on the Maven command line to produce a profiling build.
@@ -33,13 +47,7 @@
 
           Simulator build example (Apple Silicon):
             mvn ... -P ios-simulator -Drobovm.debug=true
-
-          Alternatively, trigger the ios-simulator-screenshot workflow manually via
-          workflow_dispatch with input debug=true; it builds with debug info, uploads the
-          dSYM as an artifact, and prints the atos command to symbolicate addresses:
-            atos -arch arm64 -o Forge.app.dSYM/Contents/Resources/DWARF/Forge \
-                 -l <load-address> <crash-address>
-          (app binary name 'Forge' comes from app.name in forge-gui-ios/robovm.properties)
+            # then manually: dsymutil Forge.app/forge.ios.Main -o Forge.app.dSYM
 
           (robovm.debugPort defaults to 5005; override with -Drobovm.debugPort=<port>
           if that port is already in use on your machine.)
@@ -52,9 +60,6 @@
           robovm.debugPort below); the compiler throws:
             CompilerException: Missing required debugger argument jdwpport
           if no port is provided.
-          generateDsym (wired to the same value below) ensures dsymutil is only
-          invoked when DWARF info was actually emitted; without this guard dsymutil
-          exits 1 on a release binary and aborts the build.
         -->
         <robovm.debug>false</robovm.debug>
         <!--
@@ -320,17 +325,16 @@
                             <configFile>robovm.xml</configFile>
                             <arch>arm64</arch>
                             <!--
-                              Pass -Drobovm.debug=true to enable LLVM debug-info generation
-                              so that the .app.dSYM contains real DWARF content for
-                              Instruments / heaptrack memory profiling.
-                              debugPort is required by RoboVM when debug=true; it specifies
-                              the JDWP listener port (ignored when debug=false).
-                              generateDsym mirrors debug: skip dsymutil for release builds
-                              because dsymutil exits 1 on a binary with no DWARF info.
+                              Pass -Drobovm.debug=true to enable LLVM -g debug-info so that DWARF
+                              is embedded in the binary for Instruments / heaptrack memory profiling.
+                              debugPort is required by RoboVM when debug=true; it specifies the
+                              JDWP listener port (ignored when debug=false).
+                              NOTE: generateDsym is NOT supported by robovmx's Maven plugin.
+                              After a debug build, run dsymutil manually to produce a .dSYM bundle:
+                                dsymutil Forge.app/forge.ios.Main -o Forge.app.dSYM
                             -->
                             <debug>${robovm.debug}</debug>
                             <debugPort>${robovm.debugPort}</debugPort>
-                            <generateDsym>${robovm.debug}</generateDsym>
                         </configuration>
                         <!--
                           Patched robovm-dist-compiler: fixes four Soot bugs that crash
@@ -371,12 +375,16 @@
                             <propertiesFile>robovm.properties</propertiesFile>
                             <configFile>robovm.xml</configFile>
                             <arch>${ios.simulator.arch}</arch>
-                            <!-- See robovm.debug / robovm.debugPort properties above.
-                                 generateDsym mirrors debug: skip dsymutil for release builds
-                                 because dsymutil exits 1 on a binary with no DWARF info. -->
+                            <!--
+                              Pass -Drobovm.debug=true to enable LLVM -g debug-info so that DWARF
+                              is embedded in the binary for profiling / symbolication.
+                              debugPort is required by RoboVM when debug=true.
+                              NOTE: generateDsym is NOT supported by robovmx's Maven plugin.
+                              The ios-simulator-screenshot workflow (workflow_dispatch debug=true)
+                              runs dsymutil after the build and uploads the dSYM automatically.
+                            -->
                             <debug>${robovm.debug}</debug>
                             <debugPort>${robovm.debugPort}</debugPort>
-                            <generateDsym>${robovm.debug}</generateDsym>
                         </configuration>
                         <!-- Patched dist-compiler (same as ios-device profile above). -->
                         <dependencies>
