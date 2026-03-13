@@ -26,9 +26,20 @@
           stack traces.
 
           Default is false (release build: no debug info, smaller binary, faster compile).
-          Pass -Drobovm.debug=true on the Maven command line to produce a profiling build:
+          Pass -Drobovm.debug=true on the Maven command line to produce a profiling build.
 
+          Device build example:
             mvn ... -P ios-device -Drobovm.debug=true -Drobovm.iosSkipSigning=true
+
+          Simulator build example (Apple Silicon):
+            mvn ... -P ios-simulator -Drobovm.debug=true
+
+          Alternatively, trigger the ios-simulator-screenshot workflow manually via
+          workflow_dispatch with input debug=true; it builds with debug info, uploads the
+          dSYM as an artifact, and prints the atos command to symbolicate addresses:
+            atos -arch arm64 -o Forge.app.dSYM/Contents/Resources/DWARF/Forge \
+                 -l <load-address> <crash-address>
+          (app binary name 'Forge' comes from app.name in forge-gui-ios/robovm.properties)
 
           (robovm.debugPort defaults to 5005; override with -Drobovm.debugPort=<port>
           if that port is already in use on your machine.)
