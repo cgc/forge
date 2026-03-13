@@ -7,7 +7,16 @@
         <build.min.memory>-Xms128m</build.min.memory>
         <build.max.memory>-Xmx2048m</build.max.memory>
         <robovm.version>10.2.2.4-SNAPSHOT</robovm.version>
-        <!-- Auto-detected via the apple-silicon profile below; override with -Dios.simulator.arch=... -->
+        <!--
+          CPU architecture slice to use when building for the iOS Simulator.
+          Valid values: x86_64 (Intel Mac), arm64 (Apple Silicon Mac).
+          Auto-detected via the apple-silicon profile below.
+          Override with -Dios.simulator.arch=arm64 (Apple Silicon) or
+          -Dios.simulator.arch=x86_64 (Intel Mac / CI) if auto-detection is wrong.
+          NOTE: use plain arm64, NOT arm64-simulator — RoboVM's <arch> parameter
+          takes a CPU architecture name; the -simulator environment suffix is
+          applied internally by the iphone-sim goal.
+        -->
         <ios.simulator.arch>x86_64</ios.simulator.arch>
         <!--
           When true, RoboVM's LLVM AOT compiler is invoked with -g so that DWARF debug
@@ -379,7 +388,8 @@
                 </os>
             </activation>
             <properties>
-                <ios.simulator.arch>arm64-simulator</ios.simulator.arch>
+                <!-- arm64, NOT arm64-simulator: RoboVM <arch> is a CPU name only. -->
+                <ios.simulator.arch>arm64</ios.simulator.arch>
             </properties>
         </profile>
     </profiles>
