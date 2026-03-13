@@ -514,7 +514,7 @@ could be eliminated:
 
 | Guard | Current | If `androidVersion=999` |
 |---|---|---|
-| `HostedMatch.java:172` | `!\|isAndroid() \|\| isIOS() \|\| getAndroidAPILevel() > 30` | `!isAndroid() \|\| getAndroidAPILevel() > 30` — works because 999 > 30 |
+| `HostedMatch.java:172` | `!isAndroid() \|\| isIOS() \|\| getAndroidAPILevel() > 30` | `!isAndroid() \|\| getAndroidAPILevel() > 30` — works because 999 > 30 |
 | `Forge.java:214` card-BG | `!isAndroid() \|\| isIOS() \|\| (androidVersion > 25 && RAM > 3400)` | `!isAndroid() \|\| (androidVersion > 25 && RAM > 3400)` — works only if RAM > 3400; would **change behaviour** for low-RAM iOS devices |
 
 **Assessment:**
