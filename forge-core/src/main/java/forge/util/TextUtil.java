@@ -20,6 +20,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TimeZone;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** 
  * TODO: Write javadoc for this type.
@@ -337,9 +339,49 @@ public class TextUtil {
      * @param printedName The name of the card.
      * @return A sortable name.
      */
+    // Pre-compiled pattern for toSortableName; thread-local Matcher avoids allocating a new
+    // MatcherNative (and its NativeAllocationRegistry/PhantomReference wrapper) on every call,
+    // which was a significant source of GC pressure during card-database initialisation on iOS.
+    private static final Pattern SORTABLE_NAME_FILTER = Pattern.compile("[^\\s'0-9a-z]");
+    private static final ThreadLocal<Matcher> SORTABLE_NAME_MATCHER =
+            ThreadLocal.withInitial(() -> SORTABLE_NAME_FILTER.matcher(""));
+
     public static String toSortableName(String printedName) {
         if (printedName.startsWith("\"")) printedName = printedName.substring(1);
-        return moveArticleToEnd(printedName).toLowerCase().replaceAll("[^\\s'0-9a-z]", "");
+        String lower = moveArticleToEnd(printedName).toLowerCase();
+        // reset() reuses the existing MatcherNative — no new native allocation per call.
+        return SORTABLE_NAME_MATCHER.get().reset(lower).replaceAll("");
+    }
+
+    // Pre-compiled pattern for stripAccents; thread-local Matcher for the same reason as above.
+    private static final Pattern STRIP_ACCENTS_PATTERN =
+            Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
+    private static final ThreadLocal<Matcher> STRIP_ACCENTS_MATCHER =
+            ThreadLocal.withInitial(() -> STRIP_ACCENTS_PATTERN.matcher(""));
+
+    /**
+     * Strips accent marks from a string.  Functionally identical to
+     * {@code org.apache.commons.lang3.StringUtils.stripAccents()} (commons-lang 3.18.0) but
+     * avoids creating a new {@code Matcher}/native {@code MatcherNative} on every invocation.
+     * Instead it reuses a thread-local {@code Matcher} via {@code reset()}, eliminating the
+     * per-call {@code NativeAllocationRegistry} / {@code PhantomReference} registration that
+     * was triggering aggressive GC during card-database initialisation on iOS.
+     *
+     * @param input the string to process; may be null
+     * @return the string with accent marks removed, or null if input was null
+     */
+    public static String stripAccents(String input) {
+        if (input == null) return null;
+        // NFD decomposition splits precomposed characters (é → e + combining-acute, etc.)
+        String decomposed = Normalizer.normalize(input, Normalizer.Form.NFD);
+        // A small set of characters that NFD does not decompose and that commons-lang
+        // convertRemainingAccentCharacters() handles in version 3.18.0: Ł→L and ł→l.
+        // String.replace(char,char) returns 'this' when the char is absent, so there
+        // is no allocation for strings that don't contain these characters.
+        decomposed = decomposed.replace('\u0141', 'L').replace('\u0142', 'l');
+        // Reuse the thread-local Matcher — reset() updates the input on the existing
+        // MatcherNative without allocating a new one.
+        return STRIP_ACCENTS_MATCHER.get().reset(decomposed).replaceAll("");
     }
 
 
