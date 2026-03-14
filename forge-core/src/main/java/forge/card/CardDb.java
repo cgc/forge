@@ -323,7 +323,7 @@ public final class CardDb implements ICardDatabase, IDeckGenPool {
         }
         final String name = face.getName();
         facesByName.put(name, face);
-        final String normalName = TextUtil.stripAccents(name);
+        final String normalName = StringUtils.stripAccents(name);
         if (!normalName.equals(name)) {
             normalizedNames.put(normalName, name);
         }
@@ -341,7 +341,7 @@ public final class CardDb implements ICardDatabase, IDeckGenPool {
         if(altName == null)
             return;
         facesByName.putIfAbsent(altName, face);
-        final String normalAltName = TextUtil.stripAccents(altName);
+        final String normalAltName = StringUtils.stripAccents(altName);
         if (!normalAltName.equals(altName)) {
             normalizedNames.put(normalAltName, altName);
         }

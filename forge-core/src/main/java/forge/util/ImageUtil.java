@@ -11,6 +11,7 @@ import forge.item.PaperCard;
 import java.util.regex.Pattern;
 import forge.item.PaperToken;
 import forge.token.TokenDb;
+import org.apache.commons.lang3.StringUtils;
 
 import java.net.URLEncoder;
 
@@ -294,7 +295,7 @@ public class ImageUtil {
     }
 
     public static String toMWSFilename(String in) {
-        in = TextUtil.stripAccents(in);
+        in = StringUtils.stripAccents(in);
         final StringBuilder out = new StringBuilder();
         char c;
         for (int i = 0; i < in.length(); i++) {

@@ -147,6 +147,31 @@ import java.nio.file.attribute.BasicFileAttributes;
  *       class reference to create new instances via {@code cls.newInstance()},
  *       bypassing the broken {@code Class.forName()} path in libcore entirely.
  *   </li>
+ *   <li>{@code StringUtils.stripAccents(String)} →
+ *       {@code StreamUtil.stripAccentsNoAlloc(String)} (Pattern 67)<br>
+ *       On robovmx's Android-derived runtime, every {@code Pattern.matcher()} call
+ *       allocates a native {@code MatcherNative} (ICU-backed) that is immediately
+ *       registered with {@code NativeAllocationRegistry} via a
+ *       {@code PhantomReference}/{@code Cleaner}.  During card-DB initialisation
+ *       {@code StringUtils.stripAccents} is called for every card face name
+ *       ({@code CardDb.addFaceToDbNames}) and every image filename
+ *       ({@code ImageUtil.toMWSFilename}), generating thousands of MatcherNative
+ *       allocations per second and triggering aggressive GC (~7% startup).
+ *       {@code StreamUtil.stripAccentsNoAlloc} provides an identical implementation
+ *       that pre-compiles the pattern once and reuses a per-thread {@code Matcher}
+ *       via {@code reset()}, so no new native object is allocated per call.
+ *   </li>
+ *   <li>{@code TextUtil.toSortableName(String)} →
+ *       {@code StreamUtil.toSortableName(String)} (Pattern 68)<br>
+ *       Same root cause as Pattern 67: {@code TextUtil.toSortableName} calls
+ *       {@code String.replaceAll("[^\\s'0-9a-z]", "")} which both recompiles the
+ *       pattern and creates a fresh {@code MatcherNative} on every invocation.
+ *       Since {@code toSortableName} is called once per {@code PaperCard}
+ *       construction, the allocation rate during card-DB init is very high (~7%
+ *       startup).  {@code StreamUtil.toSortableName} provides an identical
+ *       implementation using a pre-compiled pattern and a thread-local
+ *       {@code Matcher.reset()}.
+ *   </li>
  * </ol>
  *
  * <p>The transformation is idempotent: class files whose call sites already
@@ -522,6 +547,44 @@ public class StreamDesugar {
                     super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
                             "filesCopy",
                             "(Ljava/nio/file/Path;Ljava/nio/file/Path;[Ljava/nio/file/CopyOption;)Ljava/nio/file/Path;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 67: StringUtils.stripAccents(String) — on robovmx every Pattern.matcher()
+                // call allocates a native MatcherNative that is registered with
+                // NativeAllocationRegistry via PhantomReference/Cleaner.  During card-DB init
+                // StringUtils.stripAccents is called for every card face name and every image
+                // filename, generating thousands of MatcherNative allocations per second and
+                // triggering aggressive GC (~7% startup time).
+                // StreamUtil.stripAccentsNoAlloc reuses a thread-local Matcher via reset(), so
+                // no new native object is allocated per call.  Semantics are identical to
+                // commons-lang 3.18.0 StringUtils.stripAccents.
+                if (opcode == Opcodes.INVOKESTATIC
+                        && "org/apache/commons/lang3/StringUtils".equals(owner)
+                        && "stripAccents".equals(name)
+                        && "(Ljava/lang/String;)Ljava/lang/String;".equals(descriptor)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "stripAccentsNoAlloc",
+                            "(Ljava/lang/String;)Ljava/lang/String;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 68: TextUtil.toSortableName(String) — same root cause as Pattern 67:
+                // String.replaceAll("[^\\s'0-9a-z]","") both recompiles the pattern and creates
+                // a fresh MatcherNative on every call.  toSortableName is called once per
+                // PaperCard construction so the allocation rate during card-DB init is very high
+                // (~7% startup time).
+                // StreamUtil.toSortableName reuses a thread-local Matcher via reset().
+                // Semantics are identical to TextUtil.toSortableName.
+                if (opcode == Opcodes.INVOKESTATIC
+                        && "forge/util/TextUtil".equals(owner)
+                        && "toSortableName".equals(name)
+                        && "(Ljava/lang/String;)Ljava/lang/String;".equals(descriptor)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "toSortableName",
+                            "(Ljava/lang/String;)Ljava/lang/String;", false);
                     modified = true;
                     return;
                 }

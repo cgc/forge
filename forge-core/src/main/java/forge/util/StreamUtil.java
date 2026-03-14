@@ -26,6 +26,9 @@ import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.nio.file.attribute.FileAttribute;
+import java.text.Normalizer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class StreamUtil {
 
@@ -422,9 +425,58 @@ public class StreamUtil {
         return javax.xml.transform.TransformerFactory.newInstance();
     }
 
+    // ── Pattern 67: StringUtils.stripAccents → stripAccentsNoAlloc ───────────────
+    //
+    // On robovmx, every Pattern.matcher() call allocates a native MatcherNative
+    // (ICU-backed) that is registered with NativeAllocationRegistry via a
+    // PhantomReference/Cleaner.  During card-DB initialisation StringUtils.stripAccents
+    // is called for every card face and every image filename, generating thousands of
+    // MatcherNative allocations that trigger aggressive GC.
+    //
+    // Fix: pre-compile the pattern once; reuse a per-thread Matcher via reset().
+    // reset() updates the target string on the existing MatcherNative without
+    // allocating a new native object — no new PhantomReference, no GC trigger.
+    //
+    // Semantics are identical to org.apache.commons.lang3.StringUtils.stripAccents()
+    // from commons-lang 3.18.0 (NFD decomposition + combining-mark removal +
+    // the Ł→L / ł→l special-case from convertRemainingAccentCharacters).
+
+    private static final Pattern STRIP_ACCENTS_PATTERN =
+            Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
+    private static final ThreadLocal<Matcher> STRIP_ACCENTS_MATCHER =
+            ThreadLocal.withInitial(() -> STRIP_ACCENTS_PATTERN.matcher(""));
+
+    /** Drop-in for {@code StringUtils.stripAccents(String)} that reuses a thread-local Matcher. */
+    public static String stripAccentsNoAlloc(String input) {
+        if (input == null) return null;
+        String decomposed = Normalizer.normalize(input, Normalizer.Form.NFD);
+        // Ł/ł are not decomposed by NFD; commons-lang convertRemainingAccentCharacters handles them.
+        decomposed = decomposed.replace('\u0141', 'L').replace('\u0142', 'l');
+        return STRIP_ACCENTS_MATCHER.get().reset(decomposed).replaceAll("");
+    }
+
+    // ── Pattern 68: TextUtil.toSortableName → StreamUtil.toSortableName ──────────
+    //
+    // TextUtil.toSortableName calls String.replaceAll("[^\\s'0-9a-z]","") which
+    // (a) recompiles the regex every call via Pattern.compile(), and
+    // (b) creates a new MatcherNative (with PhantomReference overhead) every call.
+    // Called once per PaperCard construction this dominates card-DB init time.
+    //
+    // Fix: pre-compile the pattern; reuse a per-thread Matcher via reset().
+
+    private static final Pattern SORTABLE_NAME_FILTER = Pattern.compile("[^\\s'0-9a-z]");
+    private static final ThreadLocal<Matcher> SORTABLE_NAME_MATCHER =
+            ThreadLocal.withInitial(() -> SORTABLE_NAME_FILTER.matcher(""));
+
+    /** Drop-in for {@code TextUtil.toSortableName(String)} that reuses a thread-local Matcher. */
+    public static String toSortableName(String printedName) {
+        if (printedName.startsWith("\"")) printedName = printedName.substring(1);
+        String lower = TextUtil.moveArticleToEnd(printedName).toLowerCase();
+        return SORTABLE_NAME_MATCHER.get().reset(lower).replaceAll("");
+    }
+
     /**
      * Minimal {@link Path} implementation that wraps a {@link File} without
-     * triggering Android ICU charset encoding ({@code NativeConverter}).
      * On iOS, {@code NativeConverter}'s native methods are dead-stripped by the
      * Apple linker, so constructing a {@code UnixPath} (which encodes the path
      * string to bytes via ICU) crashes at address 0x0.  This wrapper stores the
