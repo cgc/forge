@@ -442,7 +442,16 @@ public class StreamUtil {
     // the Ł→L / ł→l special-case from convertRemainingAccentCharacters).
 
     private static final Pattern STRIP_ACCENTS_PATTERN =
-            Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
+            // Use Unicode general-category Mn (Mark, Non-spacing) rather than the
+            // Java-specific block syntax \p{InCombiningDiacriticalMarks}.  Android's
+            // ICU regex engine does not understand the Java \p{InXxx} block names and
+            // throws PatternSyntaxException, which would fail StreamUtil's static
+            // initializer and permanently poison the class with
+            // "Could not initialize class forge.util.StreamUtil".
+            // After NFD decomposition all diacritical marks that originated from
+            // precomposed characters fall into category Mn, so the two patterns are
+            // semantically equivalent for any Latin-script input.
+            Pattern.compile("\\p{Mn}+");
     private static final ThreadLocal<Matcher> STRIP_ACCENTS_MATCHER =
             ThreadLocal.withInitial(() -> STRIP_ACCENTS_PATTERN.matcher(""));
 
@@ -477,6 +486,7 @@ public class StreamUtil {
 
     /**
      * Minimal {@link Path} implementation that wraps a {@link File} without
+     * triggering Android ICU charset encoding ({@code NativeConverter}).
      * On iOS, {@code NativeConverter}'s native methods are dead-stripped by the
      * Apple linker, so constructing a {@code UnixPath} (which encodes the path
      * string to bytes via ICU) crashes at address 0x0.  This wrapper stores the
