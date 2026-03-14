@@ -172,6 +172,15 @@ import java.nio.file.attribute.BasicFileAttributes;
  *       implementation using a pre-compiled pattern and a thread-local
  *       {@code Matcher.reset()}.
  *   </li>
+ *   <li>{@code ThreadLocal.withInitial(Supplier)} →
+ *       {@code StreamUtil.threadLocalWithInitial(Supplier)} (Pattern 69)<br>
+ *       {@code ThreadLocal.withInitial(Supplier)} is a Java 8 static factory
+ *       method that is absent from robovmx's Android-derived robovm-rt.
+ *       Any call in a static initializer will throw {@code NoSuchMethodError}
+ *       and permanently poison the class with {@code NoClassDefFoundError}.
+ *       {@code StreamUtil.threadLocalWithInitial} provides equivalent behaviour
+ *       using the pre-Java-8 anonymous-subclass form.
+ *   </li>
  * </ol>
  *
  * <p>The transformation is idempotent: class files whose call sites already
@@ -585,6 +594,23 @@ public class StreamDesugar {
                     super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
                             "toSortableName",
                             "(Ljava/lang/String;)Ljava/lang/String;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 69: ThreadLocal.withInitial(Supplier) — this Java 8 static factory
+                // method is absent from robovmx's Android-derived robovm-rt.  Any call throws
+                // NoSuchMethodError at runtime; in a static initializer this permanently poisons
+                // the class with NoClassDefFoundError.
+                // StreamUtil.threadLocalWithInitial provides equivalent behaviour via the
+                // pre-Java-8 anonymous-subclass form.
+                if (opcode == Opcodes.INVOKESTATIC
+                        && "java/lang/ThreadLocal".equals(owner)
+                        && "withInitial".equals(name)
+                        && "(Ljava/util/function/Supplier;)Ljava/lang/ThreadLocal;".equals(descriptor)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "threadLocalWithInitial",
+                            "(Ljava/util/function/Supplier;)Ljava/lang/ThreadLocal;", false);
                     modified = true;
                     return;
                 }

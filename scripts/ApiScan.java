@@ -310,6 +310,15 @@ public class ApiScan {
             "()Ljava/util/concurrent/ExecutorService;",
             8, Category.PATCHED,
             "Executors.newWorkStealingPool() — ForkJoinPool crash on iOS [StreamDesugar P64]");
+
+        // ThreadLocal.withInitial(Supplier) is a Java 8 static factory method absent from
+        // robovmx's Android-derived robovm-rt.  Calls in static initializers permanently
+        // poison the class with NoClassDefFoundError.  Rewritten to
+        // StreamUtil.threadLocalWithInitial(Supplier) which uses anonymous-subclass syntax.
+        add("java/lang/ThreadLocal", "withInitial",
+            "(Ljava/util/function/Supplier;)Ljava/lang/ThreadLocal;",
+            8, Category.PATCHED,
+            "ThreadLocal.withInitial(Supplier) — absent from robovmx robovm-rt [StreamDesugar P69]");
     }
 
     private static void add(String owner, String name, String desc,

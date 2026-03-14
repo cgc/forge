@@ -452,8 +452,16 @@ public class StreamUtil {
             // precomposed characters fall into category Mn, so the two patterns are
             // semantically equivalent for any Latin-script input.
             Pattern.compile("\\p{Mn}+");
+    // Use anonymous-subclass syntax rather than ThreadLocal.withInitial(Supplier) because
+    // ThreadLocal.withInitial is a Java 8 static factory method that is absent from
+    // robovmx's Android-derived robovm-rt, causing NoSuchMethodError during <clinit>
+    // which permanently poisons StreamUtil with NoClassDefFoundError.
     private static final ThreadLocal<Matcher> STRIP_ACCENTS_MATCHER =
-            ThreadLocal.withInitial(() -> STRIP_ACCENTS_PATTERN.matcher(""));
+            new ThreadLocal<Matcher>() {
+                @Override protected Matcher initialValue() {
+                    return STRIP_ACCENTS_PATTERN.matcher("");
+                }
+            };
 
     /** Drop-in for {@code StringUtils.stripAccents(String)} that reuses a thread-local Matcher. */
     public static String stripAccentsNoAlloc(String input) {
@@ -474,14 +482,53 @@ public class StreamUtil {
     // Fix: pre-compile the pattern; reuse a per-thread Matcher via reset().
 
     private static final Pattern SORTABLE_NAME_FILTER = Pattern.compile("[^\\s'0-9a-z]");
+    // Use anonymous-subclass syntax rather than ThreadLocal.withInitial(Supplier) — see
+    // STRIP_ACCENTS_MATCHER above for the reason (absent from robovmx's robovm-rt).
     private static final ThreadLocal<Matcher> SORTABLE_NAME_MATCHER =
-            ThreadLocal.withInitial(() -> SORTABLE_NAME_FILTER.matcher(""));
+            new ThreadLocal<Matcher>() {
+                @Override protected Matcher initialValue() {
+                    return SORTABLE_NAME_FILTER.matcher("");
+                }
+            };
 
     /** Drop-in for {@code TextUtil.toSortableName(String)} that reuses a thread-local Matcher. */
     public static String toSortableName(String printedName) {
         if (printedName.startsWith("\"")) printedName = printedName.substring(1);
         String lower = TextUtil.moveArticleToEnd(printedName).toLowerCase();
         return SORTABLE_NAME_MATCHER.get().reset(lower).replaceAll("");
+    }
+
+    // ── Pattern 69: ThreadLocal.withInitial(Supplier) ────────────────────────
+    //
+    // ThreadLocal.withInitial(Supplier) is a Java 8 static factory method.
+    // robovmx's Android-derived robovm-rt does not include it, so any call site
+    // in app code throws NoSuchMethodError at runtime (and if the call is in a
+    // static initializer the class is permanently poisoned with
+    // NoClassDefFoundError).
+    //
+    // Fix: StreamDesugar Pattern 69 rewrites every
+    //   INVOKESTATIC java/lang/ThreadLocal.withInitial(Supplier)ThreadLocal
+    // in desugared class files to
+    //   INVOKESTATIC forge/util/StreamUtil.threadLocalWithInitial(Supplier)ThreadLocal
+    // which delegates to the pre-Java-8 anonymous-subclass approach.
+    //
+    // Note: StreamUtil's own static fields use anonymous-subclass syntax directly
+    // (above) so they are not subject to this rewrite; the helper exists for
+    // call sites elsewhere in the Forge module JARs.
+
+    /**
+     * Pattern 69: replacement for {@code ThreadLocal.withInitial(Supplier)}.
+     * {@code ThreadLocal.withInitial} is absent from robovmx's robovm-rt.
+     * This method provides equivalent behaviour using the pre-Java-8
+     * anonymous-subclass form, which works on all platforms.
+     */
+    public static <T> ThreadLocal<T> threadLocalWithInitial(
+            final java.util.function.Supplier<T> supplier) {
+        return new ThreadLocal<T>() {
+            @Override protected T initialValue() {
+                return supplier.get();
+            }
+        };
     }
 
     /**
