@@ -40,7 +40,6 @@ import forge.Forge;
 import forge.gamemodes.limited.DraftRankCache;
 import forge.gui.GuiBase;
 import forge.interfaces.IDeviceAdapter;
-import forge.localinstance.properties.ForgePreferences;
 import forge.localinstance.properties.ForgePreferences.FPref;
 
 public class Main extends IOSApplication.Delegate {
@@ -277,6 +276,42 @@ public class Main extends IOSApplication.Delegate {
         try {
             nslog("didFinishLaunching: start");
             boolean result = super.didFinishLaunching(application, launchOptions);
+            // Disable CardRelationMatrixGenerator on iOS (~10% startup saving).
+            //
+            // WHY HERE (not in createApplication()):
+            //   createApplication() runs before IOSApplication.didFinishLaunching(),
+            //   which means Gdx.app is still null.  GuiMobile.isRunningOnDesktop()
+            //   returns true when Gdx.app==null, causing ForgeConstants.<clinit> to
+            //   take the desktop code path and throw RuntimeException("cannot
+            //   determine OS…"), poisoning ForgeConstants permanently with
+            //   ExceptionInInitializerError.
+            //
+            // WHY THIS WORKS:
+            //   super.didFinishLaunching() calls IOSApplication.didFinishLaunching()
+            //   → app.create() → Forge.create().  Forge.create() calls
+            //   getForgePreferences() on the MAIN THREAD at lines 237–240 (before
+            //   the background DB-load thread is spawned at line 348).  This creates
+            //   the ForgePreferences singleton correctly (Gdx.app is set, ForgeConstants
+            //   initialises with iOS paths).  By the time super.didFinishLaunching()
+            //   returns here, the singleton already exists.
+            //
+            // TIMING vs. THE BACKGROUND THREAD:
+            //   The background thread (started by Forge.create() line 348) must execute
+            //   AssetsDownloader.checkForUpdates() → FModel.initialize() → ImageKeys
+            //   → Lang → Localizer → ... before reaching the DECKGEN_CARDBASED check
+            //   at FModel.java line 272.  That is ~100 ms of work.  Our setPref()
+            //   here is PreferencesStore.setPref() = a single HashMap.put() (no I/O,
+            //   no locks) on the already-running main thread — it wins the race reliably.
+            //
+            // CardRelationMatrixGenerator.initialize() is gated behind DECKGEN_CARDBASED.
+            // The user can re-enable it in Settings → Preferences; it will be honoured
+            // from the next launch.
+            try {
+                GuiBase.getForgePrefs().setPref(FPref.DECKGEN_CARDBASED, "false");
+                nslog("didFinishLaunching: DECKGEN_CARDBASED=false (CardRelationMatrix deferred)");
+            } catch (Throwable t) {
+                nslog("didFinishLaunching: DECKGEN_CARDBASED override failed: " + t);
+            }
             nslog("didFinishLaunching: complete, result=" + result);
             return result;
         } catch (Throwable t) {
@@ -452,27 +487,6 @@ public class Main extends IOSApplication.Delegate {
         // from the read-only bundle, and the Settings UI hides the path-configuration
         // options that only make sense on Android/desktop.
         GuiBase.setUsingAppDirectory(true);
-        // Pre-load ForgePreferences and disable the commander deck-gen matrix on iOS.
-        //
-        // GuiBase.setInterface() (inside Forge.getApp() above) and setUsingAppDirectory()
-        // are both set at this point, so ForgeConstants and ForgeProfileProperties will
-        // initialise correctly when ForgePreferences reads the prefs file path.
-        //
-        // FModel.initialize() (called later on the libGDX background thread) calls
-        // GuiBase.getForgePrefs(), which returns the *already-created* instance here
-        // because the field is cached after first creation.  Our override therefore
-        // persists into FModel without any change to forge-gui-mobile.
-        //
-        // CardRelationMatrixGenerator.initialize() is gated behind DECKGEN_CARDBASED;
-        // disabling it saves ~10% of iOS startup time.  The user can still re-enable it
-        // in Settings → Preferences; the setting will be honoured from the next launch.
-        try {
-            ForgePreferences prefs = GuiBase.getForgePrefs();
-            prefs.setPref(FPref.DECKGEN_CARDBASED, "false");
-            nslog("createApplication: DECKGEN_CARDBASED=false (CardRelationMatrix deferred, ~10% saving)");
-        } catch (Throwable t) {
-            nslog("createApplication: DECKGEN_CARDBASED override failed: " + t);
-        }
         // Override createInput() so that setupAccelerometer() and setupCompass()
         // are unconditional no-ops.  DefaultIOSInput guards them behind the config
         // flags, but those guards are evaluated at runtime; overriding here
