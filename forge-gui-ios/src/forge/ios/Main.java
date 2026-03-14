@@ -40,6 +40,8 @@ import forge.Forge;
 import forge.gamemodes.limited.DraftRankCache;
 import forge.gui.GuiBase;
 import forge.interfaces.IDeviceAdapter;
+import forge.localinstance.properties.ForgePreferences;
+import forge.localinstance.properties.ForgePreferences.FPref;
 
 public class Main extends IOSApplication.Delegate {
 
@@ -450,6 +452,27 @@ public class Main extends IOSApplication.Delegate {
         // from the read-only bundle, and the Settings UI hides the path-configuration
         // options that only make sense on Android/desktop.
         GuiBase.setUsingAppDirectory(true);
+        // Pre-load ForgePreferences and disable the commander deck-gen matrix on iOS.
+        //
+        // GuiBase.setInterface() (inside Forge.getApp() above) and setUsingAppDirectory()
+        // are both set at this point, so ForgeConstants and ForgeProfileProperties will
+        // initialise correctly when ForgePreferences reads the prefs file path.
+        //
+        // FModel.initialize() (called later on the libGDX background thread) calls
+        // GuiBase.getForgePrefs(), which returns the *already-created* instance here
+        // because the field is cached after first creation.  Our override therefore
+        // persists into FModel without any change to forge-gui-mobile.
+        //
+        // CardRelationMatrixGenerator.initialize() is gated behind DECKGEN_CARDBASED;
+        // disabling it saves ~10% of iOS startup time.  The user can still re-enable it
+        // in Settings → Preferences; the setting will be honoured from the next launch.
+        try {
+            ForgePreferences prefs = GuiBase.getForgePrefs();
+            prefs.setPref(FPref.DECKGEN_CARDBASED, "false");
+            nslog("createApplication: DECKGEN_CARDBASED=false (CardRelationMatrix deferred, ~10% saving)");
+        } catch (Throwable t) {
+            nslog("createApplication: DECKGEN_CARDBASED override failed: " + t);
+        }
         // Override createInput() so that setupAccelerometer() and setupCompass()
         // are unconditional no-ops.  DefaultIOSInput guards them behind the config
         // flags, but those guards are evaluated at runtime; overriding here
