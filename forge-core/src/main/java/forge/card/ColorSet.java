@@ -73,6 +73,7 @@ public enum ColorSet implements Iterable<Color>, Serializable {
 
     private static final long serialVersionUID = 794691267379929080L;
     // needs to be before other static
+    private static final ColorSet[] VALUES = values();
 
     private final Collection<Color> orderedShards;
     private final float orderWeight;
@@ -84,7 +85,7 @@ public enum ColorSet implements Iterable<Color>, Serializable {
 
     public static ColorSet fromMask(final int mask) {
         final int mask32 = mask & MagicColor.ALL_COLORS;
-        return values()[mask32];
+        return VALUES[mask32];
     }
 
     public static ColorSet fromEnums(final Color... colors) {
