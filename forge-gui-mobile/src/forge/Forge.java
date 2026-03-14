@@ -327,11 +327,7 @@ public class Forge implements ApplicationListener {
             Runnable runnable = () -> {
                 safeToClose = false;
                 ImageKeys.setIsLibGDXPort(GuiBase.getInterface().isLibgdxPort());
-                FModel.initialize(getSplashScreen().getProgressBar(),
-                        // On iOS the commander-deck-gen matrix (CardRelationMatrixGenerator) is
-                        // a significant startup cost (~10% of total load time). Skip it at launch
-                        // by disabling the pref; it can still be enabled by the user in Settings.
-                        GuiBase.isIOS() ? prefs -> { prefs.setPref(FPref.DECKGEN_CARDBASED, "false"); return null; } : null);
+                FModel.initialize(getSplashScreen().getProgressBar(), null);
 
                 // Log startup diagnostics here (background thread) rather than on
                 // the main GL thread in afterDbLoaded(): the many println / file-stat
