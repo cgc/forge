@@ -1,5 +1,7 @@
 package forge.gui;
 
+import java.util.concurrent.Semaphore;
+
 import forge.util.ThreadUtil;
 
 public class FThreads {
@@ -56,6 +58,48 @@ public class FThreads {
         //start thread name with "Game" so isGuiThread() returns false on GuiMobile
         new Thread(proc, "Game BT" + backgroundThreadCount).start();
         backgroundThreadCount++;
+    }
+
+    // ── EDT-posting throttle ─────────────────────────────────────────────────
+    // A platform (e.g. iOS) can call configureEdtThrottle(new Semaphore(N))
+    // once at startup to impose back-pressure on background threads that
+    // generate work to be posted to the EDT.  Callers bracket their work with
+    // acquireEdtThrottle() / releaseEdtThrottle(); both are no-ops when no
+    // semaphore has been configured (the default on all other platforms).
+
+    private static volatile Semaphore edtThrottleSemaphore = null;
+
+    /**
+     * Install a semaphore that bounds the number of EDT-bound work items that
+     * may be in flight simultaneously.  Pass {@code null} to remove throttling.
+     * Must be called before any background threads are started.
+     */
+    public static void configureEdtThrottle(final Semaphore semaphore) {
+        edtThrottleSemaphore = semaphore;
+    }
+
+    /**
+     * Acquire one permit from the configured EDT throttle semaphore, blocking
+     * until a permit is available.  No-op if no semaphore has been configured.
+     * Restores the interrupted status and returns immediately on interruption.
+     */
+    public static void acquireEdtThrottle() {
+        final Semaphore s = edtThrottleSemaphore;
+        if (s == null) { return; }
+        try {
+            s.acquire();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /**
+     * Release one permit back to the configured EDT throttle semaphore.
+     * No-op if no semaphore has been configured.
+     */
+    public static void releaseEdtThrottle() {
+        final Semaphore s = edtThrottleSemaphore;
+        if (s != null) { s.release(); }
     }
 
     public static boolean isGuiThread() {

@@ -20,7 +20,6 @@ import com.badlogic.gdx.graphics.glutils.PixmapTextureData;
 import com.badlogic.gdx.utils.Array;
 
 import com.badlogic.gdx.utils.IntSet;
-import java.util.concurrent.Semaphore;
 import forge.Forge;
 import forge.gui.FThreads;
 import forge.gui.GuiBase;
@@ -39,13 +38,6 @@ public class FSkinFont {
 
     private static final String TTF_FILE = "font1.ttf";
     private static HashMap<String, String> langUniqueCharacterSet = new HashMap<>();
-
-    // Limits how many PixmapPacker instances (one per font size) can be alive
-    // simultaneously during preloadAll().  N=2 lets the background thread generate
-    // the *next* font's glyph bitmaps (FreeType CPU work) while the EDT is uploading
-    // the *current* font's textures, giving CPU parallelism while keeping peak
-    // PixmapPacker memory at ~2× the per-font cost instead of ~65× (fully parallel).
-    private static final Semaphore FONT_PACKER_SEMAPHORE = new Semaphore(2);
 
     static {
         FileUtil.ensureDirectoryExists(ForgeConstants.FONTS_DIR);
@@ -466,15 +458,11 @@ public class FSkinFont {
         if (!ttfFile.exists()) { return; }
 
         // Acquire before creating the PixmapPacker so that at most
-        // FONT_PACKER_SEMAPHORE.availablePermits() + (in-EDT tasks) packer
+        // FThreads.edtThrottleSemaphore.availablePermits() + (in-EDT tasks) packer
         // instances are alive at any moment.  Released in the EDT runnable
-        // after packer.dispose().
-        try {
-            FONT_PACKER_SEMAPHORE.acquire();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return;
-        }
+        // after packer.dispose().  On platforms that have not configured an EDT
+        // throttle this is a no-op.
+        FThreads.acquireEdtThrottle();
 
         final FreeTypeFontGenerator generator = new FreeTypeFontGenerator(ttfFile);
 
@@ -509,11 +497,12 @@ public class FSkinFont {
         final Array<PixmapPacker.Page> pages = packer.getPages();
 
         // Finish generating font on UI thread.
-        // Use invokeInEdtNowOrLater (fire-and-forget) together with
-        // FONT_PACKER_SEMAPHORE so the background thread can overlap FreeType
+        // Use invokeInEdtNowOrLater (fire-and-forget) together with the
+        // FThreads EDT throttle so the background thread can overlap FreeType
         // work for the *next* font size while the EDT uploads *this* font's
-        // textures.  The semaphore caps the number of live PixmapPacker
-        // instances (and their native Pixmap pages) to N=2 at any moment.
+        // textures.  The semaphore (configured in forge-gui-ios Main.java) caps
+        // the number of live PixmapPacker instances (and their native Pixmap
+        // pages) to N at any moment.
         FThreads.invokeInEdtNowOrLater(new Runnable() {
             @Override
             public void run() {
@@ -553,7 +542,7 @@ public class FSkinFont {
                 } finally {
                     generator.dispose();
                     packer.dispose();
-                    FONT_PACKER_SEMAPHORE.release();
+                    FThreads.releaseEdtThrottle();
                 }
             }
         });
