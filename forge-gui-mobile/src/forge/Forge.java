@@ -25,6 +25,7 @@ import forge.animation.ForgeAnimation;
 import forge.assets.*;
 import forge.error.ExceptionHandler;
 import forge.gamemodes.limited.BoosterDraft;
+import forge.gamemodes.limited.DraftRankCache;
 import forge.gui.FThreads;
 import forge.gui.GuiBase;
 import forge.gui.error.BugReporter;
@@ -327,7 +328,9 @@ public class Forge implements ApplicationListener {
             Runnable runnable = () -> {
                 safeToClose = false;
                 ImageKeys.setIsLibGDXPort(GuiBase.getInterface().isLibgdxPort());
+                DraftRankCache.logHeap("pre-card-load");
                 FModel.initialize(getSplashScreen().getProgressBar(), null);
+                DraftRankCache.logHeap("post-card-load");
 
                 // Log startup diagnostics here (background thread) rather than on
                 // the main GL thread in afterDbLoaded(): the many println / file-stat
@@ -337,9 +340,11 @@ public class Forge implements ApplicationListener {
 
                 getSplashScreen().getProgressBar().setDescription(getLocalizer().getMessage("lblLoadingFonts"));
                 FSkinFont.preloadAll(locale);
+                DraftRankCache.logHeap("post-font-load");
 
                 getSplashScreen().getProgressBar().setDescription(getLocalizer().getMessage("lblLoadingCardTranslations"));
                 CardTranslation.preloadTranslation(locale, ForgeConstants.LANG_DIR);
+                DraftRankCache.logHeap("post-card-translation");
 
                 getSplashScreen().getProgressBar().setDescription(getLocalizer().getMessage("lblPrepareDatabase"));
                 Gdx.app.postRunnable(this::afterDbLoaded);
@@ -553,7 +558,9 @@ public class Forge implements ApplicationListener {
             FSkin.loadFull(splashScreen);
             FThreads.invokeInBackgroundThread(() -> {
                 //load Drafts
+                DraftRankCache.logHeap("pre-deck-load");
                 preloadBoosterDrafts();
+                DraftRankCache.logHeap("post-deck-load");
                 FThreads.invokeInEdtLater(() -> {
                     if (selector.equals("Adventure")) {
                         //preload adventure resources to speedup startup if selector is adventure. Needs in edt when setting up worldstage

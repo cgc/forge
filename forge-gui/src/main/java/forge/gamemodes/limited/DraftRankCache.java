@@ -3,6 +3,7 @@ package forge.gamemodes.limited;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.LongSupplier;
+import java.util.function.Supplier;
 
 /**
  * DraftRankCache
@@ -51,38 +52,60 @@ public class DraftRankCache {
      */
     public static volatile LongSupplier physicalFootprintMBSupplier = null;
 
+    /**
+     * Optional provider for an extended {@code task_vm_info_data_t} summary
+     * line, populated on iOS only.
+     *
+     * <p>Set at startup by {@code Main} (forge-gui-ios) via
+     * {@code MachMemInfo::getVmInfoLine}.  When non-null, {@link #logHeap}
+     * appends the returned string on a separate log line tagged with
+     * {@code [Forge/Mem-VM]}.  The string contains key fields in MB:
+     * {@code phys}, {@code internal}, {@code compressed}, {@code phys_peak},
+     * {@code gfx} (GPU/Metal texture footprint), and {@code gfx_nofp}.
+     *
+     * <p>{@code null} on all non-iOS platforms; {@link #logHeap} silently
+     * skips the vm-info line when this is {@code null}.
+     */
+    public static volatile Supplier<String> vmInfoLineSupplier = null;
+
     private DraftRankCache() {}
 
     /**
      * Prints current Java heap usage to stdout with a context tag, and (on iOS)
-     * the Mach physical footprint that jetsam actually monitors.
+     * the Mach physical footprint and extended vm_info that jetsam actually monitors.
      * On iOS the output is captured by os_log and is visible in Console.app.
      *
      * <p>Example output on iOS:
      * <pre>
-     * [Forge/Draft-Mem] draft-start: used=142MB total=256MB editions=0
-     * [Forge/Draft-Mem] draft-start: phys=1140MB
+     * [Forge/Heap] post-card-load: used=142MB total=256MB editions=0
+     * [Forge/Heap] post-card-load: phys=1140MB
+     * [Forge/Mem-VM] post-card-load: phys=1140MB internal=890MB compressed=120MB phys_peak=1155MB gfx=230MB gfx_nofp=0MB
      * </pre>
      *
-     * <p>Call this at key draft lifecycle points to build a quantitative picture
-     * of memory use during a booster draft session.  The {@code phys=} line
+     * <p>Call this at key lifecycle points (startup phases, draft events) to
+     * build a quantitative picture of memory use.  The {@code phys=} line
      * reports total process resident memory (Java heap + GPU textures + native
      * code + other), which is what iOS jetsam compares against the per-device
-     * limit.  Sealed and constructed modes do not invoke the AI draft-pick path,
-     * so any {@code phys=} growth seen here that is absent from those modes can
-     * be attributed to draft-specific allocations (e.g. textures loaded for the
-     * card-pick UI).
+     * limit.  The {@code gfx=} field in the vm-info line isolates GPU/Metal
+     * texture memory — the dominant non-Java consumer in Forge.
      */
     public static void logHeap(String tag) {
         Runtime rt = Runtime.getRuntime();
         long usedMB  = (rt.totalMemory() - rt.freeMemory()) >> 20;
         long totalMB = rt.totalMemory() >> 20;
-        System.out.println("[Forge/Draft-Mem] " + tag
+        System.out.println("[Forge/Heap] " + tag
                 + ": used=" + usedMB + "MB total=" + totalMB + "MB"
                 + " editions=" + editionRankings.size());
         LongSupplier s = physicalFootprintMBSupplier;
         if (s != null) {
-            System.out.println("[Forge/Draft-Mem] " + tag + ": phys=" + s.getAsLong() + "MB");
+            System.out.println("[Forge/Heap] " + tag + ": phys=" + s.getAsLong() + "MB");
+        }
+        Supplier<String> vm = vmInfoLineSupplier;
+        if (vm != null) {
+            String line = vm.get();
+            if (line != null) {
+                System.out.println("[Forge/Mem-VM] " + tag + ": " + line);
+            }
         }
     }
 

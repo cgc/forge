@@ -323,8 +323,9 @@ public class Main extends IOSApplication.Delegate {
 
     /**
      * Called by UIKit when the OS is running low on memory.  Logs the Java heap
-     * and the Mach physical footprint (the value jetsam monitors) via NSLog so
-     * that the warning appears in Console.app correlated with the crash log.
+     * and extended Mach vm_info (physical footprint, GPU footprint, etc.) via
+     * NSLog so that the warning appears in Console.app correlated with the crash
+     * log.
      *
      * <p>The default libGDX handler (called via {@code super}) prints "Received
      * memory warning." which is what was previously visible in the logs.  Adding
@@ -334,12 +335,9 @@ public class Main extends IOSApplication.Delegate {
      */
     @Override
     public void didReceiveMemoryWarning(UIApplication application) {
-        Runtime rt = Runtime.getRuntime();
-        long usedMB  = (rt.totalMemory() - rt.freeMemory()) >> 20;
-        long totalMB = rt.totalMemory() >> 20;
-        nslog("didReceiveMemoryWarning: Java heap used=" + usedMB + "MB total=" + totalMB + "MB");
-        long physMB = MachMemInfo.getPhysicalFootprintMB();
-        nslog("didReceiveMemoryWarning: phys=" + physMB + "MB");
+        // logHeap emits Java heap + phys_footprint (physicalFootprintMBSupplier)
+        // + full vm_info breakdown (vmInfoLineSupplier) wired up in createApplication().
+        DraftRankCache.logHeap("memory-warning");
         super.didReceiveMemoryWarning(application);
     }
 
@@ -356,12 +354,13 @@ public class Main extends IOSApplication.Delegate {
         // compiled.
         preWarmXalan();
 
-        // Wire up the Mach physical-footprint supplier so that
-        // DraftRankCache.logHeap() reports the actual OS-level memory that
-        // iOS jetsam monitors alongside the Java heap numbers.
-        // MachMemInfo.getPhysicalFootprintMB() calls task_info(mach_task_self(),
-        // TASK_VM_INFO) and reads task_vm_info_data_t.phys_footprint at offset 144.
+        // Wire up the Mach memory-info suppliers so that DraftRankCache.logHeap()
+        // reports the actual OS-level memory that iOS jetsam monitors alongside
+        // the Java heap numbers.
+        //   physicalFootprintMBSupplier — fast REV1 read of phys_footprint only
+        //   vmInfoLineSupplier          — REV3 read with graphics/ledger fields
         DraftRankCache.physicalFootprintMBSupplier = MachMemInfo::getPhysicalFootprintMB;
+        DraftRankCache.vmInfoLineSupplier = MachMemInfo::getVmInfoLine;
 
         // On iOS 8+, the app bundle (containing all resources) lives in a separate
         // read-only "Bundle container", while $HOME points to the writable "Data
