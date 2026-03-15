@@ -77,10 +77,15 @@ public class DraftRankCache {
      *
      * <p>Example output on iOS:
      * <pre>
-     * [Forge/Heap] post-card-load: used=142MB total=256MB editions=0
+     * [Forge/Heap] post-card-load: used=142MB total=256MB max=8796093022207MB editions=0
      * [Forge/Heap] post-card-load: phys=1140MB
      * [Forge/Mem-VM] post-card-load: phys=1140MB internal=890MB compressed=120MB phys_peak=1155MB gfx=230MB gfx_nofp=0MB
      * </pre>
+     *
+     * <p>The {@code max=} field is {@link Runtime#maxMemory()} — on Boehm GC
+     * (robovmx) this is {@code Long.MAX_VALUE} (no configured limit), which
+     * explains the large constant value in iOS logs.  It is included to keep
+     * the output consistent with standard JVM diagnostics.
      *
      * <p>Call this at key lifecycle points (startup phases, draft events) to
      * build a quantitative picture of memory use.  The {@code phys=} line
@@ -93,8 +98,9 @@ public class DraftRankCache {
         Runtime rt = Runtime.getRuntime();
         long usedMB  = (rt.totalMemory() - rt.freeMemory()) >> 20;
         long totalMB = rt.totalMemory() >> 20;
+        long maxMB   = rt.maxMemory() >> 20;
         System.out.println("[Forge/Heap] " + tag
-                + ": used=" + usedMB + "MB total=" + totalMB + "MB"
+                + ": used=" + usedMB + "MB total=" + totalMB + "MB max=" + maxMB + "MB"
                 + " editions=" + editionRankings.size());
         LongSupplier s = physicalFootprintMBSupplier;
         if (s != null) {

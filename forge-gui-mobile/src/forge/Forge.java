@@ -556,6 +556,7 @@ public class Forge implements ApplicationListener {
         FThreads.invokeInBackgroundThread(() -> FThreads.invokeInEdtLater(() -> {
             //load skin full
             FSkin.loadFull(splashScreen);
+            DraftRankCache.logHeap("post-skin-load");
             FThreads.invokeInBackgroundThread(() -> {
                 //load Drafts
                 DraftRankCache.logHeap("pre-deck-load");
@@ -573,23 +574,36 @@ public class Forge implements ApplicationListener {
                     // the count so that the subsequent openHomeDefault() call can drive
                     // it to zero and correctly disable continuous rendering on iOS.
                     stopContinuousRendering();
+                    DraftRankCache.logHeap("pre-home-transition");
                     //selection transition
                     setTransitionScreen(new TransitionScreen(() -> {
                         if (createNewAdventureMap) {
+                            DraftRankCache.logHeap("pre-open-adventure");
                             openAdventure();
+                            DraftRankCache.logHeap("post-open-adventure");
                             clearSplashScreen();
+                            DraftRankCache.logHeap("post-clear-splash");
                         } else {
                             if (selector.equals("Classic")) {
+                                DraftRankCache.logHeap("pre-open-home");
                                 openHomeDefault();
+                                DraftRankCache.logHeap("post-open-home");
                                 clearSplashScreen();
+                                DraftRankCache.logHeap("post-clear-splash");
                             } else if (selector.equals("Adventure")) {
+                                DraftRankCache.logHeap("pre-open-adventure");
                                 openAdventure();
+                                DraftRankCache.logHeap("post-open-adventure");
                                 clearSplashScreen();
+                                DraftRankCache.logHeap("post-clear-splash");
                             } else if (splashScreen != null) {
                                 splashScreen.setShowModeSelector(true);
                             } else {//default mode in case splashscreen is null at some point as seen on resume..
+                                DraftRankCache.logHeap("pre-open-home");
                                 openHomeDefault();
+                                DraftRankCache.logHeap("post-open-home");
                                 clearSplashScreen();
+                                DraftRankCache.logHeap("post-clear-splash");
                             }
                         }
                         safeToClose = true;
