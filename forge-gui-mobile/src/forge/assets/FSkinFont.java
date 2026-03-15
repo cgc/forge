@@ -20,6 +20,7 @@ import com.badlogic.gdx.graphics.glutils.PixmapTextureData;
 import com.badlogic.gdx.utils.Array;
 
 import com.badlogic.gdx.utils.IntSet;
+import java.util.concurrent.Semaphore;
 import forge.Forge;
 import forge.gui.FThreads;
 import forge.gui.GuiBase;
@@ -38,6 +39,13 @@ public class FSkinFont {
 
     private static final String TTF_FILE = "font1.ttf";
     private static HashMap<String, String> langUniqueCharacterSet = new HashMap<>();
+
+    // Limits how many PixmapPacker instances (one per font size) can be alive
+    // simultaneously during preloadAll().  N=2 lets the background thread generate
+    // the *next* font's glyph bitmaps (FreeType CPU work) while the EDT is uploading
+    // the *current* font's textures, giving CPU parallelism while keeping peak
+    // PixmapPacker memory at ~2× the per-font cost instead of ~65× (fully parallel).
+    private static final Semaphore FONT_PACKER_SEMAPHORE = new Semaphore(2);
 
     static {
         FileUtil.ensureDirectoryExists(ForgeConstants.FONTS_DIR);
@@ -457,6 +465,17 @@ public class FSkinFont {
     private void generateFont(final FileHandle ttfFile, final String fontName, final int fontSize) {
         if (!ttfFile.exists()) { return; }
 
+        // Acquire before creating the PixmapPacker so that at most
+        // FONT_PACKER_SEMAPHORE.availablePermits() + (in-EDT tasks) packer
+        // instances are alive at any moment.  Released in the EDT runnable
+        // after packer.dispose().
+        try {
+            FONT_PACKER_SEMAPHORE.acquire();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return;
+        }
+
         final FreeTypeFontGenerator generator = new FreeTypeFontGenerator(ttfFile);
 
         //approximate optimal page size
@@ -490,49 +509,52 @@ public class FSkinFont {
         final Array<PixmapPacker.Page> pages = packer.getPages();
 
         // Finish generating font on UI thread.
-        // Use invokeInEdtAndWait (not invokeInEdtNowOrLater) so the calling
-        // background thread blocks until textures are uploaded and the
-        // PixmapPacker pages are disposed.  When preloadAll() iterates over
-        // all font sizes 8–72, this keeps only ONE font's PixmapPacker pages
-        // live at a time rather than queuing all 65 sizes simultaneously and
-        // leaving ~165 MB of native Pixmap memory allocated at once.
-        FThreads.invokeInEdtAndWait(new Runnable() {
+        // Use invokeInEdtNowOrLater (fire-and-forget) together with
+        // FONT_PACKER_SEMAPHORE so the background thread can overlap FreeType
+        // work for the *next* font size while the EDT uploads *this* font's
+        // textures.  The semaphore caps the number of live PixmapPacker
+        // instances (and their native Pixmap pages) to N=2 at any moment.
+        FThreads.invokeInEdtNowOrLater(new Runnable() {
             @Override
             public void run() {
-                Array<TextureRegion> textureRegions = new Array<>();
-                for (int i = 0; i < pages.size; i++) {
-                    PixmapPacker.Page p = pages.get(i);
-                    Texture texture = new Texture(new PixmapTextureData(p.getPixmap(), p.getPixmap().getFormat(), false, false)) {
-                        @Override
-                        public void dispose() {
-                            super.dispose();
-                            getTextureData().consumePixmap().dispose();
-                        }
-                    };
-                    texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-                    textureRegions.addAll(new TextureRegion(texture));
+                try {
+                    Array<TextureRegion> textureRegions = new Array<>();
+                    for (int i = 0; i < pages.size; i++) {
+                        PixmapPacker.Page p = pages.get(i);
+                        Texture texture = new Texture(new PixmapTextureData(p.getPixmap(), p.getPixmap().getFormat(), false, false)) {
+                            @Override
+                            public void dispose() {
+                                super.dispose();
+                                getTextureData().consumePixmap().dispose();
+                            }
+                        };
+                        texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                        textureRegions.addAll(new TextureRegion(texture));
+                    }
+
+                    BitmapFont temp = new BitmapFont(fontData, textureRegions, true);
+
+                    //create .fnt and .png files for font
+                    FileHandle pixmapDir = Gdx.files.absolute(ForgeConstants.FONTS_DIR);
+                    if (pixmapDir != null) {
+                        FileHandle fontFile = pixmapDir.child(fontName + ".fnt");
+                        BitmapFontWriter.setOutputFormat(BitmapFontWriter.OutputFormat.Text);
+
+                        String[] pageRefs = BitmapFontWriter.writePixmaps(packer.getPages(), pixmapDir, fontName);
+                        BitmapFontWriter.writeFont(temp.getData(), pageRefs, fontFile, new BitmapFontWriter.FontInfo(fontName, fontSize), 1, 1);
+                        //load to assetManager
+                        Forge.getAssets().manager().load(fontFile.path(), BitmapFont.class);
+                        Forge.getAssets().manager().finishLoadingAsset(fontFile.path());
+                        font = Forge.getAssets().manager().get(fontFile.path(), BitmapFont.class);
+                        applyFontFilter(font);
+                    }
+
+                    temp.dispose();
+                } finally {
+                    generator.dispose();
+                    packer.dispose();
+                    FONT_PACKER_SEMAPHORE.release();
                 }
-
-                BitmapFont temp = new BitmapFont(fontData, textureRegions, true);
-
-                //create .fnt and .png files for font
-                FileHandle pixmapDir = Gdx.files.absolute(ForgeConstants.FONTS_DIR);
-                if (pixmapDir != null) {
-                    FileHandle fontFile = pixmapDir.child(fontName + ".fnt");
-                    BitmapFontWriter.setOutputFormat(BitmapFontWriter.OutputFormat.Text);
-
-                    String[] pageRefs = BitmapFontWriter.writePixmaps(packer.getPages(), pixmapDir, fontName);
-                    BitmapFontWriter.writeFont(temp.getData(), pageRefs, fontFile, new BitmapFontWriter.FontInfo(fontName, fontSize), 1, 1);
-                    //load to assetManager
-                    Forge.getAssets().manager().load(fontFile.path(), BitmapFont.class);
-                    Forge.getAssets().manager().finishLoadingAsset(fontFile.path());
-                    font = Forge.getAssets().manager().get(fontFile.path(), BitmapFont.class);
-                    applyFontFilter(font);
-                }
-
-                generator.dispose();
-                packer.dispose();
-                temp.dispose();
             }
         });
     }
