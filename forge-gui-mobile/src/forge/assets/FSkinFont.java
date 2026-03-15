@@ -489,8 +489,14 @@ public class FSkinFont {
         final FreeTypeFontGenerator.FreeTypeBitmapFontData fontData = generator.generateData(parameter);
         final Array<PixmapPacker.Page> pages = packer.getPages();
 
-        //finish generating font on UI thread
-        FThreads.invokeInEdtNowOrLater(new Runnable() {
+        // Finish generating font on UI thread.
+        // Use invokeInEdtAndWait (not invokeInEdtNowOrLater) so the calling
+        // background thread blocks until textures are uploaded and the
+        // PixmapPacker pages are disposed.  When preloadAll() iterates over
+        // all font sizes 8–72, this keeps only ONE font's PixmapPacker pages
+        // live at a time rather than queuing all 65 sizes simultaneously and
+        // leaving ~165 MB of native Pixmap memory allocated at once.
+        FThreads.invokeInEdtAndWait(new Runnable() {
             @Override
             public void run() {
                 Array<TextureRegion> textureRegions = new Array<>();
