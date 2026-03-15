@@ -1,0 +1,274 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <artifactId>forge</artifactId>
+        <groupId>forge</groupId>
+        <version>${revision}</version>
+    </parent>
+
+    <artifactId>forge-gui-teavm</artifactId>
+    <packaging>jar</packaging>
+    <name>Forge TeaVM Web</name>
+
+    <!--
+      TeaVM / gdx-teavm viability spec module.
+
+      This module targets an HTML5/WebGL deployment of the Forge mobile UI using
+      the gdx-teavm backend (https://github.com/xpenatan/gdx-teavm).  It is the
+      recommended successor to the forge-gui-html GWT module because:
+
+        1. No source JARs required – TeaVM compiles from compiled .class files
+           (bytecode), not Java source code.  This removes the biggest obstacle
+           in the GWT approach, which required source jars for every transitive
+           dependency.
+        2. LibGDX version alignment – gdx-teavm 1.5.x targets LibGDX 1.14.x.
+           Only a minor LibGDX version bump (1.13.5 → 1.14.0) is needed.
+        3. Better Java API coverage – TeaVM emulates a wider subset of the Java
+           standard library than GWT, reducing the need for stub replacements.
+        4. Active maintenance – gdx-backend-gwt was effectively abandoned after
+           LibGDX 1.9.14 (2019); gdx-teavm is actively developed.
+
+      Build architecture
+      ==================
+      The module contains two distinct entry points:
+
+        * BuildForgeTeaVM.java  – a build-time Java program that drives the
+          TeaCompiler.  It is invoked by exec-maven-plugin and produces the
+          deployable JS / Wasm output.
+
+        * TeaVMLauncher.java    – the browser-side entry point that is compiled
+          INTO JavaScript by the TeaCompiler.  It instantiates WebApplication
+          and passes in the Forge ApplicationListener.
+
+      Known limitations / open work items
+      =====================================
+        1. LibGDX version bump
+           gdx-teavm 1.5.x requires LibGDX 1.14.x.  forge-gui-mobile currently
+           pins to 1.13.5.  Before this module can produce a working build the
+           gdx version in forge-gui-mobile/pom.xml (and the other platform POMs)
+           must be bumped to 1.14.0 (or whatever version gdx-teavm targets).
+
+        2. IDeviceAdapter – incompatible imports
+           org.jupnp.UpnpServiceConfiguration is referenced in the interface
+           signature of IDeviceAdapter.getUpnpPlatformService().  org.jupnp is
+           not TeaVM-compatible.  Options:
+             a) Extract the UPnP method into a sub-interface (IUpnpProvider) and
+                have IDeviceAdapter extend it only on non-web platforms.
+             b) Change the return type to Object and cast at the call site.
+             c) Guard the call site with a platform check.
+           See TeaVMAdapter.java for the current stub approach.
+
+        3. IDeviceAdapter – java.io.File in default method
+           IDeviceAdapter.isSupportedAudioFormat(File) uses java.io.File.  In
+           TeaVM JS mode there is no filesystem, so File is unavailable.  The
+           method signature needs to change to accept a String path instead of a
+           File object, or the method must be moved out of the interface.
+
+        4. forge/Forge.java – Sentry and java.nio.file
+           Forge.java imports io.sentry.* and uses java.nio.file.Files /
+           java.nio.file.Paths at startup.  Both are unavailable in TeaVM.
+           The Sentry integration should be guarded by a platform check (e.g., a
+           ForgeConstants.IS_WEB flag) and the file-system checks should be
+           replaced with LibGDX FileHandle equivalents.
+
+        5. AudioClip.java – java.io.File and Thread.sleep
+           forge/sound/AudioClip.java uses java.io.File and Thread.sleep.
+           Audio paths should be passed as strings (usable with
+           Gdx.files.internal()) and the Thread.sleep call removed.
+
+        6. LibGDXImageFetcher.java – java.net.HttpURLConnection, java.nio.file
+           Uses Java SE HTTP and NIO file APIs.  Replace with LibGDX's
+           com.badlogic.gdx.Net.HttpRequest for image downloads, and use
+           Gdx.files for writes.
+
+        7. Box2D native library
+           forge-gui-mobile depends on gdx-box2d (the adventure mode uses it).
+           gdx-teavm currently does not ship a pre-compiled Box2D Wasm module.
+           Adventure mode will be unavailable on the web until box2d emscripten
+           support is added to gdx-teavm or adventure mode is disabled at
+           compile-time for the web target.
+
+        8. Asset bundling
+           The TeaCompiler copies assets from a directory specified in
+           BuildForgeTeaVM.java into the output webapp.  For a real build the
+           assets directory must contain all game resources (res/, skins/, etc.).
+           A CDN/download strategy is likely needed given the multi-GB asset set.
+
+        9. Audio
+           gdx-teavm uses Howler.js for audio.  Only .mp3 and .ogg are widely
+           supported.  The .midi files used for background music will not work
+           natively – either convert to .ogg or disable music on the web target.
+
+       10. Reflection / Class.forName
+           Several Forge screens (NewGameMenu, LoadGameMenu, OnlineMenu) use
+           reflection.  TeaVM has limited reflection support; these classes may
+           need to be refactored to avoid runtime class lookup.
+
+       11. Threading (FThreads)
+           Forge uses FThreads / ThreadUtil for long-running game operations.
+           TeaVM's JS target is single-threaded.  The WASM target (future) may
+           support threads.  For the JS build, blocking calls in game logic must
+           be converted to async/callback patterns or run inside Web Workers.
+
+      How to build (once prerequisites are met)
+      ==========================================
+        mvn -pl forge-gui-teavm -Pteavm package
+
+      The output is placed in target/dist/webapp/ and can be served from any
+      static HTTP server.  An embedded Jetty server is started automatically
+      when BuildForgeTeaVM.java sets startJettyAfterBuild = true.
+    -->
+
+    <properties>
+        <!--
+          gdx-teavm 1.5.3 targets LibGDX 1.14.0.
+          NOTE: forge-gui-mobile currently uses 1.13.5.  Before this profile
+          can produce a runnable build, the gdx version across all modules must
+          be bumped to 1.14.0.
+        -->
+        <gdx.teavm.version>1.5.3</gdx.teavm.version>
+        <!--
+          The gdx version used by this module must match what gdx-teavm expects.
+          Keep in sync with forge-gui-mobile/pom.xml once that module is bumped.
+        -->
+        <gdx.version>1.14.0</gdx.version>
+    </properties>
+
+    <repositories>
+        <!--
+          gdx-teavm stable releases are published to Maven Central (the default
+          Maven repository) so no additional repository declaration is needed
+          for production builds using a tagged release.
+
+          To use a -SNAPSHOT build of gdx-teavm, add the Central Portal snapshot
+          repository as documented at https://github.com/xpenatan/gdx-teavm:
+            <repository>
+              <id>sonatype-snapshots</id>
+              <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+              <releases><enabled>false</enabled></releases>
+              <snapshots><enabled>true</enabled></snapshots>
+            </repository>
+        -->
+    </repositories>
+
+    <dependencies>
+        <!-- Forge mobile UI (the shared libgdx-based front-end) -->
+        <dependency>
+            <groupId>forge</groupId>
+            <artifactId>forge-gui-mobile</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- LibGDX core (must match the version expected by gdx-teavm) -->
+        <dependency>
+            <groupId>com.badlogicgames.gdx</groupId>
+            <artifactId>gdx</artifactId>
+            <version>${gdx.version}</version>
+        </dependency>
+
+        <!--
+          gdx-teavm web backend.
+          Contains:
+            - WebApplication / WebApplicationConfiguration (runtime, compiled to JS)
+            - TeaCompiler / WebBackend (build-time, runs on the JVM to produce JS)
+            - Pre-built gdx.wasm.js (LibGDX native code compiled via Emscripten)
+            - Howler.js (audio)
+        -->
+        <dependency>
+            <groupId>com.github.xpenatan.gdx-teavm</groupId>
+            <artifactId>backend-web</artifactId>
+            <version>${gdx.teavm.version}</version>
+        </dependency>
+
+        <!--
+          FreeType font rendering for TeaVM.
+          Forge uses gdx-freetype for FSkinFont; this extension provides the
+          Emscripten-compiled FreeType Wasm module for the browser.
+          NOTE: the artifact id uses a hyphen (-), not a dot.
+        -->
+        <dependency>
+            <groupId>com.github.xpenatan.gdx-teavm</groupId>
+            <artifactId>gdx-freetype-teavm</artifactId>
+            <version>${gdx.teavm.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <!--
+                      Both the build-time driver (BuildForgeTeaVM) and the
+                      browser runtime entry point (TeaVMLauncher) live in the
+                      same source tree and are compiled by javac.  The TeaCompiler
+                      then cross-compiles TeaVMLauncher (and its dependencies) from
+                      the resulting bytecode into JavaScript.
+                    -->
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!--
+      Activate this profile with -Pteavm to compile the TeaVM JS output:
+        mvn -pl forge-gui-teavm -Pteavm package
+
+      Prerequisites:
+        - forge-gui-mobile and its transitive dependencies must already be built
+          (run `mvn install` from the project root first).
+        - The LibGDX version must be bumped to 1.14.0 (see notes above).
+        - The API changes listed in the Known Limitations section above must be
+          resolved before the TeaCompiler step will succeed.
+    -->
+    <profiles>
+        <profile>
+            <id>teavm</id>
+            <build>
+                <plugins>
+                    <!--
+                      Run the build-time TeaCompiler driver (BuildForgeTeaVM)
+                      during the package phase.  The driver invokes the TeaCompiler
+                      which transpiles TeaVMLauncher (and all reachable classes)
+                      from JVM bytecode into JavaScript or WebAssembly.
+
+                      Output: target/dist/webapp/
+                              ├── index.html
+                              ├── forge.js           (or forge.wasm)
+                              ├── gdx.wasm.js        (LibGDX native Wasm)
+                              ├── howler.js          (audio)
+                              └── assets/            (game resources)
+                    -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.3.0</version>
+                        <executions>
+                            <execution>
+                                <id>build-teavm</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>java</goal>
+                                </goals>
+                                <configuration>
+                                    <mainClass>forge.teavm.BuildForgeTeaVM</mainClass>
+                                    <!--
+                                      The TeaCompiler consumes compiled class files, so the
+                                      full compile-scope classpath (which includes all Forge
+                                      modules compiled as JARs) must be on the classpath.
+                                      exec:java uses the project's runtime classpath by default.
+                                    -->
+                                    <includeProjectDependencies>true</includeProjectDependencies>
+                                    <includePluginDependencies>false</includePluginDependencies>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>
