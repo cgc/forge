@@ -10,4 +10,10 @@ package io.sentry.protocol;
  * whole class and needs the type to resolve.
  */
 public final class Device {
+
+    public String getName() { return null; }
+
+    public String getCpuDescription() { return null; }
+
+    public String getChipset() { return null; }
 }

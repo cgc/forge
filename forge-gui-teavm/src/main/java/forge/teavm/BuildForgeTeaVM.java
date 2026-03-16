@@ -2,7 +2,6 @@ package forge.teavm;
 
 import com.github.xpenatan.gdx.teavm.backends.shared.config.AssetFileHandle;
 import com.github.xpenatan.gdx.teavm.backends.shared.config.compiler.TeaCompiler;
-import com.github.xpenatan.gdx.teavm.backends.web.config.backend.WebBackend;
 import org.teavm.vm.TeaVMOptimizationLevel;
 
 import java.io.File;
@@ -66,20 +65,27 @@ public class BuildForgeTeaVM {
          */
         File outputDir = new File("target/dist");
 
-        WebBackend backend = new WebBackend()
-                .setHtmlTitle("Forge – Magic: The Gathering")
-                // width=0, height=0 → canvas fills the browser window
-                .setHtmlWidth(0)
-                .setHtmlHeight(0)
-                /*
-                 * In development: set true to automatically start embedded Jetty
-                 * after compilation so the game can be tested immediately at
-                 * http://localhost:8080/.
-                 *
-                 * In CI / for HomeScreenLoadTest: set false – the test starts its
-                 * own HTTP server on a random port.
-                 */
-                .setStartJettyAfterBuild(false);
+        /*
+         * Use ForgeWebBackend instead of bare WebBackend.  ForgeWebBackend
+         * overrides setup() to call tool.setStrict(false), which downgrades
+         * "missing class/method" diagnostics from hard errors to warnings for
+         * code paths that are dead in the browser (Guava caches, threading,
+         * java.util.concurrent, javax.xml, etc.).
+         */
+        ForgeWebBackend backend = new ForgeWebBackend();
+        backend.setHtmlTitle("Forge \u2013 Magic: The Gathering");
+        // width=0, height=0 → canvas fills the browser window
+        backend.setHtmlWidth(0);
+        backend.setHtmlHeight(0);
+        /*
+         * In development: set true to automatically start embedded Jetty
+         * after compilation so the game can be tested immediately at
+         * http://localhost:8080/.
+         *
+         * In CI / for HomeScreenLoadTest: set false – the test starts its
+         * own HTTP server on a random port.
+         */
+        backend.setStartJettyAfterBuild(false);
 
         new TeaCompiler(backend)
                 .addAssets(new AssetFileHandle(assetsDir))

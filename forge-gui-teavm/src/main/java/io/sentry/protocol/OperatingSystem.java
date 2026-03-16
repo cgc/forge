@@ -7,4 +7,6 @@ package io.sentry.protocol;
  * lambda.  See {@link Device} for rationale.
  */
 public final class OperatingSystem {
+
+    public String getRawDescription() { return null; }
 }

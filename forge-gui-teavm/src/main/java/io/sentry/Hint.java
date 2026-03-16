@@ -8,4 +8,6 @@ package io.sentry;
  * {@code forge/adventure/util/SaveFileData.java}.
  */
 public final class Hint {
+
+    public void set(String key, Object value) { }
 }

@@ -1,5 +1,7 @@
 package io.sentry;
 
+import io.sentry.protocol.SentryId;
+
 import java.util.function.Consumer;
 
 /**
@@ -16,15 +18,17 @@ import java.util.function.Consumer;
  * browser-native crash reporting (e.g., writing to {@code console.error} or
  * forwarding to a CORS-enabled Sentry endpoint via the browser SDK).
  *
- * <h2>API surface required by the forge codebase</h2>
+ * <h2>API surface required by the forge codebase (Sentry SDK 8.x)</h2>
  * <ul>
- *   <li>{@code Sentry.addBreadcrumb(String)} – forge-gui / BugReporter</li>
- *   <li>{@code Sentry.captureException(Throwable)} – BugReporter, SaveFileData,
+ *   <li>{@code Sentry.addBreadcrumb(String)} – BugReporter</li>
+ *   <li>{@code Sentry.captureException(Throwable) → SentryId} – BugReporter, SaveFileData,
  *       VCardDisplayArea</li>
- *   <li>{@code Sentry.captureException(Throwable, Hint)} – SaveFileData</li>
- *   <li>{@code Sentry.captureMessage(String)} – BugReporter,
+ *   <li>{@code Sentry.captureException(Throwable, Hint) → SentryId} – SaveFileData</li>
+ *   <li>{@code Sentry.captureMessage(String) → SentryId} – BugReporter,
  *       LibGDXImageFetcher, VCardDisplayArea</li>
  *   <li>{@code Sentry.configureScope(ScopeType, ScopeCallback)} – Forge.java</li>
+ *   <li>{@code Sentry.setExtra(String, String)} – PlayerControllerHuman</li>
+ *   <li>{@code Sentry.removeExtra(String)} – PlayerControllerHuman</li>
  * </ul>
  */
 public final class Sentry {
@@ -33,12 +37,22 @@ public final class Sentry {
 
     public static void addBreadcrumb(String message) { }
 
-    public static void captureException(Throwable throwable) { }
+    public static SentryId captureException(Throwable throwable) {
+        return null;
+    }
 
     /** Overload that accepts a {@link Hint} attachment (Sentry 8.x). */
-    public static void captureException(Throwable throwable, Hint hint) { }
+    public static SentryId captureException(Throwable throwable, Hint hint) {
+        return null;
+    }
 
-    public static void captureMessage(String message) { }
+    public static SentryId captureMessage(String message) {
+        return null;
+    }
+
+    public static void setExtra(String key, String value) { }
+
+    public static void removeExtra(String key) { }
 
     /**
      * Sentry 8.x scope configuration callback.
