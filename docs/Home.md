@@ -34,6 +34,10 @@ Adventure is baked into the Android/Mobile release of Forge, and as a separate e
 
 [Other Frequently Asked Questions](Frequently-Asked-Questions.md) - For more advanced explanations about Forge mechanics and gameplay.
 
+# Game Modes — Technical Deep Dives
+
+* [How Booster Drafting Works](Draft-Process.md) — How AI opponents pick cards, how decks are built, and how opponents are selected for your post-draft matches.
+
 # Developers
 The original programmer can be found at http://mtgrares.blogspot.com. A while back he open sourced the project and let the other developers improve it to their heart's content. He's taken a hands off approach for some time now, but still talks about it on his blog linked above.
 
