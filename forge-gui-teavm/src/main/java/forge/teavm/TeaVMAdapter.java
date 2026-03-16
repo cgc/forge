@@ -16,119 +16,67 @@ import java.util.Date;
  * web target.
  *
  * <p>Most device-specific features either have browser equivalents or are
- * simply not applicable in a web context.  Each method below documents the
- * appropriate browser-side behaviour and, where necessary, identifies API
- * changes required before the TeaVM build can succeed.
+ * simply not applicable in a web context.  Methods that are web-incompatible
+ * are no-ops with a brief explanation of the web behaviour.
  *
- * <h2>Required API changes before TeaVM compilation succeeds</h2>
+ * <h2>No-changes-outside-forge-gui-teavm strategy</h2>
+ * <p>Rather than modifying {@code IDeviceAdapter} or any other shared
+ * interface, this module provides compile-time <em>stub replacements</em> for
+ * every incompatible library:
+ * <ul>
+ *   <li><b>{@code org.jupnp.*}</b> – excluded in {@code pom.xml}; replaced by
+ *       an empty {@code UpnpServiceConfiguration} stub in
+ *       {@code src/main/java/org/jupnp/}.  The UPnP code paths in
+ *       {@code FServerManager} are unreachable from the web launcher, so
+ *       TeaVM trims them during tree-shaking.</li>
+ *   <li><b>{@code io.sentry.*}</b> – excluded in {@code pom.xml}; replaced by
+ *       no-op stubs in {@code src/main/java/io/sentry/} and
+ *       {@code src/main/java/io/sentry/protocol/}.  Sentry error reporting is
+ *       silently dropped on the web target; a separate browser-native solution
+ *       (e.g., Sentry's own browser SDK) can be added later.</li>
+ * </ul>
  *
- * <h3>1. {@code IDeviceAdapter.getUpnpPlatformService()}</h3>
- * <p>The method signature in {@link IDeviceAdapter} references
- * {@code org.jupnp.UpnpServiceConfiguration}, a type from the jupnp library.
- * {@code org.jupnp} is not available in the browser environment and is not
- * emulated by TeaVM, so any class that imports it will fail to compile.
- * <p><b>Options:</b>
+ * <p>Because Maven places the current module's compiled classes before
+ * transitive-dependency JARs in the TeaVM compilation classpath, these stubs
+ * take precedence over the real libraries during both {@code javac} and TeaVM
+ * compilation without requiring any changes to the libraries' source modules.
+ *
+ * <h2>Remaining known issues (no external changes needed)</h2>
  * <ol>
- *   <li>Extract the UPnP methods into a separate interface
- *       (e.g., {@code IUpnpProvider}) and have non-web adapters implement it;
- *       web adapters remain unaffected.</li>
- *   <li>Change the return type to {@code Object} and cast at call sites.</li>
- *   <li>Replace the concrete jupnp type with a project-owned interface that
- *       acts as an abstraction layer.</li>
+ *   <li><b>{@code java.nio.file.Files} / {@code Paths}</b> – used in
+ *       {@code Forge.java} ({@code Files.exists}) and {@code FSkinFont.java}
+ *       ({@code Files.newInputStream}).  TeaVM's JS-mode emulation of these
+ *       classes is limited: {@code Files.exists} returns {@code false} (safe
+ *       fallback), but {@code Files.newInputStream} will throw at runtime.
+ *       Fix options (all within {@code forge-gui-teavm}):
+ *       <ul>
+ *         <li>Provide stub implementations in {@code src/main/java/java/nio/}
+ *             (works because TeaVM uses a separate class library mechanism for
+ *             its own {@code java.*} emulation layer).</li>
+ *         <li>Add a TeaVM {@code ClassHolderTransformer} to
+ *             {@code BuildForgeTeaVM.java} that replaces the
+ *             {@code Files.newInputStream} call site in {@code FSkinFont}.</li>
+ *       </ul></li>
+ *   <li><b>Reflection</b> – several screens ({@code NewGameMenu},
+ *       {@code LoadGameMenu}, {@code OnlineMenu}, {@code SaveFileData}) use
+ *       {@code Class.forName} or {@code getDeclaredMethods} with dynamic
+ *       strings.  TeaVM supports limited reflection; these may need review
+ *       but can often be resolved by adding the affected classes to TeaVM's
+ *       {@code @TeaVMReflectionAccess} annotation or the compiler's
+ *       preserved-class list.</li>
+ *   <li><b>LibGDX version</b> – the project currently uses gdx 1.13.5; gdx-teavm
+ *       1.5.3 requires 1.14.0.  The {@code forge-gui-teavm} POM explicitly
+ *       declares gdx 1.14.0 so Maven's nearest-wins rule overrides the 1.13.5
+ *       version from {@code forge-gui-mobile} for this module's classpath only,
+ *       without touching any other module's POM.</li>
  * </ol>
- * <p><b>Affected files:</b>
- * <ul>
- *   <li>{@code forge-gui/src/.../interfaces/IDeviceAdapter.java}</li>
- *   <li>{@code forge-gui-mobile/src/forge/GuiMobile.java}</li>
- *   <li>{@code forge-gui-mobile/src/forge/screens/settings/SettingsPage.java}</li>
- *   <li>All platform adapter implementations (DesktopAdapter, AndroidAdapter,
- *       IosAdapter, etc.)</li>
- * </ul>
- *
- * <h3>2. {@code IDeviceAdapter.isSupportedAudioFormat(File)}</h3>
- * <p>The default method in {@link IDeviceAdapter} uses {@code java.io.File},
- * which is not available in TeaVM's JavaScript target.
- * <p><b>Fix:</b> Change the signature to accept a {@code String} path instead
- * of a {@code File} object.  All call sites pass
- * {@code file.getPath().toLowerCase()} anyway, so this is a safe refactoring.
- * <p><b>Affected files:</b>
- * <ul>
- *   <li>{@code forge-gui/src/.../interfaces/IDeviceAdapter.java}</li>
- *   <li>All call sites of {@code isSupportedAudioFormat}</li>
- * </ul>
- *
- * <h3>3. {@code forge/Forge.java} – Sentry and {@code java.nio.file}</h3>
- * <p>{@code Forge.java} imports {@code io.sentry.*} and uses
- * {@code java.nio.file.Files} / {@code java.nio.file.Paths} at startup.
- * TeaVM does not emulate these libraries.
- * <p><b>Fix:</b>
- * <ul>
- *   <li>Guard Sentry initialisation behind a platform flag, e.g.,
- *       {@code if (!ForgeConstants.IS_WEB) { Sentry.init(...); }}</li>
- *   <li>Replace {@code Files.exists(Paths.get("./res"))} with
- *       {@code Gdx.files.internal("res").exists()} which works on all
- *       LibGDX platforms including the web.</li>
- * </ul>
- * <p><b>Affected files:</b>
- * <ul>
- *   <li>{@code forge-gui-mobile/src/forge/Forge.java}</li>
- * </ul>
- *
- * <h3>4. {@code forge/sound/AudioClip.java} – {@code java.io.File} and
- *         {@code Thread.sleep}</h3>
- * <p>{@code AudioClip.java} uses {@code java.io.File} for file-handle lookup
- * and calls {@code Thread.sleep} to add a playback delay.
- * <p><b>Fix:</b>
- * <ul>
- *   <li>Change the {@code createClip(File)} overload to accept a path
- *       {@code String} and use {@code Gdx.files.absolute(path)}.</li>
- *   <li>Remove the {@code Thread.sleep} call; it is a no-op on the web target
- *       and TeaVM will throw a compilation error for it.  If the delay is
- *       needed, schedule it with {@code Gdx.app.postRunnable}.</li>
- * </ul>
- * <p><b>Affected files:</b>
- * <ul>
- *   <li>{@code forge-gui-mobile/src/forge/sound/AudioClip.java}</li>
- * </ul>
- *
- * <h3>5. {@code forge/util/LibGDXImageFetcher.java} – {@code HttpURLConnection}
- *         and {@code java.nio.file}</h3>
- * <p>Uses {@code java.net.HttpURLConnection} and {@code java.nio.file.Files}
- * for downloading card images.  Both are unavailable in TeaVM.
- * <p><b>Fix:</b> Replace with LibGDX's {@code com.badlogic.gdx.Net.HttpRequest}
- * (works on all LibGDX platforms including web) and write the result via
- * {@code Gdx.files.local(path)}.
- * <p><b>Affected files:</b>
- * <ul>
- *   <li>{@code forge-gui-mobile/src/forge/util/LibGDXImageFetcher.java}</li>
- * </ul>
- *
- * <h3>6. Sentry usage in other classes</h3>
- * <p>{@code io.sentry.Sentry} is also used in:
- * <ul>
- *   <li>{@code forge/adventure/util/SaveFileData.java}</li>
- *   <li>{@code forge/screens/match/views/VCardDisplayArea.java}</li>
- * </ul>
- * Each usage should be guarded by the same {@code IS_WEB} flag.
- *
- * <h3>7. Reflection ({@code Class.forName}, {@code getDeclaredMethods})</h3>
- * <p>The following classes use Java reflection:
- * <ul>
- *   <li>{@code forge/adventure/util/SaveFileData.java}</li>
- *   <li>{@code forge/screens/home/NewGameMenu.java}</li>
- *   <li>{@code forge/screens/home/LoadGameMenu.java}</li>
- *   <li>{@code forge/screens/online/OnlineMenu.java}</li>
- * </ul>
- * TeaVM supports a limited reflection subset.  Each class needs review:
- * {@code Class.forName} with a dynamic string is not supported, but accessing
- * known class objects via {@code MyClass.class} works fine.
  */
 public class TeaVMAdapter implements IDeviceAdapter {
 
     /**
      * Browsers are always "connected" from the application's perspective.
      * If a real connectivity check is needed, query {@code navigator.onLine}
-     * via TeaVM's JSO API ({@code @JSBody}).
+     * via a TeaVM {@code @JSBody} call.
      */
     @Override
     public boolean isConnectedToInternet() {
@@ -152,9 +100,9 @@ public class TeaVMAdapter implements IDeviceAdapter {
     }
 
     /**
-     * The browser sandbox has no "downloads directory."  File downloads
-     * should be triggered via a dynamically-created {@code <a download>}
-     * element using TeaVM's JSO API.
+     * The browser sandbox has no "downloads directory."  File downloads should
+     * be triggered via a dynamically-created {@code <a download>} element using
+     * a TeaVM {@code @JSBody} call.
      */
     @Override
     public String getDownloadsDir() {
@@ -191,7 +139,7 @@ public class TeaVMAdapter implements IDeviceAdapter {
 
     /**
      * Orientation control on the web is done via CSS
-     * ({@code screen.orientation.lock}); not implemented here.
+     * ({@code screen.orientation.lock}); not implemented in this stub.
      */
     @Override
     public void setLandscapeMode(boolean landscapeMode) {
@@ -219,7 +167,7 @@ public class TeaVMAdapter implements IDeviceAdapter {
 
     /**
      * Closing the browser tab programmatically requires a user gesture and
-     * is generally blocked by browser security policies.  This is a no-op.
+     * is generally blocked by browser security policies.
      */
     @Override
     public void exit() {
@@ -233,18 +181,12 @@ public class TeaVMAdapter implements IDeviceAdapter {
     }
 
     /**
-     * JPEG conversion in a browser would use a hidden {@code <canvas>}
-     * element via the Web Canvas API.
-     *
-     * <p><b>API change required:</b> {@link InputStream} / {@link OutputStream}
-     * are available in TeaVM but the underlying I/O abstractions are
-     * meaningless in a browser.  If this method is genuinely needed on the web
-     * target the signature should be changed to accept a
-     * {@code com.badlogic.gdx.graphics.Pixmap} and return a {@code byte[]}.
+     * JPEG conversion in a browser would use a hidden {@code <canvas>} element
+     * via the Web Canvas API.  Not implemented for this stub.
      */
     @Override
     public void convertToJPEG(InputStream input, OutputStream output) throws IOException {
-        // Not implemented for the web target.
+        // No-op.
     }
 
     @Override
@@ -257,8 +199,7 @@ public class TeaVMAdapter implements IDeviceAdapter {
     /**
      * The Gamepad API ({@code navigator.getGamepads()}) is available in
      * modern browsers.  gdx-teavm ships a {@code gdx-controllers-teavm}
-     * extension for controller support; this stub returns an empty list
-     * until that extension is wired up.
+     * extension for controller support; this stub returns an empty list.
      */
     @Override
     public ArrayList<String> getGamepads() {
@@ -266,47 +207,37 @@ public class TeaVMAdapter implements IDeviceAdapter {
     }
 
     /**
-     * UPnP is a native networking protocol and is not available in browsers.
-     *
-     * <p><b>API change required:</b> {@code org.jupnp.UpnpServiceConfiguration}
-     * is not emulated by TeaVM and its import will cause a build failure.  See
-     * the class-level Javadoc for the recommended fix.  This method always
-     * returns {@code null} on the web target.
+     * UPnP is a native networking protocol that has no browser equivalent.
+     * Returns {@code null} on the web target; the stub
+     * {@code UpnpServiceConfiguration} interface satisfies the type reference
+     * at TeaVM-compile time (see class-level Javadoc for details).
      */
     @Override
     public UpnpServiceConfiguration getUpnpPlatformService() {
         return null;
     }
 
-    /** No filesystem permission needed in a browser context. */
+    /** No filesystem permission required in a browser context. */
     @Override
     public boolean needFileAccess() {
         return false;
     }
 
     @Override
-    public void requestFileAcces() { // preserves the typo in IDeviceAdapter
+    public void requestFileAcces() { // spelling matches IDeviceAdapter (typo preserved from interface)
         // No-op.
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * <p><b>API change required:</b> The default implementation in
-     * {@link IDeviceAdapter} uses {@link File}, which is unavailable in TeaVM.
-     * This override accepts a file path {@code String} directly once the
-     * interface signature is updated.
-     *
-     * <p>For the web target we only support {@code .ogg} and {@code .mp3}
-     * (Howler.js formats); {@code .wav} may work in some browsers but is
-     * not recommended.
+     * Audio format checking is not meaningful on the web target (audio is
+     * handled at a higher level by the Forge sound system, which is disabled
+     * for this initial milestone).  The default implementation in
+     * {@link IDeviceAdapter} uses {@code java.io.File}; this override avoids
+     * that dependency and always returns {@code false} to disable local audio
+     * format filtering.
      */
     @Override
     public boolean isSupportedAudioFormat(File file) {
-        // TODO: once IDeviceAdapter.isSupportedAudioFormat(String) is introduced
-        //       this override should be removed.
-        if (file == null) return false;
-        String path = file.getPath().toLowerCase();
-        return path.endsWith(".ogg") || path.endsWith(".mp3");
+        return false;
     }
 }

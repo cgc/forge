@@ -3,40 +3,47 @@ package forge.teavm;
 import com.badlogic.gdx.ApplicationListener;
 import com.github.xpenatan.gdx.teavm.backends.web.WebApplication;
 import com.github.xpenatan.gdx.teavm.backends.web.WebApplicationConfiguration;
-
 import forge.Forge;
+import org.teavm.jso.JSBody;
 
 /**
  * Browser-side entry point for the Forge TeaVM web build.
  *
  * <p>This class is the TeaVM equivalent of {@code forge.app.GameLauncher} (the
- * LWJGL3 desktop launcher) and {@code forge.html.GwtLauncher} (the GWT
- * launcher).  Its {@link #main} method is transpiled to JavaScript by the
- * {@link BuildForgeTeaVM} build-time driver and runs inside the browser when
- * the game page loads.
+ * LWJGL3 desktop launcher).  Its {@link #main} method is transpiled to
+ * JavaScript by the {@link BuildForgeTeaVM} build-time driver and runs inside
+ * the browser when the game page loads.
  *
  * <p>Unlike the GWT approach, this class does <em>not</em> extend a
  * framework-specific base class.  It is a plain Java class with a {@code main}
  * method, which the {@code WebApplication} constructor immediately invokes on
  * the browser's main loop via {@code requestAnimationFrame}.
  *
+ * <h2>Readiness signal for automated testing</h2>
+ * <p>Once {@code Forge.afterDBloaded} becomes {@code true} (the full card
+ * database has loaded and the home screen is ready), the launcher sets
+ * {@code window.__forgeReady = true} via a {@code @JSBody} call.  The
+ * {@link HomeScreenLoadTest} polls this flag to verify a successful startup
+ * without requiring manual inspection.
+ *
  * <h2>Viability notes</h2>
  * <ul>
- *   <li><b>Audio:</b> gdx-teavm uses Howler.js for audio playback.  Only
- *       {@code .mp3} and {@code .ogg} are supported; {@code .midi} files used
- *       for background music must be converted to {@code .ogg} or omitted on
- *       the web target.</li>
  *   <li><b>Threading:</b> The JavaScript target is single-threaded.
- *       {@code Thread.sleep} and most {@code java.util.concurrent} patterns
- *       will fail at runtime.  Long-running operations must be broken into
- *       callbacks or deferred via {@code Gdx.app.postRunnable}.</li>
- *   <li><b>Box2D:</b> The Adventure mode uses gdx-box2d.  gdx-teavm does not
+ *       {@code Thread.sleep} in game logic may silently become a no-op or
+ *       throw; long-running operations should be broken into
+ *       {@code Gdx.app.postRunnable} callbacks.</li>
+ *   <li><b>Box2D:</b> Adventure mode uses gdx-box2d.  gdx-teavm does not
  *       currently ship a pre-compiled Box2D Wasm module, so Adventure mode
  *       will not function on the web target until this is resolved.</li>
- *   <li><b>Asset size:</b> The full Forge asset set (card images, etc.) is
- *       several gigabytes.  A lazy-loading / CDN strategy will be required for
- *       a practical web deployment; only the base skin and core data files
- *       should be bundled at startup.</li>
+ *   <li><b>Asset size:</b> The full Forge asset set is several gigabytes.
+ *       A lazy-loading / CDN strategy is required; only the base skin and
+ *       core data files should be bundled at startup.</li>
+ *   <li><b>java.nio.file:</b> {@code Forge.java} and {@code FSkinFont.java}
+ *       use {@code java.nio.file.Files} / {@code Paths} for path checks and
+ *       translation file loading.  TeaVM's JS-mode emulation of these classes
+ *       is limited; {@code Files.exists} returns {@code false} (safe
+ *       fallback), but {@code Files.newInputStream} will throw.  Font
+ *       translation fallback logic may need a web-specific path.</li>
  * </ul>
  */
 public class TeaVMLauncher {
@@ -66,23 +73,22 @@ public class TeaVMLauncher {
         config.storagePrefix = "forge";
 
         /*
-         * Mirrors the call in GameLauncher (LWJGL3 desktop) and GwtLauncher:
+         * Mirrors the call in GameLauncher (LWJGL3 desktop):
          *   Forge.getApp(hwInfo, clipboard, deviceAdapter, assetsDir, ...)
          *
          * For the TeaVM / web target:
-         *   hwInfo        : null – no hardware-level info in a browser
-         *   clipboard     : WebApplication.get().getClipboard() is used
-         *                   internally; passing null here is intentional because
-         *                   the WebApplication constructor sets up Gdx.app before
-         *                   Forge.getApp runs.  TODO: confirm whether a
-         *                   pre-built WebClipboard should be passed instead.
-         *   deviceAdapter : TeaVMAdapter – browser-safe IDeviceAdapter
+         *   hwInfo        : null – no hardware-level info in a browser;
+         *                   this causes Forge.java's Sentry.configureScope call
+         *                   to be skipped (guarded by hwInfo != null).
+         *   clipboard     : null – WebApplication sets up Gdx.app.getClipboard()
+         *                   internally; Forge uses that via Gdx.app.
+         *   deviceAdapter : TeaVMAdapter – browser-safe IDeviceAdapter stub
          *   assetsDir     : "" – assets are served relative to the page URL
-         *   portrait      : false – default to landscape; responsive
+         *   portrait      : false – default to landscape
          */
         ApplicationListener appListener = Forge.getApp(
                 /* hwInfo         */ null,
-                /* clipboard      */ null,   // TODO: new WebClipboard() once Gdx.app is available
+                /* clipboard      */ null,
                 /* deviceAdapter  */ new TeaVMAdapter(),
                 /* assetsDir      */ "",
                 /* propertyConfig */ false,
@@ -92,10 +98,48 @@ public class TeaVMLauncher {
                 /* androidAPI     */ 0);
 
         /*
+         * Wrap the real ApplicationListener in a thin delegate that sets the
+         * window.__forgeReady flag when the home screen has loaded.  This flag
+         * is used by HomeScreenLoadTest to determine that startup succeeded.
+         */
+        final ApplicationListener wrapped = appListener;
+        ApplicationListener readySignalListener = new ApplicationListener() {
+            private boolean signalled = false;
+
+            @Override public void create()  { wrapped.create(); }
+            @Override public void resize(int w, int h) { wrapped.resize(w, h); }
+            @Override public void pause()   { wrapped.pause(); }
+            @Override public void resume()  { wrapped.resume(); }
+            @Override public void dispose() { wrapped.dispose(); }
+
+            @Override
+            public void render() {
+                wrapped.render();
+                if (!signalled && Forge.afterDBloaded) {
+                    setForgeReadyFlag();
+                    signalled = true;
+                }
+            }
+        };
+
+        /*
          * WebApplication is the gdx-teavm equivalent of Lwjgl3Application.
          * Its constructor sets up Gdx.app, Gdx.graphics, Gdx.input, etc.,
          * then starts the requestAnimationFrame game loop.
          */
-        new WebApplication(appListener, config);
+        new WebApplication(readySignalListener, config);
     }
+
+    /**
+     * Sets {@code window.__forgeReady = true} in the browser's global scope.
+     * This flag is polled by {@link HomeScreenLoadTest} to detect successful
+     * startup without relying on screen content.
+     *
+     * <p>The {@code @JSBody} annotation is processed by the TeaVM compiler,
+     * which replaces this method with a direct JavaScript snippet.  The
+     * annotation is harmless outside of TeaVM (the method is never called by
+     * non-TeaVM builds).
+     */
+    @JSBody(script = "window.__forgeReady = true;")
+    private static native void setForgeReadyFlag();
 }
