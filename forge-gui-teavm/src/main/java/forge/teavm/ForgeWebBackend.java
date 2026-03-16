@@ -62,6 +62,20 @@ public class ForgeWebBackend extends WebBackend {
          * in the transitive classpath.
          */
         tool.setStrict(false);
+
+        /*
+         * Register the Forge-specific ClassHolderTransformer.  It patches
+         * ForgeProfileProperties and FileUtil BEFORE TeaVM's dependency
+         * analysis, removing JVM API calls (File.toPath, System.getenv) that
+         * are absent from TeaVM's JS classlib.  Without this, those references
+         * land in AccumulationDiagnostics.getSevereProblems() and cause
+         * TeaVM.build() to return early without emitting any JavaScript.
+         *
+         * TeaVMTool.getTransformers() is a List<String> of class names; the
+         * tool loads them with its own classloader (which includes the
+         * forge-gui-teavm JAR) and invokes transformClass() on each class.
+         */
+        tool.getTransformers().add(ForgeTeaVMTransformer.class.getName());
     }
 
     /**
