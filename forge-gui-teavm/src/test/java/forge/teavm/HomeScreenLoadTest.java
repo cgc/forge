@@ -99,9 +99,11 @@ public class HomeScreenLoadTest {
         browser = playwright.chromium().launch(
             new BrowserType.LaunchOptions()
                 .setHeadless(true)
-                .addArgs("--disable-gpu")           // software rendering in CI
-                .addArgs("--no-sandbox")             // required in many CI envs
-                .addArgs("--disable-dev-shm-usage")); // avoids /dev/shm exhaustion
+                .setArgs(List.of(
+                    "--disable-gpu",           // software rendering in CI
+                    "--no-sandbox",            // required in many CI envs
+                    "--disable-dev-shm-usage"  // avoids /dev/shm exhaustion
+                )));
     }
 
     @AfterClass(alwaysRun = true)
