@@ -6,7 +6,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.concurrent.Semaphore;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.jupnp.UpnpServiceConfiguration;
@@ -39,7 +38,6 @@ import com.badlogic.gdx.graphics.glutils.HdpiMode;
 
 import forge.Forge;
 import forge.gamemodes.limited.DraftRankCache;
-import forge.gui.FThreads;
 import forge.gui.GuiBase;
 import forge.interfaces.IDeviceAdapter;
 import forge.localinstance.properties.ForgePreferences.FPref;
@@ -359,9 +357,10 @@ public class Main extends IOSApplication.Delegate {
         // Throttle concurrent PixmapPacker instances during FSkinFont.preloadAll().
         // N=2 lets the background thread rasterize the *next* font size while the
         // EDT uploads the *current* one, giving CPU/GPU overlap while capping peak
-        // PixmapPacker memory to ~2× the per-font cost (vs ~65× with no throttle).
-        FThreads.configureEdtThrottle(new Semaphore(2));
-
+        // PixmapPacker memory to ~2–3× the per-font cost (vs ~65× with no throttle).
+        // The throttle lives in IosGuiMobile.invokeInEdtLater; it is installed after
+        // Forge.getApp() so that the clipboard/deviceAdapter setup in Forge.getApp()
+        // runs normally, then the generic GuiMobile instance is replaced.
         // Wire up the Mach memory-info suppliers so that DraftRankCache.logHeap()
         // reports the actual OS-level memory that iOS jetsam monitors alongside
         // the Java heap numbers.
@@ -487,6 +486,9 @@ public class Main extends IOSApplication.Delegate {
         }
         final ApplicationListener app = Forge.getApp(null, new IOSClipboard(), new IOSAdapter(assetsDir), assetsDir, false, !isLandscape, iosPhysicalRAMMB, false, 0);
         nslog("createApplication: Forge.getApp() returned " + (app == null ? "null" : app.getClass().getName()));
+        // Replace the generic GuiMobile (set by Forge.getApp) with IosGuiMobile,
+        // which throttles invokeInEdtLater to limit concurrent PixmapPacker instances.
+        GuiBase.setInterface(new IosGuiMobile(assetsDir, 2));
         // The generic isUsingAppDirectory check in Forge.getApp() matches the Android
         // package name ("forge.app") in the OBB path, but the iOS bundle is named
         // "forge.ios.Main.app" which does not match that substring.  Override it here
