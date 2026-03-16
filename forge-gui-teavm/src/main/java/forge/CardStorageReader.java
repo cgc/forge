@@ -38,4 +38,9 @@ public class CardStorageReader {
     public final Iterable<CardRules> loadCards() {
         return Collections.emptyList();
     }
+
+    /** Returns {@code null} — no card loading on the web target. */
+    public final CardRules attemptToLoadCard(String cardName) {
+        return null;
+    }
 }
