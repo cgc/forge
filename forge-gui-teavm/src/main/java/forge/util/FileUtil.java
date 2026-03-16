@@ -97,49 +97,25 @@ public final class FileUtil {
     }
 
     /**
-     * Copies a file using plain {@code java.io} streams.
-     * Original used {@code Files.newInputStream/newOutputStream(path)} which
-     * are unavailable in TeaVM's JS class library.
+     * No-op on the web target: there is no writable local filesystem in a browser.
      */
     public static void copyFile(String sourceFilename, String destFilename) {
-        File source = new File(sourceFilename);
-        if (!source.exists()) { return; }
-        try (InputStream is = new FileInputStream(source);
-             OutputStream os = new FileOutputStream(destFilename)) {
-            byte[] buffer = new byte[1024];
-            int length;
-            while ((length = is.read(buffer)) > 0) {
-                os.write(buffer, 0, length);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
+    /** No-op on the web target. */
     public static void writeFile(String filename, String text) {
-        FileUtil.writeFile(new File(filename), text);
     }
 
+    /** No-op on the web target. */
     public static void writeFile(File file, String text) {
-        try (PrintWriter p = new PrintWriter(file)) {
-            p.print(text);
-        } catch (final Exception ex) {
-            throw new RuntimeException("FileUtil : writeFile() error, problem writing file - " + file + " : " + ex);
-        }
     }
 
+    /** No-op on the web target. */
     public static void writeFile(String filename, List<String> data) {
-        FileUtil.writeFile(new File(filename), data);
     }
 
+    /** No-op on the web target. */
     public static void writeFile(File file, Collection<?> data) {
-        try (PrintWriter p = new PrintWriter(file)) {
-            for (Object o : data) {
-                p.println(o);
-            }
-        } catch (final Exception ex) {
-            throw new RuntimeException("FileUtil : writeFile() error, problem writing file - " + file + " : " + ex);
-        }
     }
 
     public static String readFileToString(String filename) {

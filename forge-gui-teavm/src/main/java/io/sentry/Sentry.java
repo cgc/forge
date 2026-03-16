@@ -36,6 +36,8 @@ public final class Sentry {
     private Sentry() { }
 
     public static void addBreadcrumb(String message) { }
+    public static void addBreadcrumb(Breadcrumb breadcrumb) { }
+    public static void addBreadcrumb(Breadcrumb breadcrumb, Object hint) { }
 
     public static SentryId captureException(Throwable throwable) {
         return null;
