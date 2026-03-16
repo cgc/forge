@@ -60,10 +60,14 @@ public class BuildForgeTeaVM {
         String assetsDir = System.getProperty("forge.assetsDir", "../forge-gui");
 
         /*
-         * Output directory.  WebBackend creates a "webapp" sub-folder inside
-         * this directory.
+         * Output directory.  Defaults to "target/dist" relative to the current
+         * working directory.  When run via the exec-maven-plugin from the project
+         * root, the system property forge.buildDir is set to the module's
+         * ${project.build.directory} (e.g. forge-gui-teavm/target) so output
+         * lands in the correct module directory rather than the root target/.
          */
-        File outputDir = new File("target/dist");
+        String buildDir = System.getProperty("forge.buildDir", "target");
+        File outputDir = new File(buildDir, "dist");
 
         /*
          * Use ForgeWebBackend instead of bare WebBackend.  ForgeWebBackend

@@ -272,6 +272,24 @@
                                     <mainClass>forge.teavm.BuildForgeTeaVM</mainClass>
                                     <includeProjectDependencies>true</includeProjectDependencies>
                                     <includePluginDependencies>false</includePluginDependencies>
+                                    <!--
+                                      Run BuildForgeTeaVM with the module directory as the working
+                                      directory so that relative paths (assetsDir, outputDir) are
+                                      resolved correctly regardless of whether Maven is invoked from
+                                      the project root or the module directory.
+                                    -->
+                                    <workingDirectory>${project.basedir}</workingDirectory>
+                                    <systemProperties>
+                                        <!--
+                                          Pass the module's build directory so BuildForgeTeaVM can
+                                          write to forge-gui-teavm/target/dist rather than to the
+                                          root project's target directory.
+                                        -->
+                                        <systemProperty>
+                                            <key>forge.buildDir</key>
+                                            <value>${project.build.directory}</value>
+                                        </systemProperty>
+                                    </systemProperties>
                                 </configuration>
                             </execution>
                         </executions>
@@ -291,6 +309,13 @@
                                 <include>**/*LoadTest.java</include>
                             </includes>
                             <groups>teavm-smoke</groups>
+                            <!--
+                              Run integration tests with the module directory as
+                              the working directory so HomeScreenLoadTest finds
+                              target/dist/webapp/ correctly regardless of whether
+                              Maven is invoked from the root or the module.
+                            -->
+                            <workingDirectory>${project.basedir}</workingDirectory>
                         </configuration>
                         <executions>
                             <execution>

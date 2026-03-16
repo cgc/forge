@@ -98,15 +98,28 @@ public class TeaVMLauncher {
                 /* androidAPI     */ 0);
 
         /*
-         * Wrap the real ApplicationListener in a thin delegate that sets the
-         * window.__forgeReady flag when the home screen has loaded.  This flag
-         * is used by HomeScreenLoadTest to determine that startup succeeded.
+         * Wrap the real ApplicationListener in a thin delegate that sets
+         * readiness signals used by HomeScreenLoadTest:
+         *
+         *   window.__forgeStarted – set in create(), before any asset loading.
+         *     Verifies that the compiled JavaScript loaded correctly and that
+         *     the LibGDX WebApplication lifecycle started.  Suitable as a fast
+         *     CI smoke test that does not require the full card database.
+         *
+         *   window.__forgeReady – set in render() once Forge.afterDBloaded is
+         *     true (the full card DB has loaded and the home screen is visible).
+         *     Requires the complete Forge asset set and a longer timeout.
          */
         final ApplicationListener wrapped = appListener;
         ApplicationListener readySignalListener = new ApplicationListener() {
-            private boolean signalled = false;
+            private boolean readySignalled = false;
 
-            @Override public void create()  { wrapped.create(); }
+            @Override
+            public void create() {
+                wrapped.create();
+                setForgeStartedFlag();
+            }
+
             @Override public void resize(int w, int h) { wrapped.resize(w, h); }
             @Override public void pause()   { wrapped.pause(); }
             @Override public void resume()  { wrapped.resume(); }
@@ -115,9 +128,9 @@ public class TeaVMLauncher {
             @Override
             public void render() {
                 wrapped.render();
-                if (!signalled && Forge.afterDBloaded) {
+                if (!readySignalled && Forge.afterDBloaded) {
                     setForgeReadyFlag();
-                    signalled = true;
+                    readySignalled = true;
                 }
             }
         };
@@ -131,14 +144,25 @@ public class TeaVMLauncher {
     }
 
     /**
-     * Sets {@code window.__forgeReady = true} in the browser's global scope.
-     * This flag is polled by {@link HomeScreenLoadTest} to detect successful
-     * startup without relying on screen content.
+     * Sets {@code window.__forgeStarted = true} once the LibGDX
+     * {@code ApplicationListener.create()} method has been called.
      *
-     * <p>The {@code @JSBody} annotation is processed by the TeaVM compiler,
-     * which replaces this method with a direct JavaScript snippet.  The
-     * annotation is harmless outside of TeaVM (the method is never called by
-     * non-TeaVM builds).
+     * <p>This is the first readiness signal.  It fires before any Forge assets
+     * are loaded and confirms that the compiled JavaScript executed without
+     * fatal errors up to the start of the game lifecycle.  Used by
+     * {@link HomeScreenLoadTest} as a fast smoke-test check.
+     */
+    @JSBody(script = "window.__forgeStarted = true;")
+    private static native void setForgeStartedFlag();
+
+    /**
+     * Sets {@code window.__forgeReady = true} once the full card database has
+     * loaded and the home screen is visible ({@code Forge.afterDBloaded}).
+     *
+     * <p>This is the second (optional) readiness signal.  It requires the
+     * complete Forge asset set and typically takes 30-90 s.  Used by
+     * {@link HomeScreenLoadTest} to verify end-to-end startup success when a
+     * full asset set is available.
      */
     @JSBody(script = "window.__forgeReady = true;")
     private static native void setForgeReadyFlag();

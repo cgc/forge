@@ -60,22 +60,15 @@ public class ForgeWebBackend extends WebBackend {
          * hard build errors.  This lets the compilation succeed for the Forge
          * web target despite the many server-side / desktop-only dependencies
          * in the transitive classpath.
+         *
+         * Source-level stubs in src/main/java/ handle the critical live-path
+         * classes whose TeaVM-incompatible methods are in the reachable call
+         * graph (e.g. ForgeProfileProperties, FileUtil).  Because Maven places
+         * the current module's compiled classes before transitive-dependency
+         * JARs, those stubs shadow the real classes for both javac and the
+         * TeaVM compilation classpath without modifying any other module.
          */
         tool.setStrict(false);
-
-        /*
-         * Register the Forge-specific ClassHolderTransformer.  It patches
-         * ForgeProfileProperties and FileUtil BEFORE TeaVM's dependency
-         * analysis, removing JVM API calls (File.toPath, System.getenv) that
-         * are absent from TeaVM's JS classlib.  Without this, those references
-         * land in AccumulationDiagnostics.getSevereProblems() and cause
-         * TeaVM.build() to return early without emitting any JavaScript.
-         *
-         * TeaVMTool.getTransformers() is a List<String> of class names; the
-         * tool loads them with its own classloader (which includes the
-         * forge-gui-teavm JAR) and invokes transformClass() on each class.
-         */
-        tool.getTransformers().add(ForgeTeaVMTransformer.class.getName());
     }
 
     /**
