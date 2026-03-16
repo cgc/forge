@@ -97,3 +97,5 @@ __pycache__
 
 # Ignore Claude configuration
 .claude
+# TeaVM extracted class files (from build debugging)
+/com/github/xpenatan/
