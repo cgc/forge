@@ -11,4 +11,11 @@ package io.sentry;
  * opt-in preference which is always disabled on the web.
  */
 public final class Breadcrumb {
+    public Breadcrumb() { }
+    public Breadcrumb(String message) { }
+    public void setMessage(String message) { }
+    public void setType(String type) { }
+    public void setCategory(String category) { }
+    public void setLevel(SentryLevel level) { }
+    public void setData(String key, Object value) { }
 }
