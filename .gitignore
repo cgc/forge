@@ -99,3 +99,4 @@ __pycache__
 .claude
 # TeaVM extracted class files (from build debugging)
 /com/github/xpenatan/
+/org/teavm/
