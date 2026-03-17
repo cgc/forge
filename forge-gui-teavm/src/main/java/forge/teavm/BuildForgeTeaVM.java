@@ -206,9 +206,13 @@ public class BuildForgeTeaVM {
                 String relativePath = root.toPath().relativize(child.toPath())
                         .toString().replace('\\', '/');
                 long size = child.length();
-                // fileType=i (Internal), assetType=b (Binary), path, size, overwrite=0
+                // fileType=i (Internal), assetType=b (Binary), path, size, overwrite=1
+                // overwrite=1 forces re-download on every page load so that
+                // AssetLoadImpl.addAssetToQueue always enqueues the asset even when
+                // the file already exists in IndexedDB from a previous download.
+                // Without this, assetsCount=0 → progress=NaN → setPreloadReady() never fires.
                 sb.append("i:b:").append(relativePath).append(':')
-                  .append(size).append(":0\n");
+                  .append(size).append(":1\n");
             }
         }
     }
