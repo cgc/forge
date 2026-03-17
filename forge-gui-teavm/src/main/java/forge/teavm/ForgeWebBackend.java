@@ -63,6 +63,17 @@ public class ForgeWebBackend extends WebBackend {
         tool.setStrict(false);
 
         /*
+         * Register ForgeTeaVMTransformer so TeaVM runs it on every class before
+         * dependency analysis.  It:
+         *   1. Rewires any class whose declared superclass is absent from TeaVM's
+         *      classlib to extend java.lang.Object instead, preventing
+         *      $rt_classWithoutFields(undefinedParent) references in the generated
+         *      JS that would cause an immediate ReferenceError on page load.
+         *   2. Stubs out method bodies that reference missing classes.
+         */
+        tool.getTransformers().add(ForgeTeaVMTransformer.class.getName());
+
+        /*
          * Register a progress listener so we can hook into the very start of
          * vm.build().  When TeaVM starts the DEPENDENCY_ANALYSIS phase we
          * add a DependencyListener whose complete() callback clears the

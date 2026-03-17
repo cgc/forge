@@ -50,14 +50,86 @@ import org.teavm.model.instructions.*;
  */
 public class ForgeTeaVMTransformer implements ClassHolderTransformer {
 
+    /**
+     * Packages that live in the JDK / JVM standard library but are NOT
+     * emulated by TeaVM's JS classlib.  When a class in the transitive
+     * classpath extends a class in one of these packages and that class
+     * doesn't exist in TeaVM's classlib, the generated JS contains an
+     * expression like
+     * <pre>  SomeClass = $rt_classWithoutFields(juca_MissingParent)</pre>
+     * that causes an immediate {@code ReferenceError} on page load because
+     * {@code juca_MissingParent} is never defined.
+     *
+     * <p>We only strip parents/interfaces whose package is listed here; Forge
+     * and third-party library class hierarchies must be left untouched so that
+     * TeaVM can correctly trace the reachable class graph.
+     */
+    private static final String[] MISSING_JVM_PACKAGES = {
+        "java.util.concurrent.atomic.",
+        "java.util.concurrent.locks.",
+        "java.util.concurrent.",
+        "javax.",
+        "sun.",
+        "com.sun.",
+        "jdk.",
+    };
+
     @Override
     public void transformClass(ClassHolder cls, ClassHolderTransformerContext context) {
         ClassReaderSource classSource = context.getHierarchy().getClassSource();
+
+        /*
+         * Fix 1: missing JVM superclass.
+         *
+         * When a class in the transitive classpath extends a JVM class that is
+         * absent from TeaVM's JS classlib, TeaVM emits
+         *   SomeClass = $rt_classWithoutFields(juca_MissingParent)
+         * in the generated JavaScript.  If juca_MissingParent is never defined
+         * (because TeaVM couldn't emit a class for it either), this expression
+         * causes an immediate ReferenceError at JS module-parse time — before
+         * any Forge code runs.
+         *
+         * Example: io.netty.util.internal.LongAdderCounter extends
+         * java.util.concurrent.atomic.LongAdder, which is absent from TeaVM
+         * 0.13.x's classlib.  TeaVM generates $rt_classWithoutFields(juca_LongAdder)
+         * for LongAdderCounter; juca_LongAdder is never defined → ReferenceError.
+         *
+         * We only touch parents that are in known-missing JVM packages so we
+         * don't accidentally corrupt Forge's own class hierarchy.
+         */
+        String parent = cls.getParent();
+        if (parent != null && !parent.equals("java.lang.Object")
+                && isInMissingJvmPackage(parent)
+                && classSource.get(parent) == null) {
+            cls.setParent("java.lang.Object");
+            cls.setGenericParent(null);
+        }
+
+        /*
+         * Fix 2: missing JVM interfaces — same problem; drop only those that
+         * are in the known-missing JVM packages and absent from classSource.
+         */
+        cls.getInterfaces().removeIf(iface ->
+                isInMissingJvmPackage(iface) && classSource.get(iface) == null);
+
+        /*
+         * Fix 3: method bodies that reference missing classes.
+         */
         for (MethodHolder method : cls.getMethods()) {
             if (methodReferencesMissingClass(method, classSource)) {
                 stubOut(method);
             }
         }
+    }
+
+    /** Returns true if {@code className} belongs to a known-absent JVM package. */
+    private static boolean isInMissingJvmPackage(String className) {
+        for (String pkg : MISSING_JVM_PACKAGES) {
+            if (className.startsWith(pkg)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // -------------------------------------------------------------------------
