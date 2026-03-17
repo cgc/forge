@@ -101,8 +101,11 @@ public class TeaVMLauncher {
          * Wrap the real ApplicationListener in a thin delegate that sets
          * readiness signals used by HomeScreenLoadTest:
          *
-         *   window.__forgeStarted – set in create(), before any asset loading.
-         *     Verifies that the compiled JavaScript loaded correctly and that
+         *   window.__forgeStarted – set at the START of create(), before
+         *     Forge.create() runs.  Forge.create() performs heavy initialisation
+         *     (skin loading, preference files, etc.) which may take a long time
+         *     or fail in the browser environment.  Signalling at entry to
+         *     create() confirms the compiled JavaScript loaded correctly and
          *     the LibGDX WebApplication lifecycle started.  Suitable as a fast
          *     CI smoke test that does not require the full card database.
          *

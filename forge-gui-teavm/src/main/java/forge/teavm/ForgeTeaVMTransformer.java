@@ -63,6 +63,11 @@ public class ForgeTeaVMTransformer implements ClassHolderTransformer {
      * <p>We only strip parents/interfaces whose package is listed here; Forge
      * and third-party library class hierarchies must be left untouched so that
      * TeaVM can correctly trace the reachable class graph.
+     *
+     * <p>Each entry ends with a {@code '.'} separator so that
+     * {@link String#startsWith} matches only valid package prefixes.
+     * For example, {@code "javax."} matches {@code javax.Foo} but never
+     * matches a hypothetical {@code javaxFoo} class.
      */
     private static final String[] MISSING_JVM_PACKAGES = {
         "java.util.concurrent.atomic.",
