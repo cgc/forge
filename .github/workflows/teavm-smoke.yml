@@ -1,0 +1,89 @@
+name: TeaVM smoke test
+
+# Run whenever forge-gui-teavm sources change, or on demand.
+# The job builds the TeaVM JavaScript output, then boots it in headless
+# Chromium (via Playwright Java) to confirm the compiled code loads without
+# fatal errors.
+on:
+  push:
+    paths:
+      - 'forge-gui-teavm/**'
+      - 'forge-gui-mobile/**'
+      - 'forge-gui/**'
+      - 'forge-game/**'
+      - 'forge-ai/**'
+      - 'forge-core/**'
+      - '.github/workflows/teavm-smoke.yml'
+  pull_request:
+    paths:
+      - 'forge-gui-teavm/**'
+      - 'forge-gui-mobile/**'
+      - 'forge-gui/**'
+      - 'forge-game/**'
+      - 'forge-ai/**'
+      - 'forge-core/**'
+      - '.github/workflows/teavm-smoke.yml'
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    name: TeaVM boot smoke test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # Cache Playwright browser binaries to avoid re-downloading on every run.
+      # The cache key includes the Playwright version so it is invalidated
+      # automatically when the version is bumped in pom.xml.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('forge-gui-teavm/pom.xml') }}
+          restore-keys: playwright-${{ runner.os }}-
+
+      # Install Playwright browsers + OS system dependencies (libgbm etc.).
+      # npx is pre-installed on GitHub Actions ubuntu runners.
+      # This is a no-op if the cache was restored; --with-deps is always re-run
+      # to ensure OS packages are present (they aren't cached).
+      # The version is read from pom.xml to keep it in sync automatically.
+      - name: Install Playwright Chromium (+ system deps)
+        run: |
+          PLAYWRIGHT_VERSION=$(mvn -pl forge-gui-teavm help:evaluate \
+            -Dexpression=playwright.version -q -DforceStdout --no-transfer-progress)
+          npx playwright@${PLAYWRIGHT_VERSION} install --with-deps chromium
+
+      # Build the full TeaVM JavaScript output and run the HomeScreenLoadTest.
+      # mvn verify runs these lifecycle phases in order:
+      #   compile → test-compile → package (BuildForgeTeaVM) →
+      #   integration-test (HomeScreenLoadTest) → verify
+      - name: Build TeaVM output and run smoke test
+        run: |
+          mvn -pl forge-gui-teavm -am -Pteavm verify \
+            --no-transfer-progress -B
+
+      - name: Upload TeaVM webapp artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: teavm-webapp
+          path: forge-gui-teavm/target/dist/webapp/
+          if-no-files-found: ignore
+
+      - name: Upload smoke test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failsafe-reports
+          path: forge-gui-teavm/target/failsafe-reports/
+          if-no-files-found: ignore
