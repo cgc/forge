@@ -1,57 +1,48 @@
 # Startup memory optimization plan
 
-Based on `mem-startup.persistent.txt` and `mem-startup.transient.txt` captured at commit
-`32dd2a9`.  Numbers are approximate — the profile is a sample count, not an exact byte count.
-Recent commits (font-throttle / FThreads.configureEdtThrottle) will have shifted some of these
-numbers; those items are noted.
+Based on `mem-startup.persistent.txt` / `mem-startup.transient.txt` (baseline, commit `32dd2a9`)
+and updated with results from `mem-startup2.persistent.txt` / `mem-startup2.transient.txt` after
+the coarse-preload + DeckHints-pattern-cache + EDT-throttle changes.
+
+---
+
+## Profile delta summary (mem-startup → mem-startup2)
+
+Changes applied between the two profile captures:
+1. Coarse `preloadAll` size set (23 Latin / 12 CJK sizes instead of every integer)
+2. `DeckHints` static `Pattern` cache (eliminates 220K `Pattern.compile` calls)
+3. `IosGuiMobile` EDT throttle (`Semaphore(2)` on `invokeInEdtLater`)
+
+| Metric | Before | After | Δ |
+|---|---|---|---|
+| Persistent total | 616.47 MB | 572.50 MB | **–44 MB (–7%)** |
+| Transient total | 928.68 MB | 781.90 MB | **–147 MB (–16%)** |
+
+| Bucket | Before | After | Cause |
+|---|---|---|---|
+| Font GPU textures (persistent) | 293 MB | 25 MB | Coarse preload (1) |
+| FreeType rasterization (transient) | 181 MB | 37 MB | Coarse preload (1) |
+| PixmapPacker pages (transient) | 117 MB | 21 MB | Coarse preload + throttle (1+3) |
+| DeckHints Pattern.compile (transient) | 15 MB | 0 MB | Pattern cache (2) |
+| Async pixmap T-1 (transient) | 512 MB | 525 MB | Unchanged — largest remaining target |
 
 ---
 
 ## Persistent allocations
 
-Persistent allocations stay live for the lifetime of the process (or at least until the next
-GC cycle that cannot reclaim them).  The dominant buckets:
+Current dominant buckets (`mem-startup2`):
 
 | Bucket | Approx size | Call path |
 |---|---|---|
-| Font GPU textures | ~293 MB | `FSkinFont$1.run → glTexImage2DJNI → GLDTextureRec::allocMetalTexture` |
+| Font GPU textures | **~25 MB** (was 293 MB) | `FSkinFont$1.run → glTexImage2DJNI → GLDTextureRec::allocMetalTexture` |
+| Card image GPU textures (render loop) | ~141 MB | `Forge.render → CardRenderer → ImageCache.loadAsset → glTexImage2DJNI` |
+| Skin/asset textures (FSkin.loadFull) | ~90 MB | `FSkin.loadFull → Assets.loadTexture → glTexImage2DJNI` |
 | BoosterDraft thread stacks | ~49 MB | `loadCustomDrafts → CompletableFuture.supplyAsync → GC_pthread_create` |
-| Card image GPU textures (render loop) | ~35 MB | `Forge.render → CardRenderer → ImageCache.loadAsset → glTexImage2DJNI` |
-| Skin/asset textures (didFinishLaunching) | ~20 MB | `FSkin.loadLight → Assets.loadTexture → glTexImage2DJNI` |
 
-### P-1 — Font GPU textures (~293 MB)
+### P-1 — Font GPU textures ✅ FIXED (293 MB → 25 MB)
 
-**Root cause:** `preloadAll()` rasterizes every font size from 8 pt to 72 pt (65 sizes for
-non-CJK, 29 for CJK) and uploads each font atlas page as a Metal texture.  The persistent cost
-is unavoidable GPU VRAM for as many atlas pages as we have font sizes.
-
-**Options:**
-
-1. **Reduce the number of preloaded sizes (most impactful).**  Many sizes between MIN and MAX
-   are only used by a single widget; if a requested size falls between two cached sizes the
-   renderer already falls back to scaling.  Pre-loading every integer from 8 to 72 wastes ~30–40
-   texture pages that are never queried.  A coarser set like `{8, 10, 12, 14, 16, 18, 20, 24,
-   28, 32, 36, 42, 48, 56, 64, 72}` (16 sizes) would cut GPU usage by ~75%.  The fallback
-   path in `FSkinFont.get()` / `shrink()` / `grow()` already handles missing sizes via integer
-   probing so no rendering correctness risk.
-
-2. **Lazy font generation.**  Remove `preloadAll()` entirely on iOS and generate each font size
-   on first use.  The FThreads throttle (N=2) already makes generation concurrent-safe.  Cold
-   first-frame cost is higher but peak persistent VRAM is bounded to exactly the sizes actually
-   used.  Risky if many font sizes are queried on the first render frame.
-
-3. **Use a shared FreeType atlas per size family.**  Currently each font size gets its own
-   `PixmapPacker` with a fresh atlas page.  Packing several adjacent sizes into a single atlas
-   page would reduce texture-object count and Metal texture header overhead.  Complex to
-   implement without modifying libGDX internals.
-
-4. **Use lower bit-depth (LA8 / ETC2 / ASTC).**  The current `RGBA8888` glyph atlas uses 4
-   bytes/pixel; LA8 (luminance + alpha, 2 bytes/pixel) or a hardware-compressed format cuts
-   VRAM in half.  Requires patching the `PixmapPacker` format and verifying glyph rendering
-   quality on Retina displays.
-
-**Recommended:** Option 1 — change `preloadAll` to iterate a fixed coarse size list rather than
-all integers.  Low risk, isolated to `FSkinFont.java`, no correctness change.
+Coarse `PRELOAD_SIZES_LATIN` / `PRELOAD_SIZES_CJK` arrays replaced the all-integers loop,
+reducing preloaded sizes from 65/29 to 23/12.  GPU texture cost reduced ~9×.
 
 ---
 
@@ -131,73 +122,51 @@ resolutions.
 
 ## Transient allocations
 
-Transient allocations are freed (or eligible for GC) shortly after they are created.  High
-transient pressure raises peak RSS and increases GC pause frequency.
+Current state (`mem-startup2`):
 
-| Bucket | Approx size | Call path |
-|---|---|---|
-| Async texture load pixmaps (AssetManager) | ~512 MB | `AssetLoadingTask → TextureLoader.loadAsync → Gdx2DPixmap → gdx2d_load` |
-| FreeType glyph pixmaps (font preload) | ~181 MB | `FSkinFont.preloadAll → generateData → createGlyph + PixmapPacker page` |
-| BoosterDraft parsing | ~43 MB | `loadCustomDrafts → CustomLimited.parse → Deck.loadDeferredSections` |
-| CardStorageReader — card parsing | ~41 MB | `loadCardsInRange → DeckHints.<init> → String.split → Pattern.compile` |
-| CardEdition.Reader — pattern matchers | ~22 MB | `CardEdition$Reader.read → IosUtil.patternMatcher → Matcher.reset → ICU utext_openUChars` |
-| CardDb.initialize — PaperCard init | ~56 MB | `addSetCard → PaperCard.<init> → toSortableName` + `reIndex → hasImage → getCardImageKey` |
-| CardStorageReader — InputStreamReader | ~13 MB | `readScript → new InputStreamReader(stream, Charset) → CharsetDecoderICU.newInstance` |
+| Bucket | Approx size | Call path | Status |
+|---|---|---|---|
+| Async texture load pixmaps (AssetManager) | ~525 MB | `AssetLoadingTask → TextureLoader.loadAsync → Gdx2DPixmap → gdx2d_load` | ← target (fix below) |
+| FreeType glyph pixmaps (font preload) | ~37 MB | `FSkinFont.preloadAll → generateData → createGlyph + PixmapPacker page` | ↓ from 181 MB |
+| DeckHints Pattern.compile | **0 MB** | eliminated by Pattern cache | ✅ fixed |
+| BoosterDraft parsing | ~43 MB | `loadCustomDrafts → CustomLimited.parse → Deck.loadDeferredSections` | unchanged |
+| CardEdition.Reader — pattern matchers | ~22 MB | `CardEdition$Reader.read → IosUtil.patternMatcher → Matcher.reset → ICU utext_openUChars` | unchanged |
+| CardDb.initialize — PaperCard init | ~35 MB | `addSetCard → PaperCard.<init> → toSortableName` + `reIndex → hasImage → getCardImageKey` | unchanged |
+| CardStorageReader — InputStreamReader | ~15 MB | `readScript → new InputStreamReader(stream, Charset) → CharsetDecoderICU.newInstance` | unchanged |
 
-### T-1 — Async texture pixmaps (~512 MB)
+### T-1 — Async texture pixmaps (~525 MB) ← largest remaining target ✅ FIXED (iOS)
 
-**Root cause:** The `AssetManager` background thread decodes every texture from disk into a
-CPU-side `Gdx2DPixmap` buffer before the EDT uploads it to the GPU.  5107 async texture loads
-are in flight simultaneously (all font atlas PNGs written by `FSkinFont.generateFont` plus skin
-images).  Each PNG is decoded to an RGBA8888 pixmap (e.g. 512×512 = 1 MB CPU buffer) before
-`glTexImage2D` is called; the buffer is freed immediately after upload.
+**Root cause (confirmed by source inspection):** On **every launch**, `FSkinFont.updateFont()`
+loads cached `.fnt` files from `Library/Caches/forge/fonts/` via `AssetManager`.  Loading a
+`.fnt` triggers asynchronous PNG decode on the AssetManager background thread for each
+referenced atlas PNG: `manager.load(.fnt)` → background: `TextureLoader.loadAsync()` →
+`Pixmap(.png)` → `Gdx2DPixmap.load()` → `gdx2d_load` (libpng decode).  There is no persistent
+CPU pixmap cache across process restarts; PNGs are decoded fresh every launch regardless of
+whether the font was generated on this launch or cached from a previous one.
 
-**Recent fix:** The `FThreads.configureEdtThrottle(new Semaphore(2))` added in the previous
-commit limits concurrent `PixmapPacker` instances.  This **does not** directly limit concurrent
-`loadAsync` calls (those are driven by `AssetManager.queueAsset` calls made in the EDT inside
-`FSkinFont$1.run()`).  It does limit how many `run()` lambdas execute concurrently, so at most
-N+1 font atlases have pending `AssetManager.load` calls in flight — a significant improvement.
+**Fix implemented in `FSkinFont.java`:**
 
-**Remaining options:**
+1. `updateFont()`: guarded the cache-file load path with `!GuiBase.isIOS()`.  On iOS the method
+   now always falls through to `generateFont()`, skipping the `manager.load(.fnt)` → background
+   PNG decode path entirely.
 
-1. **Use `AssetManager.finishLoading()` with batch gating.**  After posting each font's load
-   request, call `finishLoading()` synchronously before posting the next.  This eliminates the
-   async queue backlog entirely at the cost of making font upload sequential.  Already partially
-   done (each `FSkinFont$1.run()` calls `finishLoadingAsset`); the remaining parallelism comes
-   from multiple lambdas enqueued via `invokeInEdtNowOrLater` before the EDT drains them.
+2. `generateFont()` EDT runnable: iOS branch creates `BitmapFont` directly from PixmapPacker-
+   backed textures (no PNG write, no `AssetManager` reload, no background `loadAsync`).  Texture
+   filter is set to `Linear` at creation (Retina-appropriate).  `packer.dispose()` frees the
+   packer page pixmaps exactly once (`font.dispose()` is guarded by `!GuiBase.isIOS()`).
 
-2. **Increase the throttle semaphore count.**  N=2 was chosen empirically.  Tuning this value
-   down to N=1 makes uploads fully serial but cuts peak transient pixmap memory by another 50%.
+3. Non-iOS path: write `.fnt`/`.png` + `AssetManager` load — **unchanged**.
 
-3. **Write pre-compressed KTX / ASTC atlases at build time.**  If font atlas PNGs are replaced
-   by pre-compressed KTX files the GPU upload path skips the CPU pixmap decode step entirely,
-   eliminating the 512 MB transient bucket.  Requires significant build-time tooling.
+**Expected result:** T-1 ≈ 0 MB for font atlases on iOS.  FreeType (T-2) now runs on every
+launch (was first-launch-only), but 23-size rasterization is faster than PNG decode round-trip.
 
 ---
 
-### T-2 — FreeType glyph rasterization (~181 MB)
+### T-2 — FreeType glyph rasterization (~37 MB, was 181 MB) ↓
 
-**Root cause:** For each font size, `FreeTypeFontGenerator.generateData` rasterizes every glyph
-into a temporary `Pixmap` (37 MB across all calls), then packs them into `PixmapPacker` pages
-(116 MB total for 110 page allocations).  The pages are freed in the EDT after GPU upload.
-
-**Recent fix:** `FThreads.configureEdtThrottle(new Semaphore(2))` caps concurrent `PixmapPacker`
-instances.  The 116 MB transient pages shrink to ≤ 2×(single-size page cost) at any moment.
-
-**Remaining options:**
-
-1. **Pre-render font atlases offline.**  Ship PNG font atlases baked at build time.  Eliminates
-   FreeType entirely at runtime.  Already the path taken after `generateFont` writes `.fnt` /
-   `.png` files to `FONTS_DIR`; on a fresh install those files don't exist.  If we include
-   pre-built atlases in the app bundle and skip `generateFont` when they're present, this entire
-   bucket disappears.  The `if (GuiBase.isIOS()) { /* skip regeneration if cached */ }` pattern
-   in `FSkinFont.generateFont` could check for the cached `.fnt` file before calling
-   `FreeTypeFontGenerator`.
-
-2. **Reduce the glyph set.**  `parameter.characters = getCharacterSet(Forge.locale)`.  For
-   `en-US` this is the default libGDX set (~250 chars).  If it includes characters never used in
-   card text (e.g. full Unicode Latin Extended) a trimmed set would cut per-size rasterization
-   cost.
+**Status:** Reduced ~5× by coarse preload.  With the T-1 fix above, FreeType now runs on every
+launch (previously only on first/cache-miss), but the 23-size set keeps T-2 at ~37 MB — well
+within the budget freed by eliminating T-1.
 
 ---
 

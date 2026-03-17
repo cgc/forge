@@ -430,7 +430,11 @@ public class FSkinFont {
         }
         FileHandle fontFile = Gdx.files.absolute(ForgeConstants.FONTS_DIR + fontName + ".fnt");
         final boolean[] found = {false};
-        if (fontFile != null && fontFile.exists()) {
+        // On iOS we always regenerate from FreeType and upload the atlas directly to the
+        // GPU (see generateFont).  Skipping the on-disk PNG cache eliminates the
+        // per-launch PNG decode that the AssetManager's background loadAsync thread would
+        // otherwise perform, cutting ~525 MB of cumulative transient allocations.
+        if (!GuiBase.isIOS() && fontFile != null && fontFile.exists()) {
             FThreads.invokeInEdtAndWait(() -> { //font must be initialized on UI thread; wait so found[0] is set before we decide whether to regenerate
                 try {
                     font = Forge.getAssets().manager().get(fontFile.path(), BitmapFont.class, false);
@@ -529,28 +533,41 @@ public class FSkinFont {
                                 getTextureData().consumePixmap().dispose();
                             }
                         };
-                        texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                        texture.setFilter(
+                            GuiBase.isIOS() ? Texture.TextureFilter.Linear : Texture.TextureFilter.Nearest,
+                            GuiBase.isIOS() ? Texture.TextureFilter.Linear : Texture.TextureFilter.Nearest);
                         textureRegions.addAll(new TextureRegion(texture));
                     }
 
-                    BitmapFont temp = new BitmapFont(fontData, textureRegions, true);
+                    if (GuiBase.isIOS()) {
+                        // iOS fast path: use the PixmapPacker-backed textures directly.
+                        // Skipping the PNG write + AssetManager reload eliminates the
+                        // per-launch background-thread PNG decode (T-1, ~525 MB cumulative
+                        // transient allocations in the startup profile).
+                        // Lifecycle: font.dispose() is guarded by !GuiBase.isIOS() so only
+                        // packer.dispose() touches the packer pixmaps — single dispose, no
+                        // double-free.
+                        font = new BitmapFont(fontData, textureRegions, true);
+                    } else {
+                        BitmapFont temp = new BitmapFont(fontData, textureRegions, true);
 
-                    //create .fnt and .png files for font
-                    FileHandle pixmapDir = Gdx.files.absolute(ForgeConstants.FONTS_DIR);
-                    if (pixmapDir != null) {
-                        FileHandle fontFile = pixmapDir.child(fontName + ".fnt");
-                        BitmapFontWriter.setOutputFormat(BitmapFontWriter.OutputFormat.Text);
+                        //create .fnt and .png files for font
+                        FileHandle pixmapDir = Gdx.files.absolute(ForgeConstants.FONTS_DIR);
+                        if (pixmapDir != null) {
+                            FileHandle fontFile = pixmapDir.child(fontName + ".fnt");
+                            BitmapFontWriter.setOutputFormat(BitmapFontWriter.OutputFormat.Text);
 
-                        String[] pageRefs = BitmapFontWriter.writePixmaps(packer.getPages(), pixmapDir, fontName);
-                        BitmapFontWriter.writeFont(temp.getData(), pageRefs, fontFile, new BitmapFontWriter.FontInfo(fontName, fontSize), 1, 1);
-                        //load to assetManager
-                        Forge.getAssets().manager().load(fontFile.path(), BitmapFont.class);
-                        Forge.getAssets().manager().finishLoadingAsset(fontFile.path());
-                        font = Forge.getAssets().manager().get(fontFile.path(), BitmapFont.class);
-                        applyFontFilter(font);
+                            String[] pageRefs = BitmapFontWriter.writePixmaps(packer.getPages(), pixmapDir, fontName);
+                            BitmapFontWriter.writeFont(temp.getData(), pageRefs, fontFile, new BitmapFontWriter.FontInfo(fontName, fontSize), 1, 1);
+                            //load to assetManager
+                            Forge.getAssets().manager().load(fontFile.path(), BitmapFont.class);
+                            Forge.getAssets().manager().finishLoadingAsset(fontFile.path());
+                            font = Forge.getAssets().manager().get(fontFile.path(), BitmapFont.class);
+                            applyFontFilter(font);
+                        }
+
+                        temp.dispose();
                     }
-
-                    temp.dispose();
                 } finally {
                     generator.dispose();
                     packer.dispose();
