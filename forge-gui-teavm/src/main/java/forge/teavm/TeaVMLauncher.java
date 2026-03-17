@@ -116,8 +116,8 @@ public class TeaVMLauncher {
 
             @Override
             public void create() {
-                wrapped.create();
                 setForgeStartedFlag();
+                wrapped.create();
             }
 
             @Override public void resize(int w, int h) { wrapped.resize(w, h); }

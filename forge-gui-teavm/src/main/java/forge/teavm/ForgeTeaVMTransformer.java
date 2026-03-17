@@ -79,38 +79,38 @@ public class ForgeTeaVMTransformer implements ClassHolderTransformer {
         ClassReaderSource classSource = context.getHierarchy().getClassSource();
 
         /*
-         * Fix 1: missing JVM superclass.
+         * Fix 1: missing superclass.
          *
-         * When a class in the transitive classpath extends a JVM class that is
+         * When a class in the transitive classpath extends a class that is
          * absent from TeaVM's JS classlib, TeaVM emits
          *   SomeClass = $rt_classWithoutFields(juca_MissingParent)
          * in the generated JavaScript.  If juca_MissingParent is never defined
-         * (because TeaVM couldn't emit a class for it either), this expression
-         * causes an immediate ReferenceError at JS module-parse time — before
-         * any Forge code runs.
+         * the expression causes an immediate ReferenceError at JS module-parse
+         * time — before any Forge code runs.
          *
-         * Example: io.netty.util.internal.LongAdderCounter extends
-         * java.util.concurrent.atomic.LongAdder, which is absent from TeaVM
-         * 0.13.x's classlib.  TeaVM generates $rt_classWithoutFields(juca_LongAdder)
-         * for LongAdderCounter; juca_LongAdder is never defined → ReferenceError.
+         * Examples:
+         *   - io.netty.util.internal.LongAdderCounter extends
+         *     java.util.concurrent.atomic.LongAdder (absent from TeaVM 0.13.x)
+         *   - io.netty.util.internal.logging.Log4J2Logger extends
+         *     org.apache.logging.log4j.spi.ExtendedLoggerWrapper (not in TeaVM)
          *
-         * We only touch parents that are in known-missing JVM packages so we
-         * don't accidentally corrupt Forge's own class hierarchy.
+         * The check is intentionally broad (any missing parent, not just JVM
+         * packages) because third-party library classes can also be missing.
+         * This is safe: if the parent is absent from classSource the child
+         * class is dead code; redirecting to Object loses no live behaviour.
          */
         String parent = cls.getParent();
         if (parent != null && !parent.equals("java.lang.Object")
-                && isInMissingJvmPackage(parent)
                 && classSource.get(parent) == null) {
             cls.setParent("java.lang.Object");
             cls.setGenericParent(null);
         }
 
         /*
-         * Fix 2: missing JVM interfaces — same problem; drop only those that
-         * are in the known-missing JVM packages and absent from classSource.
+         * Fix 2: missing interfaces — same problem; drop any interface that
+         * is not present in classSource.
          */
-        cls.getInterfaces().removeIf(iface ->
-                isInMissingJvmPackage(iface) && classSource.get(iface) == null);
+        cls.getInterfaces().removeIf(iface -> classSource.get(iface) == null);
 
         /*
          * Fix 3: method bodies that reference missing classes.
@@ -138,7 +138,19 @@ public class ForgeTeaVMTransformer implements ClassHolderTransformer {
 
     /**
      * Returns {@code true} if any instruction in the method's program
-     * references a class that is absent from TeaVM's class source.
+     * references a known-missing JVM class that is absent from TeaVM's
+     * class source.
+     *
+     * <p><b>Important:</b> we intentionally scope this to
+     * {@link #MISSING_JVM_PACKAGES} only.  During the transformer phase,
+     * TeaVM's {@code classSource} only contains classes that have already
+     * been loaded; Forge's own classes and most third-party library classes
+     * have not been loaded yet and therefore also return {@code null} from
+     * {@code classSource.get()}.  If we stubbed those methods we would
+     * silently erase most of Forge's call graph, producing a tiny (1.2 MB)
+     * app.js that never boots.  Restricting the check to known-absent JVM
+     * packages avoids that false-positive while still eliminating the handful
+     * of dead methods that genuinely call missing JDK APIs.
      */
     private static boolean methodReferencesMissingClass(MethodHolder method,
                                                         ClassReaderSource classSource) {
@@ -148,7 +160,7 @@ public class ForgeTeaVMTransformer implements ClassHolderTransformer {
         }
         for (BasicBlock block : program.getBasicBlocks()) {
             for (Instruction insn : block) {
-                String missing = missingClassName(insn, classSource);
+                String missing = missingJvmClassName(insn, classSource);
                 if (missing != null) {
                     return true;
                 }
@@ -158,33 +170,36 @@ public class ForgeTeaVMTransformer implements ClassHolderTransformer {
     }
 
     /**
-     * Returns the name of a class referenced by {@code insn} that does not
-     * exist in {@code classSource}, or {@code null} if all referenced classes
-     * are present (or the instruction doesn't reference any class).
+     * Returns the name of a <em>known-missing JVM</em> class referenced by
+     * {@code insn} that does not exist in {@code classSource}, or
+     * {@code null} if no such reference is found.
+     *
+     * <p>Only classes in {@link #MISSING_JVM_PACKAGES} are considered so that
+     * Forge and third-party library classes (whose entries in
+     * {@code classSource} may be null during transformation simply because
+     * they haven't been loaded yet) are never incorrectly treated as missing.
      */
-    private static String missingClassName(Instruction insn, ClassReaderSource classSource) {
+    private static String missingJvmClassName(Instruction insn, ClassReaderSource classSource) {
         if (insn instanceof InvokeInstruction) {
             String cls = ((InvokeInstruction) insn).getMethod().getClassName();
-            if (classSource.get(cls) == null) {
+            if (isInMissingJvmPackage(cls) && classSource.get(cls) == null) {
                 return cls;
             }
         } else if (insn instanceof GetFieldInstruction) {
             String cls = ((GetFieldInstruction) insn).getField().getClassName();
-            if (classSource.get(cls) == null) {
+            if (isInMissingJvmPackage(cls) && classSource.get(cls) == null) {
                 return cls;
             }
         } else if (insn instanceof PutFieldInstruction) {
             String cls = ((PutFieldInstruction) insn).getField().getClassName();
-            if (classSource.get(cls) == null) {
+            if (isInMissingJvmPackage(cls) && classSource.get(cls) == null) {
                 return cls;
             }
         } else if (insn instanceof ClassConstantInstruction) {
-            // ClassConstantInstruction.getConstant() is a ValueType; only
-            // check Object types.
             ValueType vt = ((ClassConstantInstruction) insn).getConstant();
             if (vt instanceof ValueType.Object) {
                 String cls = ((ValueType.Object) vt).getClassName();
-                if (classSource.get(cls) == null) {
+                if (isInMissingJvmPackage(cls) && classSource.get(cls) == null) {
                     return cls;
                 }
             }
@@ -192,7 +207,7 @@ public class ForgeTeaVMTransformer implements ClassHolderTransformer {
             ValueType vt = ((IsInstanceInstruction) insn).getType();
             if (vt instanceof ValueType.Object) {
                 String cls = ((ValueType.Object) vt).getClassName();
-                if (classSource.get(cls) == null) {
+                if (isInMissingJvmPackage(cls) && classSource.get(cls) == null) {
                     return cls;
                 }
             }
@@ -200,20 +215,20 @@ public class ForgeTeaVMTransformer implements ClassHolderTransformer {
             ValueType vt = ((CastInstruction) insn).getTargetType();
             if (vt instanceof ValueType.Object) {
                 String cls = ((ValueType.Object) vt).getClassName();
-                if (classSource.get(cls) == null) {
+                if (isInMissingJvmPackage(cls) && classSource.get(cls) == null) {
                     return cls;
                 }
             }
         } else if (insn instanceof ConstructInstruction) {
             String cls = ((ConstructInstruction) insn).getType();
-            if (classSource.get(cls) == null) {
+            if (isInMissingJvmPackage(cls) && classSource.get(cls) == null) {
                 return cls;
             }
         } else if (insn instanceof ConstructArrayInstruction) {
             ValueType itemType = ((ConstructArrayInstruction) insn).getItemType();
             if (itemType instanceof ValueType.Object) {
                 String cls = ((ValueType.Object) itemType).getClassName();
-                if (classSource.get(cls) == null) {
+                if (isInMissingJvmPackage(cls) && classSource.get(cls) == null) {
                     return cls;
                 }
             }
