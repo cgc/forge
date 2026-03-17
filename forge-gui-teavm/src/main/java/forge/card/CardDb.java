@@ -38,15 +38,28 @@ public final class CardDb implements ICardDatabase, IDeckGenPool {
 
     /** Art preference for cards without an explicit set. */
     public enum CardArtPreference {
-        LATEST_ART_ALL_EDITIONS,
-        LATEST_ART_CORE_EXPANSIONS_REPRINT_ONLY,
-        ORIGINAL_ART_ALL_EDITIONS,
-        ORIGINAL_ART_CORE_EXPANSIONS_REPRINT_ONLY;
+        LATEST_ART_ALL_EDITIONS(false, true),
+        LATEST_ART_CORE_EXPANSIONS_REPRINT_ONLY(true, true),
+        ORIGINAL_ART_ALL_EDITIONS(false, false),
+        ORIGINAL_ART_CORE_EXPANSIONS_REPRINT_ONLY(true, false);
 
-        public boolean isLatestFirst() { return this == LATEST_ART_ALL_EDITIONS
-                || this == LATEST_ART_CORE_EXPANSIONS_REPRINT_ONLY; }
-        public boolean isCoreExpansionOnly() { return this == LATEST_ART_CORE_EXPANSIONS_REPRINT_ONLY
-                || this == ORIGINAL_ART_CORE_EXPANSIONS_REPRINT_ONLY; }
+        public final boolean filterSets;
+        public final boolean latestFirst;
+
+        CardArtPreference(boolean filterIrregularSets, boolean latestSetFirst) {
+            filterSets = filterIrregularSets;
+            latestFirst = latestSetFirst;
+        }
+
+        public boolean isLatestFirst() { return latestFirst; }
+        public boolean isCoreExpansionOnly() { return filterSets; }
+
+        public boolean accept(CardEdition ed) {
+            if (ed == null) { return false; }
+            if (!filterSets) { return true; }
+            CardEdition.Type t = ed.getType();
+            return t == CardEdition.Type.CORE || t == CardEdition.Type.EXPANSION || t == CardEdition.Type.REPRINT;
+        }
     }
 
     private static Map<String, String> artPrefs = new HashMap<>();
