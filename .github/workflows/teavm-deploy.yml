@@ -1,0 +1,88 @@
+name: Deploy to GitHub Pages
+
+# Deploy the compiled TeaVM webapp to GitHub Pages on every push to the main
+# development branches, or on demand via workflow_dispatch.
+#
+# The workflow has two jobs:
+#   build  – compiles the TeaVM JS output and uploads a Pages artifact
+#   deploy – takes the artifact and publishes it via the GitHub Pages service
+#
+# GitHub Pages must be configured for this repository under
+#   Settings → Pages → Source → "GitHub Actions"
+on:
+  push:
+    branches:
+      - master
+      - copilot/spec-html5-gui-viability
+      - copilot/planning-gdx-teavm-integration
+    paths:
+      - 'forge-gui-teavm/**'
+      - 'forge-gui-mobile/**'
+      - 'forge-gui/**'
+      - 'forge-game/**'
+      - 'forge-ai/**'
+      - 'forge-core/**'
+      - '.github/workflows/teavm-deploy.yml'
+  workflow_dispatch:
+
+# Allow one concurrent deployment; cancel in-flight runs for the same branch.
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # Job 1 – Build the TeaVM webapp
+  # ──────────────────────────────────────────────────────────────────────────
+  build:
+    name: Build TeaVM webapp
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # Build the TeaVM JavaScript output.
+      # The package phase runs BuildForgeTeaVM which:
+      #   1. Invokes TeaCompiler → app.js
+      #   2. Copies gdx.wasm.js + howler.js → webapp/scripts/
+      #   3. Regenerates preload.txt from the actual assets on disk
+      - name: Build TeaVM output
+        run: |
+          mvn -pl forge-gui-teavm -am -Pteavm package \
+            --no-transfer-progress -B
+
+      # Upload the compiled webapp as a GitHub Pages artifact.
+      # The deploy job (below) will publish it via the Pages service.
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: forge-gui-teavm/target/dist/webapp/
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Job 2 – Publish to GitHub Pages
+  # ──────────────────────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write       # required to deploy to Pages
+      id-token: write    # required for OIDC token verification by Pages
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
