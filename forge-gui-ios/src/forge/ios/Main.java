@@ -37,7 +37,6 @@ import com.badlogic.gdx.backends.iosrobovm.IOSScreenBounds;
 import com.badlogic.gdx.graphics.glutils.HdpiMode;
 
 import forge.Forge;
-import forge.gamemodes.limited.DraftRankCache;
 import forge.gui.GuiBase;
 import forge.interfaces.IDeviceAdapter;
 import forge.localinstance.properties.ForgePreferences.FPref;
@@ -322,22 +321,8 @@ public class Main extends IOSApplication.Delegate {
     }
 
     /**
-     * Called by UIKit when the OS is running low on memory.  Logs the Java heap
-     * and extended Mach vm_info (physical footprint, GPU footprint, etc.) via
-     * NSLog so that the warning appears in Console.app correlated with the crash
-     * log.
-     *
-     * <p>The default libGDX handler (called via {@code super}) prints "Received
-     * memory warning." which is what was previously visible in the logs.  Adding
-     * our own logging before the super-call gives us the actual memory numbers
-     * at warning time, making it possible to see how much headroom was left
-     * before the eventual jetsam kill.
-     */
     @Override
     public void didReceiveMemoryWarning(UIApplication application) {
-        // logHeap emits Java heap + phys_footprint (physicalFootprintMBSupplier)
-        // + full vm_info breakdown (vmInfoLineSupplier) wired up in createApplication().
-        DraftRankCache.logHeap("memory-warning");
         super.didReceiveMemoryWarning(application);
     }
 
@@ -361,13 +346,6 @@ public class Main extends IOSApplication.Delegate {
         // The throttle lives in IosGuiMobile.invokeInEdtLater; it is installed after
         // Forge.getApp() so that the clipboard/deviceAdapter setup in Forge.getApp()
         // runs normally, then the generic GuiMobile instance is replaced.
-        // Wire up the Mach memory-info suppliers so that DraftRankCache.logHeap()
-        // reports the actual OS-level memory that iOS jetsam monitors alongside
-        // the Java heap numbers.
-        //   physicalFootprintMBSupplier — fast REV1 read of phys_footprint only
-        //   vmInfoLineSupplier          — REV3 read with graphics/ledger fields
-        DraftRankCache.physicalFootprintMBSupplier = MachMemInfo::getPhysicalFootprintMB;
-        DraftRankCache.vmInfoLineSupplier = MachMemInfo::getVmInfoLine;
 
         // On iOS 8+, the app bundle (containing all resources) lives in a separate
         // read-only "Bundle container", while $HOME points to the writable "Data

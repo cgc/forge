@@ -25,7 +25,6 @@ import forge.animation.ForgeAnimation;
 import forge.assets.*;
 import forge.error.ExceptionHandler;
 import forge.gamemodes.limited.BoosterDraft;
-import forge.gamemodes.limited.DraftRankCache;
 import forge.gui.FThreads;
 import forge.gui.GuiBase;
 import forge.gui.error.BugReporter;
@@ -180,37 +179,6 @@ public class Forge implements ApplicationListener {
                 || Gdx.app.getType() == Application.ApplicationType.iOS);
         GuiBase.setIsIOS(Gdx.app.getType() == Application.ApplicationType.iOS);
 
-        // Log GL info on iOS so we can distinguish simulator (software renderer) from
-        // a real device (Metal-backed GL) and confirm the driver is what we expect.
-        if (GuiBase.isIOS()) {
-            String glVendor   = Gdx.gl.glGetString(GL20.GL_VENDOR);
-            String glRenderer = Gdx.gl.glGetString(GL20.GL_RENDERER);
-            String glVersion  = Gdx.gl.glGetString(GL20.GL_VERSION);
-            String glSlVers   = Gdx.gl.glGetString(GL20.GL_SHADING_LANGUAGE_VERSION);
-            String glExts     = Gdx.gl.glGetString(GL20.GL_EXTENSIONS);
-            System.err.println("[Forge] GL_VENDOR="   + glVendor);
-            System.err.println("[Forge] GL_RENDERER=" + glRenderer);
-            System.err.println("[Forge] GL_VERSION="  + glVersion);
-            System.err.println("[Forge] GL_SHADING_LANGUAGE_VERSION=" + glSlVers);
-            System.err.println("[Forge] screen="      + Gdx.graphics.getWidth() + "x" + Gdx.graphics.getHeight());
-            // Log NPOT-texture and texture-compression extension support — these constrain
-            // how card textures (typically non-power-of-two JPEGs) can be filtered/wrapped.
-            boolean npotSupported = glExts != null && (glExts.contains("GL_OES_texture_npot")
-                    || glExts.contains("GL_NV_texture_npot_2D_mipmap")
-                    || glExts.contains("GL_APPLE_texture_2D_limited_npot"));
-            System.err.println("[Forge] NPOT_texture_supported=" + npotSupported);
-            // Log individual extensions relevant to card rendering.
-            for (String ext : new String[]{"GL_OES_texture_npot", "GL_APPLE_texture_2D_limited_npot",
-                    "GL_EXT_texture_compression_s3tc", "GL_IMG_texture_compression_pvrtc",
-                    "GL_OES_compressed_ETC1_RGB8_texture"}) {
-                System.err.println("[Forge] ext " + ext + "=" + (glExts != null && glExts.contains(ext)));
-            }
-            // Max texture size — card images larger than this will silently fail on iOS.
-            java.nio.IntBuffer maxTextureSizeBuffer = java.nio.ByteBuffer.allocateDirect(4).order(java.nio.ByteOrder.nativeOrder()).asIntBuffer();
-            Gdx.gl.glGetIntegerv(GL20.GL_MAX_TEXTURE_SIZE, maxTextureSizeBuffer);
-            System.err.println("[Forge] GL_MAX_TEXTURE_SIZE=" + maxTextureSizeBuffer.get(0));
-        }
-
         // isIOS() guard: iOS sets isAndroid()=true but androidVersion=0; iOS is modern and should allow card backgrounds
         if (!GuiBase.isAndroid() || GuiBase.isIOS() || (androidVersion > 25 && totalDeviceRAM > 3400)) {
             allowCardBG = true;
@@ -328,23 +296,13 @@ public class Forge implements ApplicationListener {
             Runnable runnable = () -> {
                 safeToClose = false;
                 ImageKeys.setIsLibGDXPort(GuiBase.getInterface().isLibgdxPort());
-                DraftRankCache.logHeap("pre-card-load");
                 FModel.initialize(getSplashScreen().getProgressBar(), null);
-                DraftRankCache.logHeap("post-card-load");
-
-                // Log startup diagnostics here (background thread) rather than on
-                // the main GL thread in afterDbLoaded(): the many println / file-stat
-                // calls were blocking the GL thread for ~290 ms, triggering iOS
-                // always-on hang reports.
-                logStartupDiagnostics();
 
                 getSplashScreen().getProgressBar().setDescription(getLocalizer().getMessage("lblLoadingFonts"));
                 FSkinFont.preloadAll(locale);
-                DraftRankCache.logHeap("post-font-load");
 
                 getSplashScreen().getProgressBar().setDescription(getLocalizer().getMessage("lblLoadingCardTranslations"));
                 CardTranslation.preloadTranslation(locale, ForgeConstants.LANG_DIR);
-                DraftRankCache.logHeap("post-card-translation");
 
                 getSplashScreen().getProgressBar().setDescription(getLocalizer().getMessage("lblPrepareDatabase"));
                 Gdx.app.postRunnable(this::afterDbLoaded);
@@ -469,61 +427,6 @@ public class Forge implements ApplicationListener {
         }
     }
 
-    /** Logs key file-system paths and existence checks to the device console.
-     *  Helps diagnose "black squares in place of cards" by confirming that
-     *  the card-pics directory, the default skin directory and the no_card
-     *  placeholder image are all reachable from the running process. */
-    private static void logStartupDiagnostics() {
-        System.out.println("[Forge] === Startup path diagnostics ===");
-        System.out.println("[Forge] ASSETS_DIR        : " + ForgeConstants.ASSETS_DIR);
-        System.out.println("[Forge] USER_DIR           : " + ForgeConstants.USER_DIR);
-        System.out.println("[Forge] enableUIMask       : " + enableUIMask);
-        System.out.println("[Forge] allowCardBG        : " + allowCardBG);
-
-        // Card pics directory – check existence and list set subdirectories so we
-        // know whether any card images are actually present (not just the empty dir).
-        java.io.File cardPicsDir = new java.io.File(ForgeConstants.CACHE_CARD_PICS_DIR);
-        boolean cardPicsExists = cardPicsDir.exists();
-        System.out.println("[Forge] CACHE_CARD_PICS_DIR: " + ForgeConstants.CACHE_CARD_PICS_DIR
-                + " (exists=" + cardPicsExists + ")");
-        if (cardPicsExists) {
-            String[] entries = cardPicsDir.list();
-            int entryCount = entries != null ? entries.length : 0;
-            System.out.println("[Forge] CACHE_CARD_PICS_DIR entry count: " + entryCount);
-            if (entries != null && entries.length > 0) {
-                // Log the first few set folder names so we can verify the directory structure
-                int limit = Math.min(entries.length, 5);
-                StringBuilder sample = new StringBuilder("[Forge] CACHE_CARD_PICS_DIR first entries:");
-                for (int i = 0; i < limit; i++) {
-                    sample.append(" ").append(entries[i]);
-                    java.io.File sub = new java.io.File(cardPicsDir, entries[i]);
-                    if (sub.isDirectory()) {
-                        String[] subEntries = sub.list();
-                        int subCount = subEntries != null ? subEntries.length : 0;
-                        sample.append("(dir, ").append(subCount).append(" files)");
-                    }
-                }
-                System.out.println(sample);
-            } else {
-                System.out.println("[Forge] CACHE_CARD_PICS_DIR is empty – no card images installed");
-            }
-        }
-
-        boolean defaultSkinsExists = new java.io.File(ForgeConstants.DEFAULT_SKINS_DIR).exists();
-        System.out.println("[Forge] DEFAULT_SKINS_DIR  : " + ForgeConstants.DEFAULT_SKINS_DIR
-                + " (exists=" + defaultSkinsExists + ")");
-        boolean noCardExists = new java.io.File(ForgeConstants.NO_CARD_FILE).exists();
-        System.out.println("[Forge] NO_CARD_FILE       : " + ForgeConstants.NO_CARD_FILE
-                + " (exists=" + noCardExists + ")");
-        // Log a sample of skin texture files so we know if the default skin is present
-        String[] sampleSkinFiles = { "IMG_CARDBG_C.png", "IMG_CARDBG_W.png", "sprite_icons.png" };
-        for (String sf : sampleSkinFiles) {
-            boolean sfExists = new java.io.File(ForgeConstants.DEFAULT_SKINS_DIR + sf).exists();
-            System.out.println("[Forge] skin/" + sf + " exists=" + sfExists);
-        }
-        System.out.println("[Forge] === End diagnostics ===");
-    }
-
     protected void afterDbLoaded() {
         if ((GuiBase.isAndroid() && autoCache) || (GuiBase.isIOS() && totalDeviceRAM > 0))
             getSplashScreen().getProgressBar().setDescription(getLocalizer().getMessage("lblFinishingStartup") + "\nDetected RAM: " + totalDeviceRAM + "MB. Cache size: " + cacheSize);
@@ -556,12 +459,9 @@ public class Forge implements ApplicationListener {
         FThreads.invokeInBackgroundThread(() -> FThreads.invokeInEdtLater(() -> {
             //load skin full
             FSkin.loadFull(splashScreen);
-            DraftRankCache.logHeap("post-skin-load");
             FThreads.invokeInBackgroundThread(() -> {
                 //load Drafts
-                DraftRankCache.logHeap("pre-deck-load");
                 preloadBoosterDrafts();
-                DraftRankCache.logHeap("post-deck-load");
                 FThreads.invokeInEdtLater(() -> {
                     if (selector.equals("Adventure")) {
                         //preload adventure resources to speedup startup if selector is adventure. Needs in edt when setting up worldstage
@@ -574,36 +474,23 @@ public class Forge implements ApplicationListener {
                     // the count so that the subsequent openHomeDefault() call can drive
                     // it to zero and correctly disable continuous rendering on iOS.
                     stopContinuousRendering();
-                    DraftRankCache.logHeap("pre-home-transition");
                     //selection transition
                     setTransitionScreen(new TransitionScreen(() -> {
                         if (createNewAdventureMap) {
-                            DraftRankCache.logHeap("pre-open-adventure");
                             openAdventure();
-                            DraftRankCache.logHeap("post-open-adventure");
                             clearSplashScreen();
-                            DraftRankCache.logHeap("post-clear-splash");
                         } else {
                             if (selector.equals("Classic")) {
-                                DraftRankCache.logHeap("pre-open-home");
                                 openHomeDefault();
-                                DraftRankCache.logHeap("post-open-home");
                                 clearSplashScreen();
-                                DraftRankCache.logHeap("post-clear-splash");
                             } else if (selector.equals("Adventure")) {
-                                DraftRankCache.logHeap("pre-open-adventure");
                                 openAdventure();
-                                DraftRankCache.logHeap("post-open-adventure");
                                 clearSplashScreen();
-                                DraftRankCache.logHeap("post-clear-splash");
                             } else if (splashScreen != null) {
                                 splashScreen.setShowModeSelector(true);
                             } else {//default mode in case splashscreen is null at some point as seen on resume..
-                                DraftRankCache.logHeap("pre-open-home");
                                 openHomeDefault();
-                                DraftRankCache.logHeap("post-open-home");
                                 clearSplashScreen();
-                                DraftRankCache.logHeap("post-clear-splash");
                             }
                         }
                         safeToClose = true;

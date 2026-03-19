@@ -24,23 +24,6 @@ public class DraftingProcessScreen extends FDeckEditor {
     private final QuestTournamentController questDraftController;
     protected FDraftLog draftLog;
 
-    /**
-     * Logs current Java heap and (on iOS) Mach physical footprint via
-     * {@link DraftRankCache#logHeap}.  Output is visible on iOS in Console.app
-     * and on desktop in the terminal.
-     *
-     * <p>On iOS, {@code logHeap} also emits a {@code phys=} line using the Mach
-     * {@code task_info} physical-footprint value set up in {@code Main}; this is
-     * the value jetsam monitors and is far more diagnostic than the Java heap
-     * alone.  The previous {@code native=} line (which called
-     * {@code Gdx.app.getNativeHeap()}) has been removed: on iOS that method
-     * delegates to {@code getJavaHeap()}, making it a duplicate of {@code used=}
-     * rather than a measurement of GPU or native memory.
-     */
-    private static void logMemory(String tag) {
-        DraftRankCache.logHeap(tag);
-    }
-
     public DraftingProcessScreen(BoosterDraft draft, DeckEditorConfig editorConfig) {
         this(draft, editorConfig, null);
     }
@@ -56,7 +39,6 @@ public class DraftingProcessScreen extends FDeckEditor {
             draft.setLogEntry(this.draftLog);
             deckHeader.initDraftLog(this.draftLog, this);
         }
-        logMemory("draft-start");
     }
 
     @Override
@@ -148,10 +130,8 @@ public class DraftingProcessScreen extends FDeckEditor {
         // Release per-edition draft ranking data that was loaded lazily during AI evaluation.
         // Rankings are only needed while AI players are picking; after the draft is saved the
         // data is no longer used and can be GC'd to reduce heap pressure on iOS.
-        logMemory("pre-clear");
         DraftRankCache.clear();
         System.gc(); // hint: reclaim freed draft-ranking data promptly (effective with Boehm GC on iOS)
-        logMemory("post-gc");
 
         //show header for main deck and sideboard when finished drafting
         deckHeader.setVisible(true);
@@ -168,7 +148,6 @@ public class DraftingProcessScreen extends FDeckEditor {
         if (isQuestDraft()) {
             FThreads.invokeInBackgroundThread(() -> {
                 if (questDraftController.cancelDraft()) {
-                    logMemory("abandon-pre-clear");
                     DraftRankCache.clear(); // release ranking data on draft abandonment
                     System.gc(); // hint: reclaim freed draft-ranking data promptly
                     FThreads.invokeInEdtLater(() -> canCloseCallback.accept(true));
@@ -179,7 +158,6 @@ public class DraftingProcessScreen extends FDeckEditor {
 
         FOptionPane.showConfirmDialog(Forge.getLocalizer().getMessage("lblEndDraftConfirm"), Forge.getLocalizer().getMessage("lblLeaveDraft"), Forge.getLocalizer().getMessage("lblLeave"), Forge.getLocalizer().getMessage("lblCancel"), false, result -> {
             if (Boolean.TRUE.equals(result)) {
-                logMemory("abandon-pre-clear");
                 DraftRankCache.clear(); // release ranking data on draft abandonment
                 System.gc(); // hint: reclaim freed draft-ranking data promptly
             }
