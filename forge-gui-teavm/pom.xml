@@ -1,0 +1,333 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <artifactId>forge</artifactId>
+        <groupId>forge</groupId>
+        <version>${revision}</version>
+    </parent>
+
+    <artifactId>forge-gui-teavm</artifactId>
+    <packaging>jar</packaging>
+    <name>Forge TeaVM Web</name>
+
+    <!--
+      gdx-teavm web backend integration module.
+      ==========================================
+      This module targets an HTML5/WebGL deployment of the Forge mobile UI using
+      the gdx-teavm backend (https://github.com/xpenatan/gdx-teavm).
+
+      KEY DESIGN PRINCIPLE: ALL changes live within this module.  No other module
+      is modified.  Incompatible third-party libraries are handled by:
+        1. Excluding the offending JAR from this module's transitive classpath.
+        2. Providing a no-op stub in src/main/java/ under the original package name.
+      Maven places the current module's compiled classes before transitive
+      dependency JARs, so the stubs shadow the real classes for both javac and
+      the TeaVM compilation classpath.
+
+      WHY gdx-teavm OVER gdx-backend-gwt (the existing forge-gui-html):
+        - TeaVM compiles from bytecode (.class files), not Java source.  No
+          source JARs are needed – the biggest obstacle for GWT.
+        - gdx-teavm is actively maintained (as of 2025); gdx-backend-gwt has
+          been effectively abandoned since LibGDX 1.9.x.
+        - TeaVM emulates a wider subset of the Java standard library than GWT.
+
+      IMPLEMENTATION PLAN (ordered steps to get the home screen loading)
+      ===================================================================
+
+      Step 1 – LibGDX version alignment  [WITHIN this module only]
+        gdx-teavm 1.5.3 requires LibGDX 1.14.0.  The project currently uses
+        1.13.5.  This module explicitly declares gdx 1.14.0; Maven's
+        "nearest-wins" dependency resolution picks it for this module's
+        classpath without touching any other module's POM.
+        Verify: `mvn -pl forge-gui-teavm dependency:tree | grep gdx`
+
+      Step 2 – Stub replacements for incompatible libraries  [WITHIN this module]
+        The following libraries are excluded from forge-gui-teavm's transitive
+        classpath and replaced by no-op stubs in src/main/java/:
+          a) org.jupnp (UPnP networking) → stubs/org/jupnp/
+             Used by: IDeviceAdapter.getUpnpPlatformService(), FServerManager
+             Impact: Multiplayer UPnP port-mapping is disabled; direct-IP play
+                     still works and is unaffected.
+          b) io.sentry (crash reporting) → stubs/io/sentry/ and io/sentry/protocol/
+             Used by: Forge.java, BugReporter, SaveFileData, VCardDisplayArea,
+                      LibGDXImageFetcher, HWInfo
+             Impact: Crash reports are silently dropped.  A browser-native
+                     solution (Sentry browser SDK via @JSBody) can be added later.
+
+      Step 3 – java.nio.file  [WITHIN this module, but requires further work]
+        Forge.java (Files.exists) and FSkinFont.java (Files.newInputStream) use
+        java.nio.file.  TeaVM's JS-mode emulation:
+          - Files.exists → returns false (safe: Forge uses it as a feature flag
+            for adventure textures; false is a harmless fallback).
+          - Files.newInputStream → throws UnsupportedOperationException at runtime.
+        The FSkinFont path is the critical one (translation file loading).
+        Fix within this module: add a TeaVM ClassHolderTransformer in
+        BuildForgeTeaVM.java that replaces the Files.newInputStream call in
+        FSkinFont.class with an empty InputStream, effectively disabling
+        i18n translation loading on the web target.
+
+      Step 4 – TeaVM compilation  [WITHIN this module]
+        Run: `mvn -pl forge-gui-teavm -Pteavm package`
+        The TeaCompiler compiles TeaVMLauncher and all reachable classes to JS.
+        Expected first-pass errors to address iteratively:
+          - Missing class references in TeaVM's class library (add more stubs
+            or exclude more jars as needed).
+          - Reflection usage (Class.forName with dynamic strings) in NewGameMenu,
+            LoadGameMenu, OnlineMenu, SaveFileData: add those classes to the
+            TeaVM compiler's preserved-class list in BuildForgeTeaVM.java.
+          - Box2D: exclude gdx-box2d native lib (adventure mode is out of scope).
+
+      Step 5 – Smoke test  [WITHIN this module]
+        After step 4 produces output in target/dist/webapp/:
+          `mvn -pl forge-gui-teavm -Pteavm integration-test`
+        Runs HomeScreenLoadTest.java (Playwright Java) which:
+          a) Starts an in-process HTTP server serving target/dist/webapp/.
+          b) Opens headless Chromium and navigates to the page.
+          c) Polls window.__forgeReady (set by TeaVMLauncher once
+             Forge.afterDBloaded == true) up to 90 s.
+          d) Fails if any uncaught JS exception appears in the console.
+
+      Step 6 – CI integration  [workflow files only]
+        Add a GitHub Actions job that:
+          1. Installs Playwright browsers: `mvn exec:java ... playwright install chromium`
+          2. Runs steps 4 + 5.
+          3. Uploads target/dist/webapp/ as a GitHub Pages artifact.
+    -->
+
+    <properties>
+        <gdx.teavm.version>1.5.3</gdx.teavm.version>
+        <!--
+          Explicitly declare LibGDX 1.14.0 here.  gdx-teavm 1.5.3 requires this
+          version.  forge-gui-mobile uses 1.13.5; Maven's nearest-wins rule means
+          this declaration (depth 1) beats the 1.13.5 declaration (depth 2) for
+          this module's effective classpath only.  No other module is affected.
+        -->
+        <gdx.version>1.14.0</gdx.version>
+        <playwright.version>1.52.0</playwright.version>
+    </properties>
+
+    <dependencies>
+        <!-- Forge mobile UI (the shared LibGDX-based front-end) -->
+        <dependency>
+            <groupId>forge</groupId>
+            <artifactId>forge-gui-mobile</artifactId>
+            <version>${project.version}</version>
+            <exclusions>
+                <!--
+                  Exclude org.jupnp: replaced by no-op stubs in
+                  src/main/java/org/jupnp/.
+                  UPnP is unused in the browser; the stub UpnpServiceConfiguration
+                  interface satisfies all compile-time type references without
+                  pulling in the ~5 MB jupnp jar.
+                -->
+                <exclusion>
+                    <groupId>org.jupnp</groupId>
+                    <artifactId>org.jupnp</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.jupnp</groupId>
+                    <artifactId>org.jupnp.support</artifactId>
+                </exclusion>
+                <!--
+                  Exclude io.sentry: replaced by no-op stubs in
+                  src/main/java/io/sentry/.
+                  Sentry error reporting is silently disabled on the web target.
+                -->
+                <exclusion>
+                    <groupId>io.sentry</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- LibGDX core – explicitly declared to enforce 1.14.0 over 1.13.5 -->
+        <dependency>
+            <groupId>com.badlogicgames.gdx</groupId>
+            <artifactId>gdx</artifactId>
+            <version>${gdx.version}</version>
+        </dependency>
+
+        <!--
+          gdx-teavm web backend.
+          Contains:
+            - WebApplication / WebApplicationConfiguration (compiled to JS)
+            - TeaCompiler / WebBackend (build-time JVM tool)
+            - Pre-built gdx.wasm.js (LibGDX native code via Emscripten)
+        -->
+        <dependency>
+            <groupId>com.github.xpenatan.gdx-teavm</groupId>
+            <artifactId>backend-web</artifactId>
+            <version>${gdx.teavm.version}</version>
+        </dependency>
+
+        <!--
+          FreeType font rendering for TeaVM.
+          Forge uses gdx-freetype for FSkinFont; this extension ships the
+          Emscripten-compiled FreeType Wasm module for the browser.
+        -->
+        <dependency>
+            <groupId>com.github.xpenatan.gdx-teavm</groupId>
+            <artifactId>gdx-freetype-teavm</artifactId>
+            <version>${gdx.teavm.version}</version>
+        </dependency>
+
+        <!--
+          Playwright Java – headless browser automation for HomeScreenLoadTest.
+          Scope: test only; not included in the TeaVM compilation output.
+
+          Before running integration tests, install browsers with:
+            mvn exec:java \
+              -Dexec.mainClass="com.microsoft.playwright.CLI" \
+              -Dexec.args="install chromium" \
+              -pl forge-gui-teavm
+        -->
+        <dependency>
+            <groupId>com.microsoft.playwright</groupId>
+            <artifactId>playwright</artifactId>
+            <version>${playwright.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- TestNG – consistent with the existing forge-gui-desktop test suite -->
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>7.10.2</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <!--
+                  Both BuildForgeTeaVM (build-time driver) and TeaVMLauncher
+                  (browser-side entry point) live in the same source tree and
+                  are compiled together by javac.  The TeaCompiler then
+                  cross-compiles TeaVMLauncher from the resulting bytecode.
+                -->
+            </plugin>
+
+            <!--
+              Skip surefire during the normal test phase; integration tests
+              require the TeaVM build output and are run separately with
+              -Pteavm integration-test.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <excludedGroups>teavm-smoke</excludedGroups>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!--
+      -Pteavm: compile the TeaVM JS output + run the smoke test.
+
+      Usage:
+        mvn -pl forge-gui-teavm -Pteavm package           # JS build only
+        mvn -pl forge-gui-teavm -Pteavm integration-test  # JS build + smoke test
+
+      Prerequisites:
+        1. Run `mvn install -DskipTests` from the project root first to put all
+           Forge JARs in the local Maven repo.
+        2. Playwright browsers must be installed (one-time):
+             mvn exec:java -Dexec.mainClass="com.microsoft.playwright.CLI" \
+                           -Dexec.args="install chromium" \
+                           -pl forge-gui-teavm
+    -->
+    <profiles>
+        <profile>
+            <id>teavm</id>
+            <build>
+                <plugins>
+                    <!--
+                      Run the build-time TeaCompiler driver (BuildForgeTeaVM)
+                      during the package phase to produce JS from bytecode.
+
+                      Output: target/dist/webapp/
+                              ├── index.html
+                              ├── forge.js        (transpiled game code)
+                              ├── gdx.wasm.js     (LibGDX native Wasm via Emscripten)
+                              └── assets/         (game resources)
+                    -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.3.0</version>
+                        <executions>
+                            <execution>
+                                <id>build-teavm</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>java</goal>
+                                </goals>
+                                <configuration>
+                                    <mainClass>forge.teavm.BuildForgeTeaVM</mainClass>
+                                    <includeProjectDependencies>true</includeProjectDependencies>
+                                    <includePluginDependencies>false</includePluginDependencies>
+                                    <!--
+                                      Run BuildForgeTeaVM with the module directory as the working
+                                      directory so that relative paths (assetsDir, outputDir) are
+                                      resolved correctly regardless of whether Maven is invoked from
+                                      the project root or the module directory.
+                                    -->
+                                    <workingDirectory>${project.basedir}</workingDirectory>
+                                    <systemProperties>
+                                        <!--
+                                          Pass the module's build directory so BuildForgeTeaVM can
+                                          write to forge-gui-teavm/target/dist rather than to the
+                                          root project's target directory.
+                                        -->
+                                        <systemProperty>
+                                            <key>forge.buildDir</key>
+                                            <value>${project.build.directory}</value>
+                                        </systemProperty>
+                                    </systemProperties>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!--
+                      Run HomeScreenLoadTest during integration-test phase.
+                      This requires Playwright browsers to be installed and the
+                      TeaVM build output to be present at target/dist/webapp/.
+                    -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <version>3.1.2</version>
+                        <configuration>
+                            <includes>
+                                <include>**/*LoadTest.java</include>
+                            </includes>
+                            <groups>teavm-smoke</groups>
+                            <!--
+                              Run integration tests with the module directory as
+                              the working directory so HomeScreenLoadTest finds
+                              target/dist/webapp/ correctly regardless of whether
+                              Maven is invoked from the root or the module.
+                            -->
+                            <workingDirectory>${project.basedir}</workingDirectory>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>
