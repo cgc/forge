@@ -125,6 +125,62 @@ public class ForgeTeaVMTransformer implements ClassHolderTransformer {
                 stubOut(method);
             }
         }
+
+        /*
+         * Fix 4: redirect Gdx.files.absolute() → Gdx.files.internal().
+         *
+         * The TeaVM web backend's WebFiles implementation throws
+         * GdxRuntimeException("Type absolute is not supported") from
+         * Files.absolute(String).  On the web target there is no real
+         * filesystem; all assets are served as HTTP resources relative to
+         * the page URL.  With the web launcher's assetsDir = "", paths such
+         * as "res/skins/default/bg_splash.png" are already relative to the
+         * web root, so Files.internal(path) is the correct replacement.
+         *
+         * This pass rewrites every invokeinterface/invokevirtual call to
+         * com.badlogic.gdx.Files.absolute(String) to an equivalent call to
+         * com.badlogic.gdx.Files.internal(String) — which has an identical
+         * signature and is fully supported by the web backend.
+         */
+        for (MethodHolder method : cls.getMethods()) {
+            redirectAbsoluteToInternal(method);
+        }
+    }
+
+    /**
+     * Rewrites every call to {@code com.badlogic.gdx.Files.absolute(String)}
+     * in {@code method}'s program to a call to {@code internal(String)}.
+     *
+     * <p>Both methods share the same descriptor
+     * {@code (Ljava/lang/String;)Lcom/badlogic/gdx/files/FileHandle;}, so
+     * the rewrite only changes the method name inside the
+     * {@link InvokeInstruction}; all other instruction fields remain
+     * unchanged.
+     */
+    private static void redirectAbsoluteToInternal(MethodHolder method) {
+        Program program = method.getProgram();
+        if (program == null) {
+            return;
+        }
+        for (BasicBlock block : program.getBasicBlocks()) {
+            for (Instruction insn : block) {
+                if (!(insn instanceof InvokeInstruction)) {
+                    continue;
+                }
+                InvokeInstruction invoke = (InvokeInstruction) insn;
+                MethodReference ref = invoke.getMethod();
+                if ("com.badlogic.gdx.Files".equals(ref.getClassName())
+                        && "absolute".equals(ref.getName())
+                        && ref.parameterCount() == 1) {
+                    // Reuse the same signature (String → FileHandle); only
+                    // the method name changes from "absolute" to "internal".
+                    ValueType[] sig = ref.getDescriptor().getSignature();
+                    invoke.setMethod(new MethodReference(
+                            ref.getClassName(),
+                            new MethodDescriptor("internal", sig)));
+                }
+            }
+        }
     }
 
     /** Returns true if {@code className} belongs to a known-absent JVM package. */
