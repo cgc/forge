@@ -107,6 +107,11 @@ public class Forge implements ApplicationListener {
     public static boolean isTabletDevice = false;
     public static String locale = "en-US";
     public Assets assets;
+    /** Cached reference to the current Forge instance; set in {@link #create()}.
+     *  Used by {@link #getAssets()} so it does not need to cast
+     *  {@code Gdx.app.getApplicationListener()} to {@code Forge} – a cast that
+     *  fails in the TeaVM/web build where the launcher wraps the listener. */
+    private static Forge instance;
     public static boolean hdbuttons = false;
     public static boolean hdstart = false;
     public static boolean isPortraitMode = false;
@@ -182,6 +187,7 @@ public class Forge implements ApplicationListener {
             allowCardBG = true;
         }
         assets = new Assets();
+        instance = this;
         graphics = new Graphics();
         splashScreen = new SplashScreen();
         frameRate = new FrameRate();
@@ -1050,7 +1056,8 @@ public class Forge implements ApplicationListener {
     /** Retrieve assets.
      */
     public static Assets getAssets() {
-        return ((Forge)Gdx.app.getApplicationListener()).assets;
+        return instance != null ? instance.assets
+                : ((Forge) Gdx.app.getApplicationListener()).assets;
     }
     public static boolean switchScene(Scene newScene) {
         return switchScene(newScene, false);
