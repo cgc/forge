@@ -240,12 +240,18 @@ public final class FModel {
         ForgePreferences.DEV_MODE = preferences.getPrefBoolean(FPref.DEV_MODE_ENABLED);
         ForgePreferences.UPLOAD_DRAFT = ForgePreferences.NET_CONN;
 
-        getMagicDb().setStandardPredicate(getFormats().getStandard().getFilterRules());
-        getMagicDb().setPioneerPredicate(getFormats().getPioneer().getFilterRules());
-        getMagicDb().setModernPredicate(getFormats().getModern().getFilterRules());
-        getMagicDb().setCommanderPredicate(getFormats().get("Commander").getFilterRules());
-        getMagicDb().setOathbreakerPredicate(getFormats().get("Oathbreaker").getFilterRules());
-        getMagicDb().setBrawlPredicate(getFormats().get("Brawl").getFilterRules());
+        GameFormat standard = getFormats().getStandard();
+        if (standard != null) getMagicDb().setStandardPredicate(standard.getFilterRules());
+        GameFormat pioneer = getFormats().getPioneer();
+        if (pioneer != null) getMagicDb().setPioneerPredicate(pioneer.getFilterRules());
+        GameFormat modern = getFormats().getModern();
+        if (modern != null) getMagicDb().setModernPredicate(modern.getFilterRules());
+        GameFormat commander = getFormats().get("Commander");
+        if (commander != null) getMagicDb().setCommanderPredicate(commander.getFilterRules());
+        GameFormat oathbreaker = getFormats().get("Oathbreaker");
+        if (oathbreaker != null) getMagicDb().setOathbreakerPredicate(oathbreaker.getFilterRules());
+        GameFormat brawl = getFormats().get("Brawl");
+        if (brawl != null) getMagicDb().setBrawlPredicate(brawl.getFilterRules());
 
         getMagicDb().setFilteredHandsEnabled(preferences.getPrefBoolean(FPref.FILTERED_HANDS));
         try {

@@ -180,11 +180,15 @@ public class HomeScreenLoadTest {
             // timeout to expire.
             System.out.printf("[browser:%s] %s%n", type, text);
             consoleMsgs.add(msg);
-            if (type.equals("error") && (
-                    text.contains("Uncaught") ||
-                    text.contains("SyntaxError") ||
-                    text.contains("TypeError") ||
-                    text.contains("Fatal Error"))) {
+            // "error" type covers console.error() calls.
+            // "startGroupCollapsed" is how TeaVM's fatal-error handler logs
+            // via console.groupCollapsed("%cFatal Error: ...", "color:#FF0000").
+            boolean isFatal = (type.equals("error") || type.equals("startGroupCollapsed"))
+                    && (text.contains("Fatal Error")
+                    || text.contains("Uncaught")
+                    || text.contains("SyntaxError")
+                    || text.contains("TypeError"));
+            if (isFatal) {
                 fatalErrors.add(text);
             }
         });
@@ -194,6 +198,20 @@ public class HomeScreenLoadTest {
             System.err.printf("[PageError] %s%n", err);
             fatalErrors.add(err);
         });
+
+        // Intercept console.groupCollapsed before app.js loads so we can
+        // capture the JavaScript call stack for fatal errors.
+        page.addInitScript(
+            "const _ogGroupCollapsed = console.groupCollapsed.bind(console);\n" +
+            "console.groupCollapsed = function(...args) {\n" +
+            "  const text = String(args[0] || '');\n" +
+            "  if (text.includes('Fatal Error')) {\n" +
+            "    const stack = new Error('FatalErrorLocation').stack;\n" +
+            "    console.error('FATAL_STACK: ' + stack);\n" +
+            "  }\n" +
+            "  return _ogGroupCollapsed(...args);\n" +
+            "};\n"
+        );
 
         page.navigate("http://localhost:" + serverPort + "/");
 
