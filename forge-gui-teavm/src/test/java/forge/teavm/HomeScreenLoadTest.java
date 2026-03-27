@@ -199,18 +199,26 @@ public class HomeScreenLoadTest {
             fatalErrors.add(err);
         });
 
-        // Intercept console.groupCollapsed before app.js loads so we can
-        // capture the JavaScript call stack for fatal errors.
+        // Intercept $rt_wrapException (TeaVM's JS->Java error bridge) to log
+        // the *original* JavaScript stack trace of the TypeError before it is
+        // swallowed into a generic RuntimeException message.  The property
+        // setter fires the first time app.js assigns the function to window,
+        // so the hook is in place for every subsequent call during startup.
         page.addInitScript(
-            "const _ogGroupCollapsed = console.groupCollapsed.bind(console);\n" +
-            "console.groupCollapsed = function(...args) {\n" +
-            "  const text = String(args[0] || '');\n" +
-            "  if (text.includes('Fatal Error')) {\n" +
-            "    const stack = new Error('FatalErrorLocation').stack;\n" +
-            "    console.error('FATAL_STACK: ' + stack);\n" +
+            "Object.defineProperty(window, '$rt_wrapException', {\n" +
+            "  configurable: true,\n" +
+            "  set: function(fn) {\n" +
+            "    Object.defineProperty(window, '$rt_wrapException', {\n" +
+            "      configurable: true, writable: true,\n" +
+            "      value: function(err) {\n" +
+            "        if (err && err.stack) {\n" +
+            "          console.error('JS_EXCEPTION_STACK: ' + err.stack);\n" +
+            "        }\n" +
+            "        return fn(err);\n" +
+            "      }\n" +
+            "    });\n" +
             "  }\n" +
-            "  return _ogGroupCollapsed(...args);\n" +
-            "};\n"
+            "});\n"
         );
 
         page.navigate("http://localhost:" + serverPort + "/");
