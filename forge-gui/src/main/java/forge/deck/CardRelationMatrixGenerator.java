@@ -67,7 +67,8 @@ public final class CardRelationMatrixGenerator {
         List<PaperCard> cardList = format.getAllCards().stream()
                 .filter(PaperCardPredicates.NOT_TRUE_BASIC_LAND)
                 .collect(Collectors.toList());
-        cardList.add(FModel.getMagicDb().getCommonCards().getCard("Wastes"));
+        PaperCard wastes = FModel.getMagicDb().getCommonCards().getCard("Wastes");
+        if (wastes != null) cardList.add(wastes);
         Map<String, Integer> cardIntegerMap = new HashMap<>();
         Map<Integer, PaperCard> integerCardMap = new HashMap<>();
         for (int i=0; i<cardList.size(); ++i){
@@ -137,7 +138,9 @@ public final class CardRelationMatrixGenerator {
         List<PaperCard> cardList = FModel.getMagicDb().getCommonCards().streamUniqueCards()
                 .filter(PaperCardPredicates.NOT_TRUE_BASIC_LAND)
                 .collect(Collectors.toList());
-        cardList.add(FModel.getMagicDb().getCommonCards().getCard("Wastes"));
+        PaperCard wastes = FModel.getMagicDb().getCommonCards().getCard("Wastes");
+        if (wastes != null) cardList.add(wastes);
+        if (cardList.isEmpty()) return new HashMap<>();
         Map<String, Integer> cardIntegerMap = new HashMap<>();
         Map<Integer, PaperCard> integerCardMap = new HashMap<>();
         Map<String, Integer> legendIntegerMap = new HashMap<>();
