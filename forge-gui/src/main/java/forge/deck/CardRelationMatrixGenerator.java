@@ -39,11 +39,13 @@ public final class CardRelationMatrixGenerator {
         HashMap<String,List<Map.Entry<PaperCard,Integer>>> formatMap = CardThemedMatrixIO.loadMatrix(formatName);
         if (formatMap==null) {
             if (CardThemedMatrixIO.getMatrixFolder(formatName).exists()) {
-                if (formatName.equals(FModel.getFormats().getStandard().getName())){
-                    formatMap=initializeFormat(FModel.getFormats().getStandard());
+                GameFormat standard = FModel.getFormats().getStandard();
+                GameFormat modern = FModel.getFormats().getModern();
+                if (standard != null && formatName.equals(standard.getName())){
+                    formatMap=initializeFormat(standard);
                 }
-                else if (formatName.equals(FModel.getFormats().getModern().getName())){
-                    formatMap=initializeFormat(FModel.getFormats().getModern());
+                else if (modern != null && formatName.equals(modern.getName())){
+                    formatMap=initializeFormat(modern);
                 }
                 else{
                     formatMap=initializeCommanderFormat(format);
