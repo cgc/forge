@@ -20,8 +20,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * End-to-end smoke test that verifies the compiled Forge TeaVM web app boots
@@ -58,12 +58,26 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <ol>
  *   <li>A JDK {@link HttpServer} serves the compiled {@code target/dist/webapp/}
  *       directory over HTTP on an OS-assigned ephemeral port.</li>
- *   <li>A headless Chromium browser (Playwright Java) loads the page.</li>
+ *   <li>A Chromium browser (Playwright Java) loads the page.  Runs headless
+ *       by default; pass {@code -Dforge.e2e.headed=true} to open a visible
+ *       window for interactive DevTools inspection.</li>
+ *   <li>Every browser console message is printed to stdout in real-time as it
+ *       arrives, so fatal JavaScript errors are immediately visible in CI logs
+ *       and local test runs alike.</li>
  *   <li>The test polls {@code window.__forgeStarted} every
  *       {@value #POLL_INTERVAL_MS} ms up to {@value #START_TIMEOUT_MS} ms.</li>
- *   <li>All browser console errors are captured; the test fails if any uncaught
- *       JavaScript error occurs.</li>
+ *   <li>All browser console errors are captured; if any uncaught JavaScript
+ *       error occurs the test fails with the full error text so the root cause
+ *       is visible without digging through logs.</li>
  * </ol>
+ *
+ * <h2>Local developer debug loop</h2>
+ * <p>Run with a headed (visible) browser to interactively watch the console:
+ * <pre>
+ *   mvn -pl forge-gui-teavm -Pteavm verify -Dforge.e2e.headed=true
+ * </pre>
+ * The browser window stays open for the duration of the test, letting you
+ * inspect the DevTools console alongside the real-time stdout output.
  */
 @Test(groups = {"teavm-smoke"})
 public class HomeScreenLoadTest {
@@ -110,9 +124,11 @@ public class HomeScreenLoadTest {
         serverPort = httpServer.getAddress().getPort();
 
         playwright = Playwright.create();
+        boolean headed = Boolean.parseBoolean(
+                System.getProperty("forge.e2e.headed", "false"));
         browser = playwright.chromium().launch(
             new BrowserType.LaunchOptions()
-                .setHeadless(true)
+                .setHeadless(!headed)
                 .setArgs(List.of(
                     "--disable-gpu",
                     "--no-sandbox",
@@ -152,35 +168,73 @@ public class HomeScreenLoadTest {
         Page page = ctx.newPage();
 
         List<ConsoleMessage> consoleMsgs = new ArrayList<>();
-        AtomicBoolean fatalErrorSeen = new AtomicBoolean(false);
+        // Collects the text of every "fatal" browser error so the assertion
+        // failure message shows exactly what went wrong (not just a boolean flag).
+        List<String> fatalErrors = Collections.synchronizedList(new ArrayList<>());
 
         page.onConsoleMessage(msg -> {
-            consoleMsgs.add(msg);
+            String type = msg.type();
             String text = msg.text();
-            if (msg.type().equals("error") && (
-                    text.contains("Uncaught") ||
-                    text.contains("SyntaxError") ||
-                    text.contains("TypeError") ||
-                    text.contains("Fatal Error"))) {
-                fatalErrorSeen.set(true);
+            // Print every message in real-time so errors appear immediately
+            // in CI logs and local terminal output without waiting for the
+            // timeout to expire.
+            System.out.printf("[browser:%s] %s%n", type, text);
+            consoleMsgs.add(msg);
+            // "error" type covers console.error() calls.
+            // "startGroupCollapsed" is how TeaVM's fatal-error handler logs
+            // via console.groupCollapsed("%cFatal Error: ...", "color:#FF0000").
+            boolean isFatal = (type.equals("error") || type.equals("startGroupCollapsed"))
+                    && (text.contains("Fatal Error")
+                    || text.contains("Uncaught")
+                    || text.contains("SyntaxError")
+                    || text.contains("TypeError"));
+            if (isFatal) {
+                fatalErrors.add(text);
             }
         });
 
         page.onPageError(err -> {
-            System.err.println("[PageError] " + err);
-            fatalErrorSeen.set(true);
+            // onPageError delivers uncaught JS exceptions as a String.
+            System.err.printf("[PageError] %s%n", err);
+            fatalErrors.add(err);
         });
+
+        // Intercept $rt_wrapException (TeaVM's JS->Java error bridge) to log
+        // the *original* JavaScript stack trace of the TypeError before it is
+        // swallowed into a generic RuntimeException message.  The property
+        // setter fires the first time app.js assigns the function to window,
+        // so the hook is in place for every subsequent call during startup.
+        page.addInitScript(
+            "Object.defineProperty(window, '$rt_wrapException', {\n" +
+            "  configurable: true,\n" +
+            "  set: function(fn) {\n" +
+            "    Object.defineProperty(window, '$rt_wrapException', {\n" +
+            "      configurable: true, writable: true,\n" +
+            "      value: function(err) {\n" +
+            "        if (err && err.stack) {\n" +
+            "          console.error('JS_EXCEPTION_STACK: ' + err.stack);\n" +
+            "        }\n" +
+            "        return fn(err);\n" +
+            "      }\n" +
+            "    });\n" +
+            "  }\n" +
+            "});\n"
+        );
 
         page.navigate("http://localhost:" + serverPort + "/");
 
         // Wait for the early boot signal (fires in create(), before asset loading).
         boolean started = waitForFlag(page, STARTED_FLAG, START_TIMEOUT_MS);
 
-        printConsole(consoleMsgs);
+        // Real-time output already printed each message as it arrived; emit a
+        // compact summary line so the total counts are easy to spot in logs.
+        long errorCount = consoleMsgs.stream().filter(m -> m.type().equals("error")).count();
+        System.out.printf("%n=== Browser console summary: %d messages (%d errors) ===%n%n",
+                consoleMsgs.size(), errorCount);
 
-        Assert.assertFalse(fatalErrorSeen.get(),
-            "A fatal JavaScript error was detected in the browser console."
-            + "  See console output above for details.");
+        Assert.assertTrue(fatalErrors.isEmpty(),
+            "Fatal JavaScript error(s) detected in the browser console:\n\n"
+            + String.join("\n\n", fatalErrors));
 
         Assert.assertTrue(started,
             "Forge did not reach ApplicationListener.create() within "
@@ -219,14 +273,6 @@ public class HomeScreenLoadTest {
             Thread.sleep(POLL_INTERVAL_MS);
         }
         return false;
-    }
-
-    private static void printConsole(List<ConsoleMessage> msgs) {
-        System.out.println("=== Browser console (" + msgs.size() + " messages) ===");
-        for (ConsoleMessage msg : msgs) {
-            System.out.printf("[%s] %s%n", msg.type(), msg.text());
-        }
-        System.out.println("==============================================");
     }
 
     /**

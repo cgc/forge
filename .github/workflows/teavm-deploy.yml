@@ -13,8 +13,7 @@ on:
   push:
     branches:
       - master
-      - copilot/spec-html5-gui-viability
-      - copilot/planning-gdx-teavm-integration
+      - copilot/*
     paths:
       - 'forge-gui-teavm/**'
       - 'forge-gui-mobile/**'

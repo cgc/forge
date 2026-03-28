@@ -39,11 +39,13 @@ public final class CardRelationMatrixGenerator {
         HashMap<String,List<Map.Entry<PaperCard,Integer>>> formatMap = CardThemedMatrixIO.loadMatrix(formatName);
         if (formatMap==null) {
             if (CardThemedMatrixIO.getMatrixFolder(formatName).exists()) {
-                if (formatName.equals(FModel.getFormats().getStandard().getName())){
-                    formatMap=initializeFormat(FModel.getFormats().getStandard());
+                GameFormat standard = FModel.getFormats().getStandard();
+                GameFormat modern = FModel.getFormats().getModern();
+                if (standard != null && formatName.equals(standard.getName())){
+                    formatMap=initializeFormat(standard);
                 }
-                else if (formatName.equals(FModel.getFormats().getModern().getName())){
-                    formatMap=initializeFormat(FModel.getFormats().getModern());
+                else if (modern != null && formatName.equals(modern.getName())){
+                    formatMap=initializeFormat(modern);
                 }
                 else{
                     formatMap=initializeCommanderFormat(format);
@@ -65,7 +67,8 @@ public final class CardRelationMatrixGenerator {
         List<PaperCard> cardList = format.getAllCards().stream()
                 .filter(PaperCardPredicates.NOT_TRUE_BASIC_LAND)
                 .collect(Collectors.toList());
-        cardList.add(FModel.getMagicDb().getCommonCards().getCard("Wastes"));
+        PaperCard wastes = FModel.getMagicDb().getCommonCards().getCard("Wastes");
+        if (wastes != null) cardList.add(wastes);
         Map<String, Integer> cardIntegerMap = new HashMap<>();
         Map<Integer, PaperCard> integerCardMap = new HashMap<>();
         for (int i=0; i<cardList.size(); ++i){
@@ -135,7 +138,9 @@ public final class CardRelationMatrixGenerator {
         List<PaperCard> cardList = FModel.getMagicDb().getCommonCards().streamUniqueCards()
                 .filter(PaperCardPredicates.NOT_TRUE_BASIC_LAND)
                 .collect(Collectors.toList());
-        cardList.add(FModel.getMagicDb().getCommonCards().getCard("Wastes"));
+        PaperCard wastes = FModel.getMagicDb().getCommonCards().getCard("Wastes");
+        if (wastes != null) cardList.add(wastes);
+        if (cardList.isEmpty()) return new HashMap<>();
         Map<String, Integer> cardIntegerMap = new HashMap<>();
         Map<Integer, PaperCard> integerCardMap = new HashMap<>();
         Map<String, Integer> legendIntegerMap = new HashMap<>();

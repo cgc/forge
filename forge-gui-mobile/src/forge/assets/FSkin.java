@@ -1,6 +1,7 @@
 package forge.assets;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Files.FileType;
 import com.badlogic.gdx.assets.loaders.TextureLoader;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
@@ -135,7 +136,9 @@ public class FSkin {
             //delete cached fonts
             FSkinFont.deleteCachedFiles();
             try {
-                v2File.file().createNewFile();
+                if (v2File.type() == FileType.Absolute) {
+                    v2File.file().createNewFile();
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
