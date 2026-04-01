@@ -262,24 +262,28 @@ public class ImageCache {
 
         Texture image;
         File imageFile = ImageKeys.getImageFile(imageKey);
-        if (useDefaultIfNotFound) {
-            // Load from file and add to cache if not found in cache initially.
-            image = getAsset(imageFile);
 
-            if (image != null) {
-                return image;
-            }
-
-            if (imageLoaded) { //prevent loading more than one image each render for performance
-                if (!delayLoadRequested) {
-                    //ensure images continue to load even if no input is being received
-                    delayLoadRequested = true;
-                    Gdx.graphics.requestRendering();
-                }
-                return null;
-            }
-            imageLoaded = true;
+        // Check cache first — this fast path applies regardless of useDefaultIfNotFound.
+        image = getAsset(imageFile);
+        if (image != null) {
+            return image;
         }
+
+        // Not in cache — need to load from disk.
+        // Throttle to one new image load per render frame regardless of useDefaultIfNotFound.
+        // Without this, callers that pass useDefaultIfNotFound=false (e.g. ImageView drawing
+        // a draft pack) bypassed the throttle entirely: all N card images were decoded, GPU-
+        // uploaded and border-sampled in a single frame, causing a large memory spike on first
+        // display that could OOM the process on iOS.
+        if (imageLoaded) {
+            if (!delayLoadRequested) {
+                //ensure images continue to load even if no input is being received
+                delayLoadRequested = true;
+                Gdx.graphics.requestRendering();
+            }
+            return null;
+        }
+        imageLoaded = true;
 
         try {
             image = loadAsset(imageKey, imageFile, others);
