@@ -1,6 +1,7 @@
 package forge.gamemodes.match;
 
 import com.google.common.collect.*;
+import forge.game.GameEntityView;
 import forge.game.GameLog;
 import forge.game.GameView;
 import forge.game.card.CardView;
@@ -9,6 +10,7 @@ import forge.game.event.GameEvent;
 import forge.game.event.GameEventSpellAbilityCast;
 import forge.game.event.GameEventSpellRemovedFromStack;
 import forge.game.player.PlayerView;
+import forge.gamemodes.net.DeltaPacket;
 import forge.gui.FThreads;
 import forge.gui.GuiBase;
 import forge.gui.control.FControlGameEventHandler;
@@ -131,7 +133,6 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
     public final IGameController getGameController() {
         return getGameController(getCurrentPlayer());
     }
-
     public final IGameController getGameController(final PlayerView player) {
         if (player == null) {
             return spectator;
@@ -239,10 +240,8 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
             } catch (NullPointerException e) {
                 return true; // return true so it will work as normal
             }
-        } else {
-            if (getGameController().mayLookAtAllCards()) {
-                return true;
-            }
+        } else if (getGameController().mayLookAtAllCards()) {
+            return true;
         }
         return c.canBeShownToAny(getLocalPlayers());
     }
@@ -278,33 +277,24 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
         }
     }
 
-    private final Set<PlayerView> highlightedPlayers = Sets.newHashSet();
+    private final Set<GameEntityView> highlighted = Sets.newHashSet();
 
     @Override
-    public void setHighlighted(final PlayerView pv, final boolean b) {
-        final boolean hasChanged = b ? highlightedPlayers.add(pv) : highlightedPlayers.remove(pv);
+    public void setHighlighted(final GameEntityView gv, final boolean b) {
+        final boolean hasChanged = b ? highlighted.add(gv) : highlighted.remove(gv);
         if (hasChanged) {
-            updateLives(Collections.singleton(pv));
+            if (gv instanceof PlayerView pv) {
+                updateLives(Collections.singleton(pv));
+            }
+            if (gv instanceof CardView cv) {
+                // since we are in UI thread, may redraw the card right now
+                updateSingleCard(cv);
+            }
         }
     }
 
-    public boolean isHighlighted(final PlayerView player) {
-        return highlightedPlayers.contains(player);
-    }
-
-    private final Set<CardView> highlightedCards = Sets.newHashSet();
-
-    // used to highlight cards in UI
-    @Override
-    public void setUsedToPay(final CardView card, final boolean value) {
-        final boolean hasChanged = value ? highlightedCards.add(card) : highlightedCards.remove(card);
-        if (hasChanged) { // since we are in UI thread, may redraw the card right now
-            updateSingleCard(card);
-        }
-    }
-
-    public boolean isUsedToPay(final CardView card) {
-        return highlightedCards.contains(card);
+    public boolean isHighlighted(final GameEntityView ge) {
+        return highlighted.contains(ge);
     }
 
     private final Set<CardView> selectableCards = Sets.newHashSet();
@@ -330,7 +320,6 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
     public boolean isGamePaused() {
         return gamePause;
     }
-
     public void setGamePause(boolean pause) {
         gamePause = pause;
     }
@@ -473,7 +462,7 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
                     synchronized (awaitNextInputTimer) {
                         if (awaitNextInputTask != null) {
                             updatePromptForAwait(getCurrentPlayer());
-                            if (GuiBase.isNetworkplay(AbstractGuiGame.this)) {
+                            if (GuiBase.isNetPlay(AbstractGuiGame.this)) {
                                 showWaitingTimer(getCurrentPlayer(), findWaitingForPlayerName(getCurrentPlayer()));
                             }
                             awaitNextInputTask = null;
@@ -506,11 +495,18 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
             return;
         }
         this.waitingStartTime = System.currentTimeMillis();
-        waitingTimer = new java.util.Timer("waitingTimer");
-        waitingTimer.schedule(new java.util.TimerTask() {
+        // Capture timer so stale EDT tick runnables detect cancel/restart and skip
+        final java.util.Timer myTimer = new java.util.Timer("waitingTimer");
+        waitingTimer = myTimer;
+        myTimer.schedule(new java.util.TimerTask() {
             @Override
             public void run() {
-                FThreads.invokeInEdtLater(() -> updateWaitingDisplay(forPlayer, waitingForPlayerName));
+                FThreads.invokeInEdtLater(() -> {
+                    if (waitingTimer != myTimer) {
+                        return; // canceled or replaced before the EDT got to us
+                    }
+                    updateWaitingDisplay(forPlayer, waitingForPlayerName);
+                });
             }
         }, 1000, 1000);
     }
@@ -607,7 +603,6 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
 
         return !getDisableAutoYields() && autoYields.contains(yieldPerAbility ? abilityKey : key);
     }
-
     @Override
     public final void setShouldAutoYield(final String key, final boolean autoYield) {
         String abilityKey = key.contains("): ") ? key.substring(key.indexOf("): ") + 3) : key;
@@ -621,11 +616,9 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
     }
 
     private boolean disableAutoYields;
-
     public final boolean getDisableAutoYields() {
         return disableAutoYields;
     }
-
     public final void setDisableAutoYields(final boolean b0) {
         disableAutoYields = b0;
     }
@@ -643,30 +636,24 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
     public final boolean shouldAlwaysAcceptTrigger(final int trigger) {
         return Boolean.TRUE.equals(triggersAlwaysAccept.get(trigger));
     }
-
     @Override
     public final boolean shouldAlwaysDeclineTrigger(final int trigger) {
         return Boolean.FALSE.equals(triggersAlwaysAccept.get(trigger));
     }
-
     @Override
     public final void setShouldAlwaysAcceptTrigger(final int trigger) {
         triggersAlwaysAccept.put(trigger, Boolean.TRUE);
     }
-
     @Override
     public final void setShouldAlwaysDeclineTrigger(final int trigger) {
         triggersAlwaysAccept.put(trigger, Boolean.FALSE);
     }
-
     @Override
     public final void setShouldAlwaysAskTrigger(final int trigger) {
         triggersAlwaysAccept.remove(trigger);
     }
 
     // End of Triggers preliminary choice
-
-    // Start of Choice code
 
     /**
      * Convenience for getChoices(message, 0, 1, choices).
@@ -788,12 +775,12 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
         String prompt = "";
         if (min != Integer.MIN_VALUE) {
             if (max != Integer.MAX_VALUE) {
-                prompt = localizer.getMessage("lblEnterNumberBetweenMinAndMax", String.valueOf(min), String.valueOf(max));
+                prompt = localizer.getMessage("lblEnterNumberBetweenMinAndMax", min, max);
             } else {
-                prompt = localizer.getMessage("lblEnterNumberGreaterThanOrEqualsToMin", String.valueOf(min));
+                prompt = localizer.getMessage("lblEnterNumberGreaterThanOrEqualsToMin", min);
             }
         } else if (max != Integer.MAX_VALUE) {
-            prompt = localizer.getMessage("lblEnterNumberLessThanOrEqualsToMax", String.valueOf(max));
+            prompt = localizer.getMessage("lblEnterNumberLessThanOrEqualsToMax", max);
         }
 
         while (true) {
@@ -924,7 +911,8 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
         localEventHandler.receiveGameEvent(event);
 
         // Feed forwarded events to the local GameLog so remote clients
-        // build their own game log (host populates via EventBus instead)
+        // build their own game log (host populates via EventBus instead).
+        // gameLog is null for deserialized GameViews until openView calls ensureGameLog().
         GameView gv = getGameView();
         if (gv != null) {
             GameLog gameLog = gv.getGameLog();
@@ -956,24 +944,19 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
     public void updateTurn(PlayerView player) { }
 
     @Override
-    public void updatePlayerControl() {
-    }
+    public void updatePlayerControl() { }
 
     @Override
-    public void updateZones(Iterable<PlayerZoneUpdate> zonesToUpdate) {
-    }
+    public void updateZones(Iterable<PlayerZoneUpdate> zonesToUpdate) { }
 
     @Override
-    public void updateCards(Iterable<CardView> cards) {
-    }
+    public void updateCards(Iterable<CardView> cards) { }
 
     @Override
-    public void updateManaPool(Iterable<PlayerView> manaPoolUpdate) {
-    }
+    public void updateManaPool(Iterable<PlayerView> manaPoolUpdate) { }
 
     @Override
-    public void updateLives(Iterable<PlayerView> livesUpdate) {
-    }
+    public void updateLives(Iterable<PlayerView> livesUpdate) { }
 
     @Override
     public void afterGameEnd() {
@@ -984,7 +967,12 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
         daytime = null;
     }
 
-    public void updateDependencies() {        
+    @Override
+    public void updateDependencies() {
     }
-    // End of Choice code
+
+    @Override
+    public void applyDelta(DeltaPacket packet) {
+        // No-op for local games - network implementation is in NetworkGuiGame
+    }
 }

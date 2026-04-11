@@ -61,7 +61,6 @@ public class DeckGeneratorTheme extends DeckGeneratorBase {
     public DeckGeneratorTheme(IDeckGenPool pool0) {
         super(pool0, DeckFormat.Constructed);
         setBasicLandPool(null);
-        this.maxDuplicates = 4;
     }
 
     /**
@@ -131,7 +130,7 @@ public class DeckGeneratorTheme extends DeckGeneratorBase {
                 ss = s.split("\\|");
                 
                 int lc = 0;
-                while ((cardCounts.get(ss[0]) >= g.maxCnt)) {
+                while (cardCounts.get(ss[0]) >= g.maxCnt) {
                     // looping
                     // forever
                     s = g.cardnames.get(MyRandom.getRandom().nextInt(cnSize));
@@ -142,14 +141,8 @@ public class DeckGeneratorTheme extends DeckGeneratorBase {
                     }
                 }
 
-                final int n = cardCounts.get(ss[0]);
-                if (ss.length == 1) {
-                	tDeck.add(pool.getCard(ss[0]));
-                }
-                else {
-                	tDeck.add(pool.getCard(ss[0],ss[1]));
-                }
-                cardCounts.put(ss[0], n + 1);
+                tDeck.add(ss.length == 1 ? pool.getCard(ss[0]) : pool.getCard(ss[0],ss[1]));
+                cardCounts.merge(ss[0], 1, Integer::sum);
                 errorBuilder.append(s).append("\n");
             }
         }

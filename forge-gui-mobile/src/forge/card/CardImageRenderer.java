@@ -790,7 +790,7 @@ public class CardImageRenderer {
             if (card.isFlipCard() && altState) {
                 displayFlipped = !displayFlipped;
             }
-            
+
             if (card.getCurrentState().getSetCode().equals("LEA") || card.getCurrentState().getSetCode().equals("LEB")) {
                 croppedArea = 0.975f;
                 minusxy = 0.135f * radius;
