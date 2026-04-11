@@ -462,6 +462,12 @@ public class Main extends IOSApplication.Delegate {
         } catch (Throwable t) {
             nslog("createApplication: physicalMemory detection failed: " + t);
         }
+        // Set a synthetic Android API level of 99 so that GuiBase.getAndroidAPILevel() > 30
+        // is satisfied on iOS.  This lets HostedMatch.java enable AI timeouts via the standard
+        // Android-API-level check without needing a separate isIOS() guard in that shared file.
+        // HWInfo and downloadsDir are not used on iOS, so null/"" are safe.
+        GuiBase.setDeviceInfo(null, 99, iosPhysicalRAMMB, "");
+        nslog("createApplication: setDeviceInfo(API=99, RAM=" + iosPhysicalRAMMB + "MB)");
         final ApplicationListener app = Forge.getApp(null, new IOSClipboard(), new IOSAdapter(assetsDir), assetsDir, false, !isLandscape, iosPhysicalRAMMB, false, 0);
         nslog("createApplication: Forge.getApp() returned " + (app == null ? "null" : app.getClass().getName()));
         // Replace the generic GuiMobile (set by Forge.getApp) with IosGuiMobile,
