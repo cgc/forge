@@ -4,7 +4,6 @@ import forge.Forge;
 import forge.assets.FSkinFont;
 import forge.deck.FDeckEditor;
 import forge.gamemodes.limited.BoosterDraft;
-import forge.gamemodes.limited.DraftRankCache;
 import forge.gamemodes.limited.LimitedPoolType;
 import forge.gui.FThreads;
 import forge.gui.util.SGuiChoose;
@@ -55,9 +54,7 @@ public class NewDraftScreen extends LaunchScreen {
             // ~100-150 MB of heap that would otherwise stay as unreachable garbage until
             // the GC is spontaneously triggered by allocation pressure mid-draft.
             // On desktop HotSpot this is a low-cost no-op hint.
-            DraftRankCache.logHeap("pre-draft-gc");
             System.gc();
-            DraftRankCache.logHeap("post-draft-gc");
 
             final BoosterDraft draft = BoosterDraft.createDraft(poolType);
             if (draft == null) { return; }

@@ -147,12 +147,66 @@ import java.nio.file.attribute.BasicFileAttributes;
  *       class reference to create new instances via {@code cls.newInstance()},
  *       bypassing the broken {@code Class.forName()} path in libcore entirely.
  *   </li>
+ *   <li>{@code StringUtils.stripAccents(String)} →
+ *       {@code StreamUtil.stripAccentsNoAlloc(String)} (Pattern 67)<br>
+ *       On robovmx's Android-derived runtime, every {@code Pattern.matcher()} call
+ *       allocates a native {@code MatcherNative} (ICU-backed) that is immediately
+ *       registered with {@code NativeAllocationRegistry} via a
+ *       {@code PhantomReference}/{@code Cleaner}.  During card-DB initialisation
+ *       {@code StringUtils.stripAccents} is called for every card face name
+ *       ({@code CardDb.addFaceToDbNames}) and every image filename
+ *       ({@code ImageUtil.toMWSFilename}), generating thousands of MatcherNative
+ *       allocations per second and triggering aggressive GC (~7% startup).
+ *       {@code StreamUtil.stripAccentsNoAlloc} provides an identical implementation
+ *       that pre-compiles the pattern once and reuses a per-thread {@code Matcher}
+ *       via {@code reset()}, so no new native object is allocated per call.
+ *   </li>
+ *   <li>{@code TextUtil.toSortableName(String)} →
+ *       {@code StreamUtil.toSortableName(String)} (Pattern 68)<br>
+ *       Same root cause as Pattern 67: {@code TextUtil.toSortableName} calls
+ *       {@code String.replaceAll("[^\\s'0-9a-z]", "")} which both recompiles the
+ *       pattern and creates a fresh {@code MatcherNative} on every invocation.
+ *       Since {@code toSortableName} is called once per {@code PaperCard}
+ *       construction, the allocation rate during card-DB init is very high (~7%
+ *       startup).  {@code StreamUtil.toSortableName} provides an identical
+ *       implementation using a pre-compiled pattern and a thread-local
+ *       {@code Matcher.reset()}.
+ *   </li>
+ *   <li>{@code ThreadLocal.withInitial(Supplier)} →
+ *       {@code StreamUtil.threadLocalWithInitial(Supplier)} (Pattern 69)<br>
+ *       {@code ThreadLocal.withInitial(Supplier)} is a Java 8 static factory
+ *       method that is absent from robovmx's Android-derived robovm-rt.
+ *       Any call in a static initializer will throw {@code NoSuchMethodError}
+ *       and permanently poison the class with {@code NoClassDefFoundError}.
+ *       {@code StreamUtil.threadLocalWithInitial} provides equivalent behaviour
+ *       using the pre-Java-8 anonymous-subclass form.
+ *   </li>
+ *   <li>{@code Pattern.matcher(CharSequence)} →
+ *       {@code IosUtil.patternMatcher(Pattern, CharSequence)} (Pattern 70)<br>
+ *       On robovmx's Android-derived runtime every {@code Pattern.matcher()} call
+ *       allocates a native {@code MatcherNative} (ICU-backed) that is immediately
+ *       registered with {@code NativeAllocationRegistry} via a
+ *       {@code PhantomReference/Cleaner}.  During card-DB initialisation
+ *       {@code CardEdition.Reader} calls this for every card/token line across
+ *       ~600 set files, generating thousands of {@code MatcherNative} allocations
+ *       per second and triggering aggressive GC (~4% startup time).
+ *       {@code IosUtil.patternMatcher} provides a thread-local {@link Matcher}
+ *       pool keyed by {@link Pattern} instance; the pool is populated lazily on
+ *       first use per thread per pattern, then subsequent calls reuse the existing
+ *       {@code Matcher} via {@code reset()}.
+ *       Safety contract: the returned {@code Matcher} must not be held active
+ *       across another call with the same {@code Pattern} on the same thread.
+ *       All Forge call sites satisfy this invariant.
+ *       Note: {@code IosUtil} itself is excluded from this transformation
+ *       (like {@code StreamUtil}) to prevent infinite recursion in its own
+ *       {@code MATCHER_POOL} initialisation.
+ *   </li>
  * </ol>
  *
  * <p>The transformation is idempotent: class files whose call sites already
  * target {@code forge/ios/IosUtil} or {@code forge/util/StreamUtil} are left
- * unchanged.  {@code StreamUtil} itself is also excluded from transformation
- * to prevent its internal NIO fallback calls from becoming recursive.
+ * unchanged.  {@code StreamUtil} and {@code IosUtil} are both excluded from
+ * transformation to prevent their internal calls from becoming recursive.
  *
  * <p>Usage: {@code java -cp asm.jar:. StreamDesugar <dir> [<dir2> ...]}
  */
@@ -238,7 +292,16 @@ public class StreamDesugar {
             // Skip transforming StreamUtil's own methods: its NIO fallback calls
             // (e.g. Files.walk inside filesWalk) must NOT be rewritten to
             // StreamUtil calls or they become infinitely recursive.
-            if (STREAM_UTIL.equals(currentClassName)) return mv;
+            // Skip transforming IosUtil and its inner/anonymous classes (JVM names
+            // "forge/ios/IosUtil$...").  The critical case is IosUtil$1, the anonymous
+            // ThreadLocal<Matcher> subclass created inside patternMatcher(): its
+            // initialValue() body contains `return p.matcher("")` (see IosUtil.java,
+            // patternMatcher() → `new ThreadLocal<Matcher>() { protected Matcher initialValue()
+            // { return p.matcher(""); } }`).  If that call were rewritten to
+            // IosUtil.patternMatcher() by Pattern 70, initialValue() would call
+            // patternMatcher(), which calls tl.get(), which calls initialValue() again
+            // → infinite recursion.
+            if (STREAM_UTIL.equals(currentClassName) || currentClassName.startsWith(IOS_UTIL)) return mv;
             return new MethodTransformer(mv);
         }
 
@@ -522,6 +585,85 @@ public class StreamDesugar {
                     super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
                             "filesCopy",
                             "(Ljava/nio/file/Path;Ljava/nio/file/Path;[Ljava/nio/file/CopyOption;)Ljava/nio/file/Path;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 67: StringUtils.stripAccents(String) — on robovmx every Pattern.matcher()
+                // call allocates a native MatcherNative that is registered with
+                // NativeAllocationRegistry via PhantomReference/Cleaner.  During card-DB init
+                // StringUtils.stripAccents is called for every card face name and every image
+                // filename, generating thousands of MatcherNative allocations per second and
+                // triggering aggressive GC (~7% startup time).
+                // StreamUtil.stripAccentsNoAlloc reuses a thread-local Matcher via reset(), so
+                // no new native object is allocated per call.  Semantics are identical to
+                // commons-lang 3.18.0 StringUtils.stripAccents.
+                if (opcode == Opcodes.INVOKESTATIC
+                        && "org/apache/commons/lang3/StringUtils".equals(owner)
+                        && "stripAccents".equals(name)
+                        && "(Ljava/lang/String;)Ljava/lang/String;".equals(descriptor)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "stripAccentsNoAlloc",
+                            "(Ljava/lang/String;)Ljava/lang/String;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 68: TextUtil.toSortableName(String) — same root cause as Pattern 67:
+                // String.replaceAll("[^\\s'0-9a-z]","") both recompiles the pattern and creates
+                // a fresh MatcherNative on every call.  toSortableName is called once per
+                // PaperCard construction so the allocation rate during card-DB init is very high
+                // (~7% startup time).
+                // StreamUtil.toSortableName reuses a thread-local Matcher via reset().
+                // Semantics are identical to TextUtil.toSortableName.
+                if (opcode == Opcodes.INVOKESTATIC
+                        && "forge/util/TextUtil".equals(owner)
+                        && "toSortableName".equals(name)
+                        && "(Ljava/lang/String;)Ljava/lang/String;".equals(descriptor)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "toSortableName",
+                            "(Ljava/lang/String;)Ljava/lang/String;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 69: ThreadLocal.withInitial(Supplier) — this Java 8 static factory
+                // method is absent from robovmx's Android-derived robovm-rt.  Any call throws
+                // NoSuchMethodError at runtime; in a static initializer this permanently poisons
+                // the class with NoClassDefFoundError.
+                // StreamUtil.threadLocalWithInitial provides equivalent behaviour via the
+                // pre-Java-8 anonymous-subclass form.
+                if (opcode == Opcodes.INVOKESTATIC
+                        && "java/lang/ThreadLocal".equals(owner)
+                        && "withInitial".equals(name)
+                        && "(Ljava/util/function/Supplier;)Ljava/lang/ThreadLocal;".equals(descriptor)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, STREAM_UTIL,
+                            "threadLocalWithInitial",
+                            "(Ljava/util/function/Supplier;)Ljava/lang/ThreadLocal;", false);
+                    modified = true;
+                    return;
+                }
+
+                // Pattern 70: Pattern.matcher(CharSequence) — on robovmx every Pattern.matcher()
+                // call allocates a native MatcherNative (ICU-backed) registered with
+                // NativeAllocationRegistry via PhantomReference/Cleaner.  During card-DB
+                // initialisation CardEdition.Reader calls this for every card/token line
+                // across ~600 set files, generating thousands of MatcherNative allocations
+                // per second and triggering aggressive GC (~4% startup time).
+                // IosUtil.patternMatcher reuses a thread-local Matcher via reset(), so no
+                // new native object is allocated after the first call per thread per pattern.
+                // Safety contract: the returned Matcher must not be held active across another
+                // patternMatcher() call with the same Pattern on the same thread.  All Forge
+                // call sites satisfy this invariant (each Matcher is fully consumed before
+                // the next call with the same Pattern within any single thread context).
+                if (opcode == Opcodes.INVOKEVIRTUAL
+                        && "java/util/regex/Pattern".equals(owner)
+                        && "matcher".equals(name)
+                        && "(Ljava/lang/CharSequence;)Ljava/util/regex/Matcher;".equals(descriptor)) {
+                    super.visitMethodInsn(Opcodes.INVOKESTATIC, IOS_UTIL,
+                            "patternMatcher",
+                            "(Ljava/util/regex/Pattern;Ljava/lang/CharSequence;)Ljava/util/regex/Matcher;",
+                            false);
                     modified = true;
                     return;
                 }

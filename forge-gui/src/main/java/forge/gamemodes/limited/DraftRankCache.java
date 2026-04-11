@@ -2,19 +2,15 @@ package forge.gamemodes.limited;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.LongSupplier;
 
 /**
  * DraftRankCache
  *
- * <p>Ranking data is now loaded <em>lazily per-edition</em>.  Previously the
+ * <p>Ranking data is loaded <em>lazily per-edition</em>.  Previously the
  * cache loaded all 183 set-ranking files at once the first time any ranking
  * was requested.  That caused a ~20 MB heap spike during the very first AI
  * pick of a booster draft — the only mode where AI evaluation happens — and
- * the data was never freed even between draft sessions.  On iOS, where the
- * process memory budget is ~2 GB, this spike was one of the contributors to
- * the jetsam kill observed exclusively during booster drafts (not sealed,
- * which has no AI picker).
+ * the data was never freed even between draft sessions.
  *
  * <p>With per-edition lazy loading, a typical single-set booster draft loads
  * exactly one {@code .rnk} file (~0.1 MB) instead of all 183 (~20 MB combined).
@@ -36,55 +32,7 @@ public class DraftRankCache {
     private static ReadDraftRankings customRankings = null;
     private static String customRankingsFileName = "";
 
-    /**
-     * Optional provider for the iOS process physical footprint in MB.
-     *
-     * <p>Set at startup by {@code Main} (forge-gui-ios) so that
-     * {@link #logHeap(String)} can report the actual OS-level memory that iOS
-     * jetsam monitors, in addition to the Java heap metrics.
-     * {@code null} on all non-iOS platforms; {@link #logHeap} silently skips
-     * the {@code phys=} line when this is {@code null}.
-     *
-     * <p>Populated via a method reference to
-     * {@code MachMemInfo::getPhysicalFootprintMB} which reads
-     * {@code task_vm_info_data_t.phys_footprint} from the Mach kernel.
-     */
-    public static volatile LongSupplier physicalFootprintMBSupplier = null;
-
     private DraftRankCache() {}
-
-    /**
-     * Prints current Java heap usage to stdout with a context tag, and (on iOS)
-     * the Mach physical footprint that jetsam actually monitors.
-     * On iOS the output is captured by os_log and is visible in Console.app.
-     *
-     * <p>Example output on iOS:
-     * <pre>
-     * [Forge/Draft-Mem] draft-start: used=142MB total=256MB editions=0
-     * [Forge/Draft-Mem] draft-start: phys=1140MB
-     * </pre>
-     *
-     * <p>Call this at key draft lifecycle points to build a quantitative picture
-     * of memory use during a booster draft session.  The {@code phys=} line
-     * reports total process resident memory (Java heap + GPU textures + native
-     * code + other), which is what iOS jetsam compares against the per-device
-     * limit.  Sealed and constructed modes do not invoke the AI draft-pick path,
-     * so any {@code phys=} growth seen here that is absent from those modes can
-     * be attributed to draft-specific allocations (e.g. textures loaded for the
-     * card-pick UI).
-     */
-    public static void logHeap(String tag) {
-        Runtime rt = Runtime.getRuntime();
-        long usedMB  = (rt.totalMemory() - rt.freeMemory()) >> 20;
-        long totalMB = rt.totalMemory() >> 20;
-        System.out.println("[Forge/Draft-Mem] " + tag
-                + ": used=" + usedMB + "MB total=" + totalMB + "MB"
-                + " editions=" + editionRankings.size());
-        LongSupplier s = physicalFootprintMBSupplier;
-        if (s != null) {
-            System.out.println("[Forge/Draft-Mem] " + tag + ": phys=" + s.getAsLong() + "MB");
-        }
-    }
 
     /**
      * Return the relative draft ranking for {@code name} in {@code edition},
@@ -92,15 +40,10 @@ public class DraftRankCache {
      */
     public static synchronized Double getRanking(String name, String edition) {
         if (!editionRankings.containsKey(edition)) {
-            // Load only the .rnk file for the requested edition.
-            // "rankings/" + lowercase edition code is the path relative to
-            // DRAFT_DIR that the ReadDraftRankings(String) constructor accepts.
             String relPath = "rankings/" + edition.toLowerCase() + ".rnk";
-            logHeap("load-rankings-" + edition);
             ReadDraftRankings r = new ReadDraftRankings(relPath);
             // Store null if the file was missing/empty so we don't probe again.
             editionRankings.put(edition, r.hasRankingsForEdition(edition) ? r : null);
-            logHeap("loaded-rankings-" + edition);
         }
         ReadDraftRankings r = editionRankings.get(edition);
         return r != null ? r.getRanking(name, edition) : null;
@@ -123,7 +66,6 @@ public class DraftRankCache {
      * (i.e., after the last background pick thread has completed).
      */
     public static synchronized void clear() {
-        logHeap("clear");
         editionRankings.clear();
         customRankings = null;
         customRankingsFileName = "";

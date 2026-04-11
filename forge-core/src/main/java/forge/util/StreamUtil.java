@@ -26,6 +26,9 @@ import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.nio.file.attribute.FileAttribute;
+import java.text.Normalizer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class StreamUtil {
 
@@ -420,6 +423,112 @@ public class StreamUtil {
             }
         }
         return javax.xml.transform.TransformerFactory.newInstance();
+    }
+
+    // ── Pattern 67: StringUtils.stripAccents → stripAccentsNoAlloc ───────────────
+    //
+    // On robovmx, every Pattern.matcher() call allocates a native MatcherNative
+    // (ICU-backed) that is registered with NativeAllocationRegistry via a
+    // PhantomReference/Cleaner.  During card-DB initialisation StringUtils.stripAccents
+    // is called for every card face and every image filename, generating thousands of
+    // MatcherNative allocations that trigger aggressive GC.
+    //
+    // Fix: pre-compile the pattern once; reuse a per-thread Matcher via reset().
+    // reset() updates the target string on the existing MatcherNative without
+    // allocating a new native object — no new PhantomReference, no GC trigger.
+    //
+    // Semantics are identical to org.apache.commons.lang3.StringUtils.stripAccents()
+    // from commons-lang 3.18.0 (NFD decomposition + combining-mark removal +
+    // the Ł→L / ł→l special-case from convertRemainingAccentCharacters).
+
+    private static final Pattern STRIP_ACCENTS_PATTERN =
+            // Use Unicode general-category Mn (Mark, Non-spacing) rather than the
+            // Java-specific block syntax \p{InCombiningDiacriticalMarks}.  Android's
+            // ICU regex engine does not understand the Java \p{InXxx} block names and
+            // throws PatternSyntaxException, which would fail StreamUtil's static
+            // initializer and permanently poison the class with
+            // "Could not initialize class forge.util.StreamUtil".
+            // After NFD decomposition all diacritical marks that originated from
+            // precomposed characters fall into category Mn, so the two patterns are
+            // semantically equivalent for any Latin-script input.
+            Pattern.compile("\\p{Mn}+");
+    // Use anonymous-subclass syntax rather than ThreadLocal.withInitial(Supplier) because
+    // ThreadLocal.withInitial is a Java 8 static factory method that is absent from
+    // robovmx's Android-derived robovm-rt, causing NoSuchMethodError during <clinit>
+    // which permanently poisons StreamUtil with NoClassDefFoundError.
+    private static final ThreadLocal<Matcher> STRIP_ACCENTS_MATCHER =
+            new ThreadLocal<Matcher>() {
+                @Override protected Matcher initialValue() {
+                    return STRIP_ACCENTS_PATTERN.matcher("");
+                }
+            };
+
+    /** Drop-in for {@code StringUtils.stripAccents(String)} that reuses a thread-local Matcher. */
+    public static String stripAccentsNoAlloc(String input) {
+        if (input == null) return null;
+        String decomposed = Normalizer.normalize(input, Normalizer.Form.NFD);
+        // Ł/ł are not decomposed by NFD; commons-lang convertRemainingAccentCharacters handles them.
+        decomposed = decomposed.replace('\u0141', 'L').replace('\u0142', 'l');
+        return STRIP_ACCENTS_MATCHER.get().reset(decomposed).replaceAll("");
+    }
+
+    // ── Pattern 68: TextUtil.toSortableName → StreamUtil.toSortableName ──────────
+    //
+    // TextUtil.toSortableName calls String.replaceAll("[^\\s'0-9a-z]","") which
+    // (a) recompiles the regex every call via Pattern.compile(), and
+    // (b) creates a new MatcherNative (with PhantomReference overhead) every call.
+    // Called once per PaperCard construction this dominates card-DB init time.
+    //
+    // Fix: pre-compile the pattern; reuse a per-thread Matcher via reset().
+
+    private static final Pattern SORTABLE_NAME_FILTER = Pattern.compile("[^\\s'0-9a-z]");
+    // Use anonymous-subclass syntax rather than ThreadLocal.withInitial(Supplier) — see
+    // STRIP_ACCENTS_MATCHER above for the reason (absent from robovmx's robovm-rt).
+    private static final ThreadLocal<Matcher> SORTABLE_NAME_MATCHER =
+            new ThreadLocal<Matcher>() {
+                @Override protected Matcher initialValue() {
+                    return SORTABLE_NAME_FILTER.matcher("");
+                }
+            };
+
+    /** Drop-in for {@code TextUtil.toSortableName(String)} that reuses a thread-local Matcher. */
+    public static String toSortableName(String printedName) {
+        if (printedName.startsWith("\"")) printedName = printedName.substring(1);
+        String lower = TextUtil.moveArticleToEnd(printedName).toLowerCase();
+        return SORTABLE_NAME_MATCHER.get().reset(lower).replaceAll("");
+    }
+
+    // ── Pattern 69: ThreadLocal.withInitial(Supplier) ────────────────────────
+    //
+    // ThreadLocal.withInitial(Supplier) is a Java 8 static factory method.
+    // robovmx's Android-derived robovm-rt does not include it, so any call site
+    // in app code throws NoSuchMethodError at runtime (and if the call is in a
+    // static initializer the class is permanently poisoned with
+    // NoClassDefFoundError).
+    //
+    // Fix: StreamDesugar Pattern 69 rewrites every
+    //   INVOKESTATIC java/lang/ThreadLocal.withInitial(Supplier)ThreadLocal
+    // in desugared class files to
+    //   INVOKESTATIC forge/util/StreamUtil.threadLocalWithInitial(Supplier)ThreadLocal
+    // which delegates to the pre-Java-8 anonymous-subclass approach.
+    //
+    // Note: StreamUtil's own static fields use anonymous-subclass syntax directly
+    // (above) so they are not subject to this rewrite; the helper exists for
+    // call sites elsewhere in the Forge module JARs.
+
+    /**
+     * Pattern 69: replacement for {@code ThreadLocal.withInitial(Supplier)}.
+     * {@code ThreadLocal.withInitial} is absent from robovmx's robovm-rt.
+     * This method provides equivalent behaviour using the pre-Java-8
+     * anonymous-subclass form, which works on all platforms.
+     */
+    public static <T> ThreadLocal<T> threadLocalWithInitial(
+            final java.util.function.Supplier<T> supplier) {
+        return new ThreadLocal<T>() {
+            @Override protected T initialValue() {
+                return supplier.get();
+            }
+        };
     }
 
     /**

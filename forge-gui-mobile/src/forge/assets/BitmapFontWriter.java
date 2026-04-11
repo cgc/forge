@@ -23,6 +23,9 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont.BitmapFontData;
 import com.badlogic.gdx.graphics.g2d.BitmapFont.Glyph;
 import com.badlogic.gdx.graphics.g2d.PixmapPacker.Page;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.GdxRuntimeException;
+
+import java.io.IOException;
 
 import forge.util.TextUtil;
 
@@ -363,14 +366,29 @@ public class BitmapFontWriter {
 
         String[] pageRefs = new String[pages.length];
 
-        for (int i = 0; i < pages.length; i++) {
-            String ref = pages.length == 1 ? (fileName + ".png") : (fileName + "_" + i + ".png");
-
-            // the ref for this image
-            pageRefs[i] = ref;
-
-            // write the PNG in that directory
-            PixmapIO.writePNG(outputDir.child(ref), pages[i]);
+        // Reuse a single PixmapIO.PNG instance (and its underlying native
+        // Deflater) across all pages in this call.  The static writePNG()
+        // helper creates a fresh PNG + Deflater per invocation, which was
+        // allocating one ~45 KB native Deflater object per font-atlas page
+        // (282 objects / ~12.8 MB during first-launch font generation).
+        // PNG.write() calls deflater.reset() at the start of each write, so
+        // reuse is safe.
+        PixmapIO.PNG png = null;
+        try {
+            png = new PixmapIO.PNG();
+            // Match the flipY=false default used by PixmapIO.writePNG(file, pixmap).
+            png.setFlipY(false);
+            for (int i = 0; i < pages.length; i++) {
+                String ref = pages.length == 1 ? (fileName + ".png") : (fileName + "_" + i + ".png");
+                pageRefs[i] = ref;
+                try {
+                    png.write(outputDir.child(ref), pages[i]);
+                } catch (IOException e) {
+                    throw new GdxRuntimeException("Error writing font page PNG: " + ref, e);
+                }
+            }
+        } finally {
+            if (png != null) png.dispose();
         }
         return pageRefs;
     }

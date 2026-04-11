@@ -65,38 +65,6 @@ public class Graphics {
 
     public Graphics() {
         ShaderProgram.pedantic = false;
-        // Log compile status for ALL shaders so iOS GLSL ES issues are immediately visible.
-        // (Instance field initializers run before this constructor body, so all shaders are
-        //  already compiled at this point.)
-        ShaderProgram[] allShaders = {
-                shaderRoundedRect, shaderRoundedRect2, shaderGrayscale, shaderWarp,
-                shaderOutline, shaderUnderwater, shaderNightDay,
-                shaderPixelate, shaderRipple, shaderPixelateWarp, shaderChromaticAbberation,
-                shaderHueShift, shaderNoiseFade, shaderPortal, shaderPixelateSimple};
-        String[] shaderNames = {
-                "shaderRoundedRect", "shaderRoundedRect2", "shaderGrayscale", "shaderWarp",
-                "shaderOutline", "shaderUnderwater", "shaderNightDay",
-                "shaderPixelate", "shaderRipple", "shaderPixelateWarp", "shaderChromaticAbberation",
-                "shaderHueShift", "shaderNoiseFade", "shaderPortal", "shaderPixelateSimple"};
-        for (int i = 0; i < allShaders.length; i++) {
-            ShaderProgram sp = allShaders[i];
-            if (sp == null) {
-                System.err.println("[Graphics] shader " + shaderNames[i] + "=null");
-            } else if (!sp.isCompiled()) {
-                System.err.println("[Graphics] shader " + shaderNames[i] + " FAILED: "
-                        + sp.getLog().trim().replace("\n", " | "));
-            } else {
-                System.err.println("[Graphics] shader " + shaderNames[i] + " OK");
-            }
-        }
-    }
-
-    /** Check and log any pending OpenGL error; no-op if there is none. */
-    private static void logGlError(String context) {
-        int err = Gdx.gl.glGetError();
-        if (err != GL20.GL_NO_ERROR) {
-            System.err.println("[Graphics] GL error after " + context + ": 0x" + Integer.toHexString(err));
-        }
     }
 
     public ShaderProgram getShaderOutline() {
@@ -824,7 +792,6 @@ public class Graphics {
             image.draw(this, x, y, w, h);
             //reset
             batch.end();
-            logGlError("drawAvatarImage(warp)");
             batch.setShader(null);
             batch.begin();
         } else if (!drawGrayscale) {
@@ -840,7 +807,6 @@ public class Graphics {
             image.draw(this, x, y, w, h);
             //reset
             batch.end();
-            logGlError("drawAvatarImage(grayscale)");
             batch.setShader(null);
             batch.begin();
         }
@@ -864,7 +830,6 @@ public class Graphics {
             image.draw(this, x, y, w, h);
             //reset
             batch.end();
-            logGlError("drawCardImage(FImage,grayscale)");
             batch.setShader(null);
             batch.begin();
         }
@@ -886,7 +851,6 @@ public class Graphics {
             batch.draw(image, adjustX(x), adjustY(y, h), w, h);
             //reset
             batch.end();
-            logGlError("drawCardImage(Texture,grayscale)");
             batch.setShader(null);
             batch.begin();
         }
@@ -909,7 +873,6 @@ public class Graphics {
                 batch.draw(image, adjustX(x), adjustY(y, h), w, h);
                 //reset
                 batch.end();
-                logGlError("drawCardImage(TextureRegion,grayscale)");
                 batch.setShader(null);
                 batch.begin();
             }
@@ -1005,7 +968,6 @@ public class Graphics {
             batch.draw(image, adjustX(x), adjustY(y, h), w, h);
             //reset
             batch.end();
-            logGlError("drawCardRoundRect");
             batch.setShader(null);
             batch.begin();
         } else {
@@ -1040,7 +1002,6 @@ public class Graphics {
             if (drawFoil)
                 drawFoil(x, y, w, h, modR, true);
             batch.end();
-            logGlError("drawCardRoundRect(rotated)");
             batch.setShader(null);
             batch.begin();
         } else {
