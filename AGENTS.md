@@ -275,6 +275,48 @@ simulator is confirmed.  Do not add patterns speculatively.
    `AI_CAN_USE_TIMEOUT` guard in `HostedMatch.java`) but must not add iOS-specific logic to the
    core game engine.
 
+### Upstream sync strategy
+
+The fork tracks `card-forge/forge` (upstream).  Upstream moves quickly (50+ commits/week), so
+keeping the merge surface small is critical — merge conflicts in shared files must be resolved
+by hand.  Sync via `git merge upstream/master`; prefer merges over rebases to preserve history.
+
+**Choosing a fix approach** — ranked by merge-surface cost (lowest first):
+
+| Approach | When to use | Current examples |
+|---|---|---|
+| **Fix in `forge-gui-ios` only** | iOS entry-point, RoboVM config, or adapter code | `Main.java`, `robovm.xml`, `forge-gui-ios/pom.xml` |
+| **Bytecode rewrite (`StreamDesugar`)** | Call site in Forge or third-party JAR crashes at runtime; affects many classes | Patterns 49–66 in `StreamDesugar.java` |
+| **Stub JAR** | Entire class absent from robovmx robovm-rt | `java.lang.Record` in `forge:java-stubs` |
+| **Source guard in shared module** | One-line behavioural difference; prefer `isAndroid()` over `isIOS()` where possible (see below) | `AssetsDownloader.java:41`, `Assets.java:252`, `FSkinFont.java` |
+| **Shadow class in `forge-gui-ios/`** | Shared file changes very frequently upstream **and** upstream will not accept the guard as a contribution | `Config.java` (only if upstream rejects contribution) |
+
+**Prefer `isAndroid()` over `isIOS()` in shared modules**
+
+`GuiBase.setIsAndroid(true)` is called for iOS in `Forge.java` (via `Gdx.app.getType() == iOS`),
+so `isAndroid()` already returns `true` on all mobile platforms.  Guards of the form
+`isAndroid() || isIOS()` can be simplified to just `isAndroid()`, eliminating the `isIOS()`
+call entirely and leaving no iOS-specific code in the shared file.
+
+Guards that CAN be simplified (no behaviour change; safe to apply now):
+
+| File | Current | Simplified |
+|---|---|---|
+| `Config.java:127` | `(isAndroid() \|\| isIOS()) ? ASSETS_DIR : …` | `isAndroid() ? ASSETS_DIR : …` |
+| `Assets.java:62,67` | `if (isAndroid() \|\| isIOS())` | `if (isAndroid())` |
+| `AssetsDownloader.java:66` | `(isAndroid() \|\| isIOS()) ? internal(…) : classpath(…)` | `isAndroid() ? internal(…) : classpath(…)` |
+| `FSkin.java:112` | `(isAndroid() \|\| isIOS()) ? internal(…) : classpath(…)` | `isAndroid() ? internal(…) : classpath(…)` |
+
+Guards that CANNOT be simplified to `isAndroid()` (genuinely iOS-specific; keep as `isIOS()`):
+
+| File | Guard | Why `isAndroid()` does not work |
+|---|---|---|
+| `AssetsDownloader.java:41` | `if (isIOS()) return early` | Android downloads assets at runtime; iOS bundles them in the IPA — the early return must not fire on Android |
+| `Assets.java:252` | `!isIOS()` (skip mipmap generation) | `!isAndroid()` would incorrectly disable mipmaps on Android; the NPOT restriction is iOS OpenGL-specific |
+| `FSkinFont.java` (×6) | Various Retina rendering optimisations | iOS-specific font hinting, texture filtering, and PNG-cache bypass; applying to Android would regress font quality/performance |
+| `HostedMatch.java:172` | `\|\| isIOS()` in AI-timeout guard | `getAndroidAPILevel()` returns 0 on iOS because `setDeviceInfo` is never called; setting a mock API level ≥ 31 in `Main.java` would let the existing `> 30` check pass and allow removing this `isIOS()` call |
+| `Forge.java` (×4) | Various iOS-only memory-cap / preload-skip guards | iOS jetsam memory limits, RAM-based cache tiers, and adventure-preload suppression have no Android equivalent |
+
 ### Minimise outside-forge-gui-ios changes
 
 - **Do not** add `GuiBase.isIOS()` guards to `forge-core` or `forge-game`.
