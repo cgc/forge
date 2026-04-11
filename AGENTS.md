@@ -203,10 +203,11 @@ away, leaving the following as the complete list of surviving `isIOS()` calls ou
   suppression, and RAM detection display string; no Android equivalent.
 - `Main.java` — calls `GuiBase.setIsIOS(true)` and `GuiBase.setIsAndroid(true)` at startup;
   uses `NSBundle.getMainBundle().getBundlePath()` for the read-only bundle path and routes user
-  data to `$HOME/Documents/` and caches to `$HOME/Library/Caches/`; sets a synthetic Android
-  API level of 99 via `GuiBase.setDeviceInfo(null, 99, iosPhysicalRAMMB, "")` so that the
-  standard `getAndroidAPILevel() > 30` check in `HostedMatch.java` enables AI timeouts without
-  needing an `isIOS()` guard in that shared file.
+  data to `$HOME/Documents/` and caches to `$HOME/Library/Caches/`; passes `AndroidAPI=99` to
+  `Forge.getApp()` so that the standard `getAndroidAPILevel() > 30` check in `HostedMatch.java`
+  enables AI timeouts without needing an `isIOS()` guard in that shared file; sets
+  `Forge.totalDeviceRAM = iosPhysicalRAMMB` after `Forge.getApp()` returns (since `hwInfo=null`
+  on iOS, so `getApp()` cannot derive RAM from `hwInfo.getTotalRam()`).
 
 Guards that were previously present but have been **removed** (zero behaviour change, since
 `isAndroid()` already returns `true` for iOS):
