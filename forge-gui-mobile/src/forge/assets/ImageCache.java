@@ -262,31 +262,28 @@ public class ImageCache {
 
         Texture image;
         File imageFile = ImageKeys.getImageFile(imageKey);
-        if (imageFile == null && (imageKey.contains("/") || imageKey.contains(".full"))) {
-            // Card or token key that resolved to no file on disk – log once per key so the
-            // operator knows the card-pics directory is missing the expected image.
-            if (missingIconKeys.get().add("nofile:" + imageKey)) {
-                System.err.println("[ImageCache] No image file found for key: " + imageKey);
-            }
-        }
-        if (useDefaultIfNotFound) {
-            // Load from file and add to cache if not found in cache initially.
-            image = getAsset(imageFile);
 
-            if (image != null) {
-                return image;
-            }
-
-            if (imageLoaded) { //prevent loading more than one image each render for performance
-                if (!delayLoadRequested) {
-                    //ensure images continue to load even if no input is being received
-                    delayLoadRequested = true;
-                    Gdx.graphics.requestRendering();
-                }
-                return null;
-            }
-            imageLoaded = true;
+        // Check cache first — this fast path applies regardless of useDefaultIfNotFound.
+        image = getAsset(imageFile);
+        if (image != null) {
+            return image;
         }
+
+        // Not in cache — need to load from disk.
+        // Throttle to one new image load per render frame regardless of useDefaultIfNotFound.
+        // Without this, callers that pass useDefaultIfNotFound=false (e.g. ImageView drawing
+        // a draft pack) bypassed the throttle entirely: all N card images were decoded, GPU-
+        // uploaded and border-sampled in a single frame, causing a large memory spike on first
+        // display that could OOM the process on iOS.
+        if (imageLoaded) {
+            if (!delayLoadRequested) {
+                //ensure images continue to load even if no input is being received
+                delayLoadRequested = true;
+                Gdx.graphics.requestRendering();
+            }
+            return null;
+        }
+        imageLoaded = true;
 
         try {
             image = loadAsset(imageKey, imageFile, others);
@@ -346,23 +343,6 @@ public class ImageCache {
             Texture cardTexture = Forge.getAssets().manager().get(fileName, Texture.class, false);
             //if full bordermasking is enabled, update the border color
             if (cardTexture != null) {
-                // Log the first 5 successfully-loaded card textures so that on iOS we can
-                // confirm textures are reaching the GPU with the expected dimensions/format.
-                if (counter <= 5) {
-                    int tw = cardTexture.getWidth();
-                    int th = cardTexture.getHeight();
-                    boolean widthPOT  = (tw  & (tw  - 1)) == 0;
-                    boolean heightPOT = (th & (th - 1)) == 0;
-                    // genMipMaps reflects the actual parameter used (iOS overrides to false even
-                    // when texture filtering is enabled, to avoid NPOT texture-incomplete black squares).
-                    boolean genMipMaps = Forge.getAssets().getTextureFilter().genMipMaps;
-                    System.err.println("[ImageCache] loaded card texture #" + counter
-                            + " path=" + fileName
-                            + " size=" + tw + "x" + th
-                            + " POT=" + (widthPOT && heightPOT)
-                            + " format=" + cardTexture.getTextureData().getFormat()
-                            + " genMipMaps=" + genMipMaps);
-                }
                 String setCode = imageKey.split("/")[0].trim().toUpperCase();
                 int radius;
                 if (setCode.equals("A") || setCode.equals("LEA") || setCode.equals("B") || setCode.equals("LEB"))
@@ -375,18 +355,11 @@ public class ImageCache {
                 boolean isFullBorder = cardTextureStr.contains(".fullborder.") || cardTextureStr.contains("tokens");
                 try {
                     String pixColor = getpixelColor(fileName);
-                    if (counter <= 5) {
-                        System.err.println("[ImageCache] getpixelColor #" + counter
-                                + " path=" + fileName + " color=" + pixColor
-                                + " fullBorder=" + isFullBorder);
-                    }
                     updateImageRecord(cardTextureStr, isCloserToWhite(pixColor), radius, isFullBorder);
                 } catch (Exception e) {
                     // getpixelColor() can fail if the file can't be re-read (e.g. on some
                     // iOS sandboxed paths).  Use a default dark border so the texture is
                     // still returned and rendered.
-                    System.err.println("[ImageCache] getpixelColor failed for " + fileName
-                            + " (" + e.getClass().getSimpleName() + "): " + e.getMessage());
                     updateImageRecord(cardTextureStr, Pair.of(Color.valueOf("#171717").toString(), false), radius, isFullBorder);
                 }
             }

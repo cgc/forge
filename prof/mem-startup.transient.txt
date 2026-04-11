@@ -1,0 +1,385 @@
+Bytes Used	Count		Symbol Name
+ 928.68 MB      75.3%	2211095	 	thread_start
+ 928.68 MB      75.3%	2211095	 	 _pthread_start
+ 928.27 MB      75.3%	2208254	 	  GC_start_routine
+ 928.27 MB      75.3%	2208254	 	   GC_call_with_stack_base
+ 928.27 MB      75.3%	2208254	 	    GC_inner_start_routine
+ 928.27 MB      75.3%	2208254	 	     startThreadEntryPoint
+ 928.27 MB      75.3%	2208233	 	      rvmCallVoidInstanceMethodA
+ 928.27 MB      75.3%	2208233	 	       callVoidMethod
+ 928.27 MB      75.3%	2208233	 	        _call0
+ 928.27 MB      75.3%	2208233	 	         [J]java.lang.Thread.run()V
+ 613.61 MB      49.7%	1024785	 	          [J]java.util.concurrent.ThreadPoolExecutor$Worker.run()V
+ 613.61 MB      49.7%	1024785	 	           [J]java.util.concurrent.ThreadPoolExecutor.runWorker(Ljava/util/concurrent/ThreadPoolExecutor$Worker;)V
+ 555.42 MB      45.0%	465613	 	            [J]java.util.concurrent.FutureTask.run()V
+ 512.75 MB      41.6%	11503	 	             [J]com.badlogic.gdx.utils.async.AsyncExecutor$2.call()Ljava/lang/Object;
+ 512.75 MB      41.6%	11503	 	              [J]com.badlogic.gdx.assets.AssetLoadingTask.call()Ljava/lang/Object;
+ 512.75 MB      41.6%	11503	 	               [J]com.badlogic.gdx.assets.AssetLoadingTask.call()Ljava/lang/Void;
+ 512.07 MB      41.5%	5107	 	                [J]com.badlogic.gdx.assets.loaders.TextureLoader.loadAsync(Lcom/badlogic/gdx/assets/AssetManager;Ljava/lang/String;Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/assets/AssetLoaderParameters;)V
+ 512.07 MB      41.5%	5107	 	                 [J]com.badlogic.gdx.assets.loaders.TextureLoader.loadAsync(Lcom/badlogic/gdx/assets/AssetManager;Ljava/lang/String;Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/assets/loaders/TextureLoader$TextureParameter;)V
+ 512.07 MB      41.5%	5107	 	                  [j]com.badlogic.gdx.graphics.TextureData$Factory.loadFromFile(Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/graphics/Pixmap$Format;Z)Lcom/badlogic/gdx/graphics/TextureData;[clinit]
+ 512.07 MB      41.5%	5107	 	                   [J]com.badlogic.gdx.graphics.TextureData$Factory.loadFromFile(Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/graphics/Pixmap$Format;Z)Lcom/badlogic/gdx/graphics/TextureData;
+ 512.07 MB      41.5%	5107	 	                    [J]com.badlogic.gdx.graphics.Pixmap.<init>(Lcom/badlogic/gdx/files/FileHandle;)V
+ 511.93 MB      41.5%	751	 	                     [J]com.badlogic.gdx.graphics.g2d.Gdx2DPixmap.<init>([BIII)V
+ 511.93 MB      41.5%	751	 	                      [J]com.badlogic.gdx.graphics.g2d.Gdx2DPixmap.load([J[BII)Ljava/nio/ByteBuffer;
+ 511.93 MB      41.5%	751	 	                       Java_com_badlogic_gdx_graphics_g2d_Gdx2DPixmap_load
+ 511.93 MB      41.5%	751	 	                        Java_com_badlogic_gdx_graphics_g2d_Gdx2DPixmap_load___3J_3BII
+ 511.93 MB      41.5%	751	 	                         Java_com_badlogic_gdx_graphics_g2d_Gdx2DPixmap_load
+ 511.93 MB      41.5%	751	 	                          gdx2d_load
+ 511.93 MB      41.5%	632	 	                           0x10a470b64
+ 511.93 MB      41.5%	632	 	                            0x10a4770c8
+ 480.74 MB      39.0%	376	 	                             0x10a482e9c
+ 209.32 MB      16.9%	107	 	                              0x10a486088
+  17.43 MB       1.4%	43	 	                              _realloc
+  17.75 MB       1.4%	72	 	                             0x10a480058
+  17.75 MB       1.4%	72	 	                              0x10a481640
+  41.53 MB       3.3%	450138	 	             [J]forge.CardStorageReader$$Lambda$6.call()Ljava/lang/Object;
+  41.53 MB       3.3%	450138	 	              [J]forge.CardStorageReader.lambda$makeTaskListForFiles$0(Ljava/util/List;IILjava/util/concurrent/CountDownLatch;I)Ljava/util/List;
+  41.50 MB       3.3%	449998	 	               [J]forge.CardStorageReader.loadCardsInRange(Ljava/util/List;II)Ljava/util/List;
+  41.50 MB       3.3%	449998	 	                [J]forge.CardStorageReader.loadCard(Lforge/card/CardRules$Reader;Ljava/io/File;)Lforge/card/CardRules;
+  26.48 MB       2.1%	318764	 	                 [J]forge.card.CardRules$Reader.readCard(Ljava/lang/Iterable;Ljava/lang/String;)Lforge/card/CardRules;
+  25.05 MB       2.0%	306475	 	                  [J]forge.card.CardRules$Reader.parseLine(Ljava/lang/String;Lforge/card/CardFace;)V
+  25.05 MB       2.0%	306475	 	                   [J]forge.card.DeckHints.<init>(Ljava/lang/String;)V
+  25.05 MB       2.0%	306475	 	                    [J]java.lang.String.split(Ljava/lang/String;)[Ljava/lang/String;
+  25.05 MB       2.0%	306475	 	                     [J]java.lang.String.split(Ljava/lang/String;I)[Ljava/lang/String;
+  14.78 MB       1.1%	220662	 	                      [j]java.util.regex.Pattern.compile(Ljava/lang/String;)Ljava/util/regex/Pattern;[clinit]
+  14.78 MB       1.1%	220662	 	                       [J]java.util.regex.Pattern.compile(Ljava/lang/String;)Ljava/util/regex/Pattern;
+  14.78 MB       1.1%	220662	 	                        [J]java.util.regex.Pattern.<init>(Ljava/lang/String;I)V
+  14.78 MB       1.1%	220662	 	                         [J]java.util.regex.Pattern.compile()V
+  14.78 MB       1.1%	220662	 	                          [j]com.android.icu.util.regex.PatternNative.create(Ljava/lang/String;I)Lcom/android/icu/util/regex/PatternNative;[clinit]
+  14.78 MB       1.1%	220662	 	                           [J]com.android.icu.util.regex.PatternNative.create(Ljava/lang/String;I)Lcom/android/icu/util/regex/PatternNative;
+  14.78 MB       1.1%	220662	 	                            [J]com.android.icu.util.regex.PatternNative.<init>(Ljava/lang/String;I)V
+  14.78 MB       1.1%	220662	 	                             [J]com.android.icu.util.regex.PatternNative.compileImpl(Ljava/lang/String;I)J
+  14.78 MB       1.1%	220662	 	                              Java_com_android_icu_util_regex_PatternNative_compileImpl
+  14.78 MB       1.1%	220662	 	                               icu_68::RegexPattern::compile(icu_68::UnicodeString const&, unsigned int, UParseError&, UErrorCode&)
+  15.02 MB       1.2%	131234	 	                 [J]forge.CardStorageReader.readScript(Ljava/io/InputStream;)Ljava/util/List;
+  13.02 MB       1.0%	65614	 	                  [J]java.io.InputStreamReader.<init>(Ljava/io/InputStream;Ljava/nio/charset/Charset;)V
+  13.02 MB       1.0%	65614	 	                   [j]sun.nio.cs.StreamDecoder.forInputStreamReader(Ljava/io/InputStream;Ljava/lang/Object;Ljava/nio/charset/Charset;)Lsun/nio/cs/StreamDecoder;[clinit]
+  13.02 MB       1.0%	65614	 	                    [J]sun.nio.cs.StreamDecoder.forInputStreamReader(Ljava/io/InputStream;Ljava/lang/Object;Ljava/nio/charset/Charset;)Lsun/nio/cs/StreamDecoder;
+  13.02 MB       1.0%	65614	 	                     [J]sun.nio.cs.StreamDecoder.<init>(Ljava/io/InputStream;Ljava/lang/Object;Ljava/nio/charset/Charset;)V
+  13.02 MB       1.0%	65614	 	                      [J]com.android.icu.charset.CharsetICU.newDecoder()Ljava/nio/charset/CharsetDecoder;
+  13.02 MB       1.0%	65614	 	                       [j]com.android.icu.charset.CharsetDecoderICU.newInstance(Ljava/nio/charset/Charset;Ljava/lang/String;)Lcom/android/icu/charset/CharsetDecoderICU;[clinit]
+  13.02 MB       1.0%	65614	 	                        [J]com.android.icu.charset.CharsetDecoderICU.newInstance(Ljava/nio/charset/Charset;Ljava/lang/String;)Lcom/android/icu/charset/CharsetDecoderICU;
+  43.47 MB       3.5%	403628	 	            [J]java.util.concurrent.CompletableFuture$AsyncSupply.run()V
+  43.47 MB       3.5%	403628	 	             [J]forge.gamemodes.limited.BoosterDraft$$Lambda$3.get()Ljava/lang/Object;
+  43.47 MB       3.5%	403628	 	              [j]forge.gamemodes.limited.BoosterDraft.lambda$loadCustomDrafts$0(Ljava/lang/String;Ljava/util/concurrent/ConcurrentLinkedQueue;)Ljava/lang/Object;[clinit]
+  43.47 MB       3.5%	403628	 	               [J]forge.gamemodes.limited.BoosterDraft.lambda$loadCustomDrafts$0(Ljava/lang/String;Ljava/util/concurrent/ConcurrentLinkedQueue;)Ljava/lang/Object;
+  31.53 MB       2.5%	305603	 	                [j]forge.gamemodes.limited.CustomLimited.parse(Ljava/util/List;Lforge/util/storage/IStorage;)Lforge/gamemodes/limited/CustomLimited;[clinit]
+  31.53 MB       2.5%	305603	 	                 [J]forge.gamemodes.limited.CustomLimited.parse(Ljava/util/List;Lforge/util/storage/IStorage;)Lforge/gamemodes/limited/CustomLimited;
+  31.03 MB       2.5%	301774	 	                  [J]forge.deck.Deck.getMain()Lforge/deck/CardPool;
+  31.03 MB       2.5%	301774	 	                   [J]forge.deck.Deck.loadDeferredSections()V
+  14.72 MB       1.1%	155538	 	            [J]forge.screens.limited.NewDraftScreen$$Lambda$2.run()V
+  14.72 MB       1.1%	155538	 	             [j]forge.screens.limited.NewDraftScreen.lambda$startMatch$0()V[clinit]
+  14.72 MB       1.1%	155538	 	              [J]forge.screens.limited.NewDraftScreen.lambda$startMatch$0()V
+  14.72 MB       1.1%	155526	 	               [j]forge.gamemodes.limited.BoosterDraft.createDraft(Lforge/gamemodes/limited/LimitedPoolType;)Lforge/gamemodes/limited/BoosterDraft;[clinit]
+  14.72 MB       1.1%	155526	 	                [J]forge.gamemodes.limited.BoosterDraft.createDraft(Lforge/gamemodes/limited/LimitedPoolType;)Lforge/gamemodes/limited/BoosterDraft;
+  14.72 MB       1.1%	155519	 	                 [J]forge.gamemodes.limited.BoosterDraft.initializeBoosters()V
+  14.72 MB       1.1%	155515	 	                  [J]forge.item.generation.UnOpenedProduct.get()Ljava/lang/Object;
+  14.72 MB       1.1%	155515	 	                   [J]forge.item.generation.UnOpenedProduct.get()Ljava/util/List;
+  14.72 MB       1.1%	155515	 	                    [j]forge.item.generation.BoosterGenerator.getBoosterPack(Lforge/item/SealedTemplate;)Ljava/util/List;[clinit]
+  14.72 MB       1.1%	155515	 	                     [J]forge.item.generation.BoosterGenerator.getBoosterPack(Lforge/item/SealedTemplate;)Ljava/util/List;
+  14.72 MB       1.1%	155515	 	                      [J]forge.item.generation.BoosterGenerator.getBoosterPack(Lforge/item/SealedTemplateWithSlots;)Ljava/util/List;
+  14.70 MB       1.1%	155039	 	                       [j]forge.item.generation.BoosterGenerator.getPrintSheet(Ljava/lang/String;)Lforge/card/PrintSheet;[synchronized]
+  14.70 MB       1.1%	155039	 	                        [J]forge.item.generation.BoosterGenerator.getPrintSheet(Ljava/lang/String;)Lforge/card/PrintSheet;
+  14.70 MB       1.1%	155039	 	                         [J]forge.item.generation.BoosterGenerator.makeSheet(Ljava/lang/String;Ljava/lang/Iterable;)Lforge/card/PrintSheet;
+  14.70 MB       1.1%	155011	 	                          [J]forge.item.generation.BoosterGenerator.buildExtraPredicate(Ljava/util/List;)Ljava/util/function/Predicate;
+  14.70 MB       1.1%	155011	 	                           [J]forge.item.generation.BoosterGenerator.tryGetStaticSheet(Ljava/lang/String;)Lforge/card/PrintSheet;
+  14.70 MB       1.1%	155011	 	                            [J]forge.StaticData.getPrintSheets()Lforge/util/storage/IStorage;
+  14.70 MB       1.1%	155011	 	                             [j]forge.card.PrintSheet.initializePrintSheets(Ljava/io/File;Lforge/card/CardEdition$Collection;)Lforge/util/storage/IStorage;[clinit]
+  14.70 MB       1.1%	155011	 	                              [J]forge.card.PrintSheet.initializePrintSheets(Ljava/io/File;Lforge/card/CardEdition$Collection;)Lforge/util/storage/IStorage;
+  12.53 MB       1.0%	133046	 	                               [J]forge.card.CardEdition.getPrintSheetsBySection()Ljava/util/List;
+ 313.56 MB      25.4%	1183432	 	          [J]forge.Forge$$Lambda$2.run()V
+ 313.56 MB      25.4%	1183432	 	           [J]forge.Forge.lambda$create$0()V
+ 181.22 MB      14.7%	89540	 	            [j]forge.assets.FSkinFont.preloadAll(Ljava/lang/String;)V[clinit]
+ 181.22 MB      14.7%	89540	 	             [J]forge.assets.FSkinFont.preloadAll(Ljava/lang/String;)V
+ 181.22 MB      14.7%	89540	 	              [J]forge.assets.FSkinFont._get(I)Lforge/assets/FSkinFont;
+ 181.22 MB      14.7%	89540	 	               [J]forge.assets.FSkinFont.<init>(I)V
+ 181.22 MB      14.7%	89540	 	                [J]forge.assets.FSkinFont.updateFont()V
+ 181.22 MB      14.7%	89540	 	                 [J]forge.assets.FSkinFont.generateFont(Lcom/badlogic/gdx/files/FileHandle;Ljava/lang/String;I)V
+ 180.77 MB      14.6%	86460	 	                  [J]com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator.generateData(Lcom/badlogic/gdx/graphics/g2d/freetype/FreeTypeFontGenerator$FreeTypeFontParameter;)Lcom/badlogic/gdx/graphics/g2d/freetype/FreeTypeFontGenerator$FreeTypeBitmapFontData;
+ 180.77 MB      14.6%	86460	 	                   [J]com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator.generateData(Lcom/badlogic/gdx/graphics/g2d/freetype/FreeTypeFontGenerator$FreeTypeFontParameter;Lcom/badlogic/gdx/graphics/g2d/freetype/FreeTypeFontGenerator$FreeTypeBitmapFontData;)Lcom/badlogic/gdx/graphics/g2d/freetype/FreeTypeFontGenerator$FreeTypeBitmapFontData;
+ 170.29 MB      13.8%	85250	 	                    [J]com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator.createGlyph(CLcom/badlogic/gdx/graphics/g2d/freetype/FreeTypeFontGenerator$FreeTypeBitmapFontData;Lcom/badlogic/gdx/graphics/g2d/freetype/FreeTypeFontGenerator$FreeTypeFontParameter;Lcom/badlogic/gdx/graphics/g2d/freetype/FreeType$Stroker;FLcom/badlogic/gdx/graphics/g2d/PixmapPacker;)Lcom/badlogic/gdx/graphics/g2d/BitmapFont$Glyph;
+ 116.50 MB       9.4%	110	 	                     [j]com.badlogic.gdx.graphics.g2d.PixmapPacker.pack(Lcom/badlogic/gdx/graphics/Pixmap;)Lcom/badlogic/gdx/graphics/g2d/PixmapPacker$PixmapPackerRectangle;[synchronized]
+ 116.50 MB       9.4%	110	 	                      [J]com.badlogic.gdx.graphics.g2d.PixmapPacker.pack(Lcom/badlogic/gdx/graphics/Pixmap;)Lcom/badlogic/gdx/graphics/g2d/PixmapPacker$PixmapPackerRectangle;
+ 116.50 MB       9.4%	110	 	                       [j]com.badlogic.gdx.graphics.g2d.PixmapPacker.pack(Ljava/lang/String;Lcom/badlogic/gdx/graphics/Pixmap;)Lcom/badlogic/gdx/graphics/g2d/PixmapPacker$PixmapPackerRectangle;[synchronized]
+ 116.50 MB       9.4%	110	 	                        [J]com.badlogic.gdx.graphics.g2d.PixmapPacker.pack(Ljava/lang/String;Lcom/badlogic/gdx/graphics/Pixmap;)Lcom/badlogic/gdx/graphics/g2d/PixmapPacker$PixmapPackerRectangle;
+ 116.50 MB       9.4%	110	 	                         [J]com.badlogic.gdx.graphics.g2d.PixmapPacker$GuillotineStrategy.pack(Lcom/badlogic/gdx/graphics/g2d/PixmapPacker;Ljava/lang/String;Lcom/badlogic/gdx/graphics/g2d/PixmapPacker$Bounds;)Lcom/badlogic/gdx/graphics/g2d/PixmapPacker$Page;
+ 116.50 MB       9.4%	110	 	                          [J]com.badlogic.gdx.graphics.g2d.PixmapPacker$GuillotineStrategy$GuillotinePage.<init>(Lcom/badlogic/gdx/graphics/g2d/PixmapPacker;)V
+ 116.50 MB       9.4%	110	 	                           [J]com.badlogic.gdx.graphics.g2d.PixmapPacker$Page.<init>(Lcom/badlogic/gdx/graphics/g2d/PixmapPacker;)V
+ 116.50 MB       9.4%	110	 	                            [J]com.badlogic.gdx.graphics.Pixmap.<init>(IILcom/badlogic/gdx/graphics/Pixmap$Format;)V
+ 116.50 MB       9.4%	110	 	                             [J]com.badlogic.gdx.graphics.g2d.Gdx2DPixmap.<init>(III)V
+ 116.50 MB       9.4%	110	 	                              [J]com.badlogic.gdx.graphics.g2d.Gdx2DPixmap.newPixmap([JIII)Ljava/nio/ByteBuffer;
+ 116.50 MB       9.4%	110	 	                               Java_com_badlogic_gdx_graphics_g2d_Gdx2DPixmap_newPixmap
+ 116.50 MB       9.4%	110	 	                                Java_com_badlogic_gdx_graphics_g2d_Gdx2DPixmap_newPixmap___3JIII
+ 116.50 MB       9.4%	110	 	                                 Java_com_badlogic_gdx_graphics_g2d_Gdx2DPixmap_newPixmap
+ 116.50 MB       9.4%	110	 	                                  gdx2d_new
+  37.12 MB       3.0%	21450	 	                     [J]com.badlogic.gdx.graphics.g2d.freetype.FreeType$Bitmap.getPixmap(Lcom/badlogic/gdx/graphics/Pixmap$Format;Lcom/badlogic/gdx/graphics/Color;F)Lcom/badlogic/gdx/graphics/Pixmap;
+  37.12 MB       3.0%	21450	 	                      [J]com.badlogic.gdx.graphics.Pixmap.<init>(IILcom/badlogic/gdx/graphics/Pixmap$Format;)V
+  37.12 MB       3.0%	21450	 	                       [J]com.badlogic.gdx.graphics.g2d.Gdx2DPixmap.<init>(III)V
+  37.12 MB       3.0%	21450	 	                        [J]com.badlogic.gdx.graphics.g2d.Gdx2DPixmap.newPixmap([JIII)Ljava/nio/ByteBuffer;
+  37.12 MB       3.0%	21450	 	                         Java_com_badlogic_gdx_graphics_g2d_Gdx2DPixmap_newPixmap
+  37.12 MB       3.0%	21450	 	                          Java_com_badlogic_gdx_graphics_g2d_Gdx2DPixmap_newPixmap___3JIII
+  37.12 MB       3.0%	21450	 	                           Java_com_badlogic_gdx_graphics_g2d_Gdx2DPixmap_newPixmap
+  37.12 MB       3.0%	21450	 	                            gdx2d_new
+  60.90 MB       4.9%	637386	 	                     [J]forge.card.CardDb.initialize(ZZZ)V
+  39.41 MB       3.1%	413652	 	                      [J]forge.card.CardDb.addSetCard(Lforge/card/CardEdition;Lforge/card/CardEdition$EditionEntry;Lforge/card/CardRules;)V
+  34.60 MB       2.8%	367480	 	                       [J]forge.item.PaperCard.<init>(Lforge/card/CardRules;Ljava/lang/String;Lforge/card/CardRarity;IZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+  34.60 MB       2.8%	367480	 	                        [J]forge.item.PaperCard.<init>(Lforge/card/CardRules;Ljava/lang/String;Lforge/card/CardRarity;IZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;Lforge/item/PaperCard$PaperCardFlags;)V
+  34.60 MB       2.8%	367480	 	                         [j]forge.util.StreamUtil.toSortableName(Ljava/lang/String;)Ljava/lang/String;[clinit]
+  34.60 MB       2.8%	367480	 	                          [J]forge.util.StreamUtil.toSortableName(Ljava/lang/String;)Ljava/lang/String;
+  17.30 MB       1.4%	183740	 	                           [J]java.util.regex.Matcher.reset(Ljava/lang/CharSequence;)Ljava/util/regex/Matcher;
+  17.30 MB       1.4%	183740	 	                            [J]java.util.regex.Matcher.reset(Ljava/lang/CharSequence;II)Ljava/util/regex/Matcher;
+  17.30 MB       1.4%	183740	 	                             [J]java.util.regex.Matcher.resetForInput()V
+  17.30 MB       1.4%	183740	 	                              [J]com.android.icu.util.regex.MatcherNative.setInput(Ljava/lang/String;II)V
+  17.30 MB       1.4%	183740	 	                               [J]com.android.icu.util.regex.MatcherNative.setInputImpl(JLjava/lang/String;II)V
+  17.30 MB       1.4%	183740	 	                                Java_com_android_icu_util_regex_MatcherNative_setInputImpl
+  17.30 MB       1.4%	183740	 	                                 MatcherState::updateInput(_JNIEnv*, _jstring*)
+  14.02 MB       1.1%	91870	 	                                  utext_openUChars_68
+  14.02 MB       1.1%	91870	 	                                   utext_setup_68
+  17.30 MB       1.4%	183740	 	                           [J]java.util.regex.Matcher.replaceAll(Ljava/lang/String;)Ljava/lang/String;
+  17.30 MB       1.4%	183740	 	                            [J]java.util.regex.Matcher.reset()Ljava/util/regex/Matcher;
+  17.30 MB       1.4%	183740	 	                             [J]java.util.regex.Matcher.reset(Ljava/lang/CharSequence;II)Ljava/util/regex/Matcher;
+  17.30 MB       1.4%	183740	 	                              [J]java.util.regex.Matcher.resetForInput()V
+  17.30 MB       1.4%	183740	 	                               [J]com.android.icu.util.regex.MatcherNative.setInput(Ljava/lang/String;II)V
+  17.30 MB       1.4%	183740	 	                                [J]com.android.icu.util.regex.MatcherNative.setInputImpl(JLjava/lang/String;II)V
+  17.30 MB       1.4%	183740	 	                                 Java_com_android_icu_util_regex_MatcherNative_setInputImpl
+  17.30 MB       1.4%	183740	 	                                  MatcherState::updateInput(_JNIEnv*, _jstring*)
+  14.02 MB       1.1%	91870	 	                                   utext_openUChars_68
+  14.02 MB       1.1%	91870	 	                                    utext_setup_68
+  21.48 MB       1.7%	223634	 	                      [J]forge.card.CardDb.reIndex()V
+  21.48 MB       1.7%	223634	 	                       [J]forge.card.CardDb.getFirstNonSpeicalWithImage(Ljava/util/Collection;)Lforge/item/PaperCard;
+  21.48 MB       1.7%	223634	 	                        [J]forge.item.PaperCard.hasImage()Z
+  21.48 MB       1.7%	223634	 	                         [J]forge.item.PaperCard.hasImage(Z)Z
+  21.48 MB       1.7%	223634	 	                          [j]forge.ImageKeys.hasImage(Lforge/item/PaperCard;Z)Z[clinit]
+  21.48 MB       1.7%	223634	 	                           [J]forge.ImageKeys.hasImage(Lforge/item/PaperCard;Z)Z
+  21.10 MB       1.7%	223520	 	                            [J]forge.item.PaperCard.getCardImageKey()Ljava/lang/String;
+  21.10 MB       1.7%	223520	 	                             [j]forge.util.ImageUtil.getImageKey(Lforge/item/PaperCard;Ljava/lang/String;Z)Ljava/lang/String;[clinit]
+  21.10 MB       1.7%	223520	 	                              [J]forge.util.ImageUtil.getImageKey(Lforge/item/PaperCard;Ljava/lang/String;Z)Ljava/lang/String;
+  21.10 MB       1.7%	223520	 	                               [J]forge.util.ImageUtil.getImageRelativePath(Lforge/item/PaperCard;Ljava/lang/String;ZZ)Ljava/lang/String;
+  21.10 MB       1.7%	223520	 	                                [J]forge.util.ImageUtil.toMWSFilename(Ljava/lang/String;)Ljava/lang/String;
+  21.10 MB       1.7%	223520	 	                                 [j]forge.util.StreamUtil.stripAccentsNoAlloc(Ljava/lang/String;)Ljava/lang/String;[clinit]
+  21.10 MB       1.7%	223520	 	                                  [J]forge.util.StreamUtil.stripAccentsNoAlloc(Ljava/lang/String;)Ljava/lang/String;
+  37.16 MB       3.0%	321970	 	                     [J]forge.card.CardEdition$Collection.<init>(Lforge/util/IItemReader;)V
+  37.16 MB       3.0%	321970	 	                      [J]forge.util.storage.StorageBase.<init>(Ljava/lang/String;Lforge/util/IItemReader;)V
+  37.16 MB       3.0%	321970	 	                       [J]forge.util.storage.StorageReaderFolder.readAll()Ljava/util/Map;
+  37.15 MB       3.0%	321964	 	                        [J]forge.card.CardEdition$Reader.read(Ljava/io/File;)Ljava/lang/Object;
+  37.15 MB       3.0%	321964	 	                         [J]forge.card.CardEdition$Reader.read(Ljava/io/File;)Lforge/card/CardEdition;
+  22.18 MB       1.8%	194015	 	                          [j]forge.ios.IosUtil.patternMatcher(Ljava/util/regex/Pattern;Ljava/lang/CharSequence;)Ljava/util/regex/Matcher;[clinit]
+  22.18 MB       1.8%	194015	 	                           [J]forge.ios.IosUtil.patternMatcher(Ljava/util/regex/Pattern;Ljava/lang/CharSequence;)Ljava/util/regex/Matcher;
+  22.18 MB       1.7%	193994	 	                            [J]java.util.regex.Matcher.reset(Ljava/lang/CharSequence;)Ljava/util/regex/Matcher;
+  22.18 MB       1.7%	193994	 	                             [J]java.util.regex.Matcher.reset(Ljava/lang/CharSequence;II)Ljava/util/regex/Matcher;
+  22.18 MB       1.7%	193994	 	                              [J]java.util.regex.Matcher.resetForInput()V
+  22.18 MB       1.7%	193994	 	                               [J]com.android.icu.util.regex.MatcherNative.setInput(Ljava/lang/String;II)V
+  22.18 MB       1.7%	193994	 	                                [J]com.android.icu.util.regex.MatcherNative.setInputImpl(JLjava/lang/String;II)V
+  22.18 MB       1.7%	193994	 	                                 Java_com_android_icu_util_regex_MatcherNative_setInputImpl
+  22.18 MB       1.7%	193994	 	                                  MatcherState::updateInput(_JNIEnv*, _jstring*)
+  14.80 MB       1.2%	96997	 	                                   utext_openUChars_68
+  14.80 MB       1.2%	96997	 	                                    utext_setup_68
+  20.52 MB       1.6%	158	 	                     [J]forge.CardStorageReader.loadCards()Ljava/lang/Iterable;
+  20.23 MB       1.6%	37	 	                      [J]forge.CardStorageReader.executeLoadTask(Ljava/util/Collection;Ljava/util/List;Ljava/util/concurrent/CountDownLatch;)V
+  20.23 MB       1.6%	37	 	                       [J]java.util.concurrent.AbstractExecutorService.invokeAll(Ljava/util/Collection;JLjava/util/concurrent/TimeUnit;)Ljava/util/List;
+  20.23 MB       1.6%	37	 	                        [J]java.util.concurrent.ThreadPoolExecutor.execute(Ljava/lang/Runnable;)V
+  20.23 MB       1.6%	37	 	                         [J]java.util.concurrent.ThreadPoolExecutor.addWorker(Ljava/lang/Runnable;Z)Z
+  20.23 MB       1.6%	37	 	                          [j]java.lang.Thread.start()V[synchronized]
+  20.23 MB       1.6%	37	 	                           [J]java.lang.Thread.start()V
+  20.23 MB       1.6%	37	 	                            [J]java.lang.Thread.internalStart(Ljava/lang/Thread;)V
+  20.23 MB       1.6%	37	 	                             rvmStartThread
+  20.23 MB       1.6%	37	 	                              GC_pthread_create
+  20.23 MB       1.6%	37	 	                               _pthread_create
+  12.56 MB       1.0%	132369	 	                     [J]forge.card.CardDb.<init>(Ljava/util/Map;Lforge/card/CardEdition$Collection;Ljava/util/Set;)V
+  12.56 MB       1.0%	132369	 	                      [J]forge.card.CardDb.addFaceToDbNames(Lforge/card/ICardFace;)V
+  12.48 MB       1.0%	131613	 	                       [j]forge.util.StreamUtil.stripAccentsNoAlloc(Ljava/lang/String;)Ljava/lang/String;[clinit]
+  12.48 MB       1.0%	131613	 	                        [J]forge.util.StreamUtil.stripAccentsNoAlloc(Ljava/lang/String;)Ljava/lang/String;
+
+
+Bytes Used	Count		Symbol Name
+ 299.42 MB      24.2%	127408	 	start
+ 299.42 MB      24.2%	127408	 	 main
+ 297.64 MB      24.1%	126421	 	  rvmRun
+ 297.64 MB      24.1%	126421	 	   rvmCallVoidClassMethod
+ 297.64 MB      24.1%	126421	 	    rvmCallVoidClassMethodA
+ 297.24 MB      24.1%	126299	 	     callVoidMethod
+ 297.24 MB      24.1%	126299	 	      _call0
+ 297.24 MB      24.1%	126299	 	       [J]forge.ios.Main.main([Ljava/lang/String;)V
+ 297.12 MB      24.1%	126168	 	        [j]org.robovm.apple.uikit.UIApplication.main([Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Class;)V[clinit]
+ 297.12 MB      24.1%	126168	 	         [J]org.robovm.apple.uikit.UIApplication.main([Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Class;)V
+ 297.12 MB      24.1%	126168	 	          [J]org.robovm.apple.uikit.UIApplication.main(ILorg/robovm/rt/bro/ptr/BytePtr$BytePtrPtr;Ljava/lang/String;Ljava/lang/String;)I
+ 297.12 MB      24.1%	126168	 	           UIApplicationMain
+ 295.99 MB      24.0%	123853	 	            -[UIApplication _run]
+ 295.95 MB      24.0%	123776	 	             GSEventRunModal
+ 295.95 MB      24.0%	123776	 	              _CFRunLoopRunSpecificWithOptions
+ 295.95 MB      24.0%	123776	 	               __CFRunLoopRun
+ 184.00 MB      14.9%	118706	 	                __CFRunLoopDoSources0
+ 184.00 MB      14.9%	118679	 	                 __CFRunLoopDoSource0
+ 184.00 MB      14.9%	118679	 	                  __CFRUNLOOP_IS_CALLING_OUT_TO_A_SOURCE0_PERFORM_FUNCTION__
+ 146.48 MB      11.8%	81668	 	                   UC::DriverCore::continueProcessing()
+ 146.48 MB      11.8%	81643	 	                    schedulerStepScheduledMainSectionContinue
+ 146.48 MB      11.8%	81641	 	                     _UIUpdateSequenceRunNext
+ 146.12 MB      11.8%	78207	 	                      CA::Display::DisplayLink::dispatch_deferred_display_links(unsigned int)
+ 146.12 MB      11.8%	78207	 	                       CA::Display::DisplayLink::dispatch_items(unsigned long long, unsigned long long, unsigned long long)
+ 146.12 MB      11.8%	78184	 	                        CA::Display::DisplayLinkItem::dispatch_(CA::SignPost::Interval<(CA::SignPost::CAEventCode)835322056>&)
+ 146.12 MB      11.8%	78184	 	                         -[GLKViewController _updateAndDraw]
+  73.34 MB       5.9%	64104	 	                          -[GLKView _display:]
+  64.29 MB       5.2%	33070	 	                           0x10511232c
+  64.29 MB       5.2%	33070	 	                            0x1051121f0
+  64.29 MB       5.2%	33070	 	                             [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics$1.$cb$drawRect$(Lcom/badlogic/gdx/backends/iosrobovm/IOSGraphics$1;Lorg/robovm/objc/Selector;Lorg/robovm/apple/coregraphics/CGRect;)V
+  64.29 MB       5.2%	33070	 	                              [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics$1.draw(Lorg/robovm/apple/coregraphics/CGRect;)V
+  64.29 MB       5.2%	33070	 	                               [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics.draw(Lorg/robovm/apple/glkit/GLKView;Lorg/robovm/apple/coregraphics/CGRect;)V
+  62.10 MB       5.0%	33066	 	                                [J]forge.Forge.render()V
+  43.46 MB       3.5%	6457	 	                                 [J]forge.screens.FScreen.draw(Lforge/Graphics;)V
+  43.46 MB       3.5%	6457	 	                                  [J]forge.toolbox.FContainer.draw(Lforge/Graphics;)V
+  43.40 MB       3.5%	5593	 	                                   [J]forge.Graphics.draw(Lforge/toolbox/FDisplayObject;)V
+  43.40 MB       3.5%	5581	 	                                    [J]forge.toolbox.FContainer.draw(Lforge/Graphics;)V
+  43.40 MB       3.5%	5581	 	                                     [J]forge.Graphics.draw(Lforge/toolbox/FDisplayObject;)V
+  43.40 MB       3.5%	5581	 	                                      [J]forge.toolbox.FContainer.draw(Lforge/Graphics;)V
+  43.40 MB       3.5%	5581	 	                                       [J]forge.Graphics.draw(Lforge/toolbox/FDisplayObject;)V
+  43.40 MB       3.5%	5581	 	                                        [J]forge.toolbox.FScrollPane.draw(Lforge/Graphics;)V
+  43.40 MB       3.5%	5581	 	                                         [J]forge.toolbox.FContainer.draw(Lforge/Graphics;)V
+  43.40 MB       3.5%	5581	 	                                          [J]forge.Graphics.draw(Lforge/toolbox/FDisplayObject;)V
+  43.40 MB       3.5%	5581	 	                                           [J]forge.itemmanager.views.ImageView$Group.draw(Lforge/Graphics;)V
+  43.40 MB       3.5%	5581	 	                                            [J]forge.itemmanager.views.ImageView$Pile.draw(Lforge/Graphics;)V
+  43.40 MB       3.5%	5581	 	                                             [J]forge.itemmanager.views.ImageView$ItemInfo.draw(Lforge/Graphics;)V
+  31.83 MB       2.5%	5550	 	                                              [j]forge.card.CardRenderer.drawCard(Lforge/Graphics;Lforge/item/IPaperCard;FFFFLforge/card/CardRenderer$CardStackPosition;)V[clinit]
+  31.83 MB       2.5%	5550	 	                                               [J]forge.card.CardRenderer.drawCard(Lforge/Graphics;Lforge/item/IPaperCard;FFFFLforge/card/CardRenderer$CardStackPosition;)V
+  25.10 MB       2.0%	445	 	                                                [J]forge.CachedCardImage.getImage()Lcom/badlogic/gdx/graphics/Texture;
+  25.10 MB       2.0%	445	 	                                                 [J]forge.assets.ImageCache.getImage(Ljava/lang/String;Z)Lcom/badlogic/gdx/graphics/Texture;
+  25.10 MB       2.0%	445	 	                                                  [J]forge.assets.ImageCache.getImage(Ljava/lang/String;ZZ)Lcom/badlogic/gdx/graphics/Texture;
+  25.10 MB       2.0%	419	 	                                                   [J]forge.assets.ImageCache.loadAsset(Ljava/lang/String;Ljava/io/File;Z)Lcom/badlogic/gdx/graphics/Texture;
+  25.10 MB       2.0%	379	 	                                                    [J]forge.assets.ImageCache.getpixelColor(Ljava/lang/String;)Ljava/lang/String;
+  25.10 MB       2.0%	379	 	                                                     [J]com.badlogic.gdx.graphics.Pixmap.<init>(Lcom/badlogic/gdx/files/FileHandle;)V
+  25.09 MB       2.0%	130	 	                                                      [J]com.badlogic.gdx.graphics.g2d.Gdx2DPixmap.<init>([BIII)V
+  25.09 MB       2.0%	130	 	                                                       [J]com.badlogic.gdx.graphics.g2d.Gdx2DPixmap.load([J[BII)Ljava/nio/ByteBuffer;
+  25.09 MB       2.0%	130	 	                                                        Java_com_badlogic_gdx_graphics_g2d_Gdx2DPixmap_load
+  25.09 MB       2.0%	130	 	                                                         Java_com_badlogic_gdx_graphics_g2d_Gdx2DPixmap_load___3J_3BII
+  25.09 MB       2.0%	130	 	                                                          Java_com_badlogic_gdx_graphics_g2d_Gdx2DPixmap_load
+  25.09 MB       2.0%	130	 	                                                           gdx2d_load
+  25.09 MB       2.0%	120	 	                                                            0x10a470b64
+  25.09 MB       2.0%	120	 	                                                             0x10a4770c8
+  15.16 MB       1.2%	60	 	                                                              0x10a480058
+  15.16 MB       1.2%	60	 	                                                               0x10a481640
+  15.97 MB       1.2%	15687	 	                                 [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glClear(I)V
+  15.97 MB       1.2%	15687	 	                                  Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glClear
+  15.97 MB       1.2%	15687	 	                                   Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glClear__I
+  15.97 MB       1.2%	15687	 	                                    glClear_Exec
+  15.97 MB       1.2%	15685	 	                                     gldClearFramebufferData
+  72.78 MB       5.9%	14080	 	                          [j]com.badlogic.gdx.backends.iosrobovm.IOSGraphics$IOSViewDelegate.$cb$glkViewControllerUpdate$(Lcom/badlogic/gdx/backends/iosrobovm/IOSGraphics$IOSViewDelegate;Lorg/robovm/objc/Selector;Lorg/robovm/apple/glkit/GLKViewController;)V[callback]
+  72.78 MB       5.9%	14080	 	                           [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics$IOSViewDelegate.$cb$glkViewControllerUpdate$(Lcom/badlogic/gdx/backends/iosrobovm/IOSGraphics$IOSViewDelegate;Lorg/robovm/objc/Selector;Lorg/robovm/apple/glkit/GLKViewController;)V
+  72.78 MB       5.9%	14080	 	                            [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics$IOSViewDelegate.update(Lorg/robovm/apple/glkit/GLKViewController;)V
+  72.78 MB       5.9%	14080	 	                             [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics.update(Lorg/robovm/apple/glkit/GLKViewController;)V
+  72.78 MB       5.9%	14080	 	                              [J]com.badlogic.gdx.backends.iosrobovm.IOSApplication.processRunnables()V
+  49.23 MB       3.9%	93	 	                               [J]forge.screens.LoadingOverlay$$Lambda$4.run()V
+  49.23 MB       3.9%	93	 	                                [j]forge.screens.LoadingOverlay.lambda$show$1(Ljava/lang/Runnable;Lforge/screens/LoadingOverlay;)V[clinit]
+  49.23 MB       3.9%	93	 	                                 [J]forge.screens.LoadingOverlay.lambda$show$1(Ljava/lang/Runnable;Lforge/screens/LoadingOverlay;)V
+  49.23 MB       3.9%	93	 	                                  [J]forge.screens.limited.NewDraftScreen$$Lambda$1.run()V
+  49.23 MB       3.9%	93	 	                                   [j]forge.gamemodes.limited.BoosterDraft.initializeCustomDrafts()V[clinit]
+  49.23 MB       3.9%	93	 	                                    [J]forge.gamemodes.limited.BoosterDraft.initializeCustomDrafts()V
+  49.23 MB       3.9%	93	 	                                     [J]forge.gamemodes.limited.BoosterDraft.loadCustomDrafts()Ljava/util/List;
+  49.22 MB       3.9%	90	 	                                      [j]forge.util.StreamUtil.completableFutureSupplyAsync(Ljava/util/function/Supplier;)Ljava/util/concurrent/CompletableFuture;[clinit]
+  49.22 MB       3.9%	90	 	                                       [J]forge.util.StreamUtil.completableFutureSupplyAsync(Ljava/util/function/Supplier;)Ljava/util/concurrent/CompletableFuture;
+  49.22 MB       3.9%	90	 	                                        [j]java.util.concurrent.CompletableFuture.supplyAsync(Ljava/util/function/Supplier;Ljava/util/concurrent/Executor;)Ljava/util/concurrent/CompletableFuture;[clinit]
+  49.22 MB       3.9%	90	 	                                         [J]java.util.concurrent.CompletableFuture.supplyAsync(Ljava/util/function/Supplier;Ljava/util/concurrent/Executor;)Ljava/util/concurrent/CompletableFuture;
+  49.22 MB       3.9%	90	 	                                          [J]java.util.concurrent.CompletableFuture.asyncSupplyStage(Ljava/util/concurrent/Executor;Ljava/util/function/Supplier;)Ljava/util/concurrent/CompletableFuture;
+  49.22 MB       3.9%	90	 	                                           [J]java.util.concurrent.ThreadPoolExecutor.execute(Ljava/lang/Runnable;)V
+  49.22 MB       3.9%	90	 	                                            [J]java.util.concurrent.ThreadPoolExecutor.addWorker(Ljava/lang/Runnable;Z)Z
+  49.22 MB       3.9%	90	 	                                             [j]java.lang.Thread.start()V[synchronized]
+  49.22 MB       3.9%	90	 	                                              [J]java.lang.Thread.start()V
+  49.22 MB       3.9%	90	 	                                               [J]java.lang.Thread.internalStart(Ljava/lang/Thread;)V
+  49.22 MB       3.9%	90	 	                                                rvmStartThread
+  49.22 MB       3.9%	90	 	                                                 GC_pthread_create
+  49.22 MB       3.9%	90	 	                                                  _pthread_create
+  12.84 MB       1.0%	2221	 	                               [J]forge.assets.FSkinFont$1.run()V
+  12.80 MB       1.0%	1598	 	                                [j]forge.assets.BitmapFontWriter.writePixmaps(Lcom/badlogic/gdx/utils/Array;Lcom/badlogic/gdx/files/FileHandle;Ljava/lang/String;)[Ljava/lang/String;[clinit]
+  12.80 MB       1.0%	1598	 	                                 [J]forge.assets.BitmapFontWriter.writePixmaps(Lcom/badlogic/gdx/utils/Array;Lcom/badlogic/gdx/files/FileHandle;Ljava/lang/String;)[Ljava/lang/String;
+  12.80 MB       1.0%	1598	 	                                  [J]forge.assets.BitmapFontWriter.writePixmaps([Lcom/badlogic/gdx/graphics/Pixmap;Lcom/badlogic/gdx/files/FileHandle;Ljava/lang/String;)[Ljava/lang/String;
+  12.80 MB       1.0%	1598	 	                                   [j]com.badlogic.gdx.graphics.PixmapIO.writePNG(Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/graphics/Pixmap;)V[clinit]
+  12.80 MB       1.0%	1598	 	                                    [J]com.badlogic.gdx.graphics.PixmapIO.writePNG(Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/graphics/Pixmap;)V
+  12.80 MB       1.0%	1598	 	                                     [J]com.badlogic.gdx.graphics.PixmapIO.writePNG(Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/graphics/Pixmap;IZ)V
+  12.76 MB       1.0%	282	 	                                      [J]com.badlogic.gdx.graphics.PixmapIO$PNG.<init>(I)V
+  12.76 MB       1.0%	282	 	                                       [J]java.util.zip.Deflater.<init>()V
+  12.76 MB       1.0%	282	 	                                        [J]java.util.zip.Deflater.<init>(IZ)V
+  12.76 MB       1.0%	282	 	                                         [J]java.util.zip.Deflater.init(IIZ)J
+  12.76 MB       1.0%	282	 	                                          Java_java_util_zip_Deflater_init
+  12.76 MB       1.0%	235	 	                                           deflateInit2_
+  37.51 MB       3.0%	36960	 	                   BSServiceMainRunLoopSourceHandler
+  37.51 MB       3.0%	36959	 	                    __BSSERVICEMAINRUNLOOPQUEUE_IS_CALLING_OUT_TO_A_BLOCK__
+  37.51 MB       3.0%	36959	 	                     _dispatch_block_invoke_direct
+  37.51 MB       3.0%	36959	 	                      _dispatch_client_callout
+  37.36 MB       3.0%	35621	 	                       -[FBSWorkspace _calloutQueue_executeCalloutFromSource:withBlock:]
+  36.54 MB       2.9%	26614	 	                        __92-[FBSWorkspaceScenesClient createSceneWithIdentity:parameters:transitionContext:completion:]_block_invoke_2
+  36.54 MB       2.9%	26614	 	                         -[FBSWorkspaceScenesClient _callOutQueue_sendDidCreateForScene:transitionContext:completion:]
+  36.54 MB       2.9%	26596	 	                          -[FBSWorkspace _calloutQueue_executeCalloutFromSource:withBlock:]
+  36.54 MB       2.9%	26595	 	                           __93-[FBSWorkspaceScenesClient _callOutQueue_sendDidCreateForScene:transitionContext:completion:]_block_invoke.349
+  36.54 MB       2.9%	26594	 	                            -[FBSScene _callOutQueue_didCreateWithTransitionContext:alternativeCreationCallout:completion:]
+  36.53 MB       2.9%	26436	 	                             -[FBSScene _callOutQueue_maybeCoalesceClientSettingsUpdates:]
+  36.49 MB       2.9%	26172	 	                              __95-[FBSScene _callOutQueue_didCreateWithTransitionContext:alternativeCreationCallout:completion:]_block_invoke
+  36.47 MB       2.9%	25783	 	                               -[UIApplicationSceneClientAgent scene:didInitializeWithEvent:completion:]
+  36.47 MB       2.9%	25780	 	                                -[UIApplication workspace:didCreateScene:withTransitionContext:completion:]
+  36.21 MB       2.9%	24238	 	                                 -[UIScene scene:didUpdateWithDiff:transitionContext:completion:]
+  36.21 MB       2.9%	24229	 	                                  -[UIScene _emitSceneSettingsUpdateResponseForCompletion:afterSceneUpdateWork:]
+  36.21 MB       2.9%	24167	 	                                   __64-[UIScene scene:didUpdateWithDiff:transitionContext:completion:]_block_invoke.218
+  36.21 MB       2.9%	24104	 	                                    -[_UIWindowSceneFBSSceneTransitionContextDrivenLifecycleSettingsDiffAction _performActionsForUIScene:withUpdatedFBSScene:settingsDiff:fromSettings:transitionContext:lifecycleActionType:]
+  36.20 MB       2.9%	24103	 	                                     _UISceneSettingsDiffActionPerformChangesWithTransitionContextAndCompletion
+  36.20 MB       2.9%	24099	 	                                      +[BSAnimationSettings(UIKit) tryAnimatingWithSettings:fromCurrentState:actions:completion:]
+  36.20 MB       2.9%	24099	 	                                       __186-[_UIWindowSceneFBSSceneTransitionContextDrivenLifecycleSettingsDiffAction _performActionsForUIScene:withUpdatedFBSScene:settingsDiff:fromSettings:transitionContext:lifecycleActionType:]_block_invoke
+  36.20 MB       2.9%	24062	 	                                        -[_UISceneLifecycleMultiplexer uiScene:transitionedFromState:withTransitionContext:]
+  36.20 MB       2.9%	24055	 	                                         -[_UISceneLifecycleMultiplexer _evalTransitionToSettings:fromSettings:forceExit:withTransitionStore:]
+  36.19 MB       2.9%	24007	 	                                          -[_UISceneLifecycleMultiplexer _performBlock:withApplicationOfDeactivationReasons:fromReasons:]
+  36.13 MB       2.9%	23999	 	                                           __101-[_UISceneLifecycleMultiplexer _evalTransitionToSettings:fromSettings:forceExit:withTransitionStore:]_block_invoke
+  36.12 MB       2.9%	23893	 	                                            _UIScenePerformActionsWithLifecycleActionMask
+  35.93 MB       2.9%	23852	 	                                             -[_UISceneLifecycleMultiplexer completeApplicationLaunchWithFBSScene:transitionContext:]
+  35.84 MB       2.9%	23833	 	                                              -[UIApplication _runWithMainScene:transitionContext:completion:]
+  35.71 MB       2.8%	23564	 	                                               -[UIApplication _callInitializationDelegatesWithActions:forScene:payload:fromOriginatingProcess:]
+  35.71 MB       2.8%	23553	 	                                                -[UIApplication _handleDelegateCallbacksWithOptions:isSuspended:restoreState:]
+  35.71 MB       2.8%	23539	 	                                                 [j]com.badlogic.gdx.backends.iosrobovm.IOSApplication$Delegate.$cb$application$didFinishLaunchingWithOptions$(Lcom/badlogic/gdx/backends/iosrobovm/IOSApplication$Delegate;Lorg/robovm/objc/Selector;Lorg/robovm/apple/uikit/UIApplication;Lorg/robovm/apple/uikit/UIApplicationLaunchOptions;)Z[callback]
+  35.71 MB       2.8%	23539	 	                                                  [J]com.badlogic.gdx.backends.iosrobovm.IOSApplication$Delegate.$cb$application$didFinishLaunchingWithOptions$(Lcom/badlogic/gdx/backends/iosrobovm/IOSApplication$Delegate;Lorg/robovm/objc/Selector;Lorg/robovm/apple/uikit/UIApplication;Lorg/robovm/apple/uikit/UIApplicationLaunchOptions;)Z
+  35.71 MB       2.8%	23539	 	                                                   [J]forge.ios.Main.didFinishLaunching(Lorg/robovm/apple/uikit/UIApplication;Lorg/robovm/apple/uikit/UIApplicationLaunchOptions;)Z
+  35.70 MB       2.8%	23500	 	                                                    [J]com.badlogic.gdx.backends.iosrobovm.IOSApplication$Delegate.didFinishLaunching(Lorg/robovm/apple/uikit/UIApplication;Lorg/robovm/apple/uikit/UIApplicationLaunchOptions;)Z
+  35.56 MB       2.8%	22993	 	                                                     [J]com.badlogic.gdx.backends.iosrobovm.IOSApplication.didFinishLaunching(Lorg/robovm/apple/uikit/UIApplication;Lorg/robovm/apple/uikit/UIApplicationLaunchOptions;)Z
+  24.85 MB       2.0%	17174	 	                                                      [J]org.robovm.apple.glkit.GLKView.display()V
+  24.85 MB       2.0%	17174	 	                                                       [j]org.robovm.objc.$M.void_objc_msgSend_instance(Lorg/robovm/apple/foundation/NSObject;Lorg/robovm/objc/Selector;)V[clinit]
+  24.85 MB       2.0%	17174	 	                                                        [J]org.robovm.objc.$M.void_objc_msgSend_instance(Lorg/robovm/apple/foundation/NSObject;Lorg/robovm/objc/Selector;)V
+  24.85 MB       2.0%	17174	 	                                                         [J]org.robovm.objc.$M.void_objc_msgSendSuper(Lorg/robovm/objc/ObjCSuper;Lorg/robovm/objc/Selector;)V
+  24.85 MB       2.0%	17174	 	                                                          -[GLKView _display:]
+  20.88 MB       1.6%	16869	 	                                                           0x10511232c
+  20.88 MB       1.6%	16869	 	                                                            0x1051121f0
+  20.88 MB       1.6%	16869	 	                                                             [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics$1.$cb$drawRect$(Lcom/badlogic/gdx/backends/iosrobovm/IOSGraphics$1;Lorg/robovm/objc/Selector;Lorg/robovm/apple/coregraphics/CGRect;)V
+  20.88 MB       1.6%	16869	 	                                                              [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics$1.draw(Lorg/robovm/apple/coregraphics/CGRect;)V
+  20.88 MB       1.6%	16869	 	                                                               [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics.draw(Lorg/robovm/apple/glkit/GLKView;Lorg/robovm/apple/coregraphics/CGRect;)V
+  20.88 MB       1.6%	16869	 	                                                                [J]forge.Forge.render()V
+  16.95 MB       1.3%	16769	 	                                                                 [J]forge.toolbox.FContainer.draw(Lforge/Graphics;)V
+  16.95 MB       1.3%	16769	 	                                                                  [J]forge.screens.SplashScreen.drawBackground(Lforge/Graphics;)V
+  16.95 MB       1.3%	16769	 	                                                                   [J]forge.screens.SplashScreen$BGAnimation.drawBackground(Lforge/Graphics;)V
+  16.95 MB       1.3%	16769	 	                                                                    [J]forge.screens.SplashScreen.showSplash(Lforge/Graphics;F)V
+  16.95 MB       1.3%	16769	 	                                                                     [J]forge.screens.SplashScreen.drawDisclaimer(Lforge/Graphics;)V
+ 111.55 MB       9.0%	3717	 	                __CFRunLoopDoSource1
+ 111.55 MB       9.0%	3717	 	                 __CFRUNLOOP_IS_CALLING_OUT_TO_A_SOURCE1_PERFORM_FUNCTION__
+ 111.55 MB       9.0%	3717	 	                  __CFMachPortPerform
+ 111.55 MB       9.0%	3717	 	                   UC::DriverCore::continueProcessing()
+ 111.55 MB       9.0%	3717	 	                    schedulerStepScheduledMainSectionContinue
+ 111.55 MB       9.0%	3717	 	                     _UIUpdateSequenceRunNext
+ 111.55 MB       9.0%	3704	 	                      CA::Display::DisplayLink::dispatch_deferred_display_links(unsigned int)
+ 111.55 MB       9.0%	3704	 	                       CA::Display::DisplayLink::dispatch_items(unsigned long long, unsigned long long, unsigned long long)
+ 111.55 MB       9.0%	3704	 	                        CA::Display::DisplayLinkItem::dispatch_(CA::SignPost::Interval<(CA::SignPost::CAEventCode)835322056>&)
+ 111.55 MB       9.0%	3704	 	                         -[GLKViewController _updateAndDraw]
+ 107.54 MB       8.7%	2158	 	                          [j]com.badlogic.gdx.backends.iosrobovm.IOSGraphics$IOSViewDelegate.$cb$glkViewControllerUpdate$(Lcom/badlogic/gdx/backends/iosrobovm/IOSGraphics$IOSViewDelegate;Lorg/robovm/objc/Selector;Lorg/robovm/apple/glkit/GLKViewController;)V[callback]
+ 107.54 MB       8.7%	2158	 	                           [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics$IOSViewDelegate.$cb$glkViewControllerUpdate$(Lcom/badlogic/gdx/backends/iosrobovm/IOSGraphics$IOSViewDelegate;Lorg/robovm/objc/Selector;Lorg/robovm/apple/glkit/GLKViewController;)V
+ 107.54 MB       8.7%	2158	 	                            [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics$IOSViewDelegate.update(Lorg/robovm/apple/glkit/GLKViewController;)V
+ 107.54 MB       8.7%	2158	 	                             [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics.update(Lorg/robovm/apple/glkit/GLKViewController;)V
+ 107.54 MB       8.7%	2158	 	                              [J]com.badlogic.gdx.backends.iosrobovm.IOSApplication.processRunnables()V
+  95.77 MB       7.7%	1757	 	                               [J]forge.Forge$$Lambda$14.run()V
+  95.77 MB       7.7%	1757	 	                                [J]forge.Forge.lambda$afterDbLoaded$1()V
+  94.68 MB       7.6%	1755	 	                                 [j]forge.assets.FSkin.loadFull(Lforge/screens/SplashScreen;)V[clinit]
+  94.68 MB       7.6%	1755	 	                                  [J]forge.assets.FSkin.loadFull(Lforge/screens/SplashScreen;)V
+  94.68 MB       7.6%	1699	 	                                   [J]com.badlogic.gdx.graphics.Pixmap.<init>(Lcom/badlogic/gdx/files/FileHandle;)V
+  94.63 MB       7.6%	52	 	                                    [J]com.badlogic.gdx.graphics.g2d.Gdx2DPixmap.<init>([BIII)V
+  94.63 MB       7.6%	52	 	                                     [J]com.badlogic.gdx.graphics.g2d.Gdx2DPixmap.load([J[BII)Ljava/nio/ByteBuffer;
+  94.63 MB       7.6%	52	 	                                      Java_com_badlogic_gdx_graphics_g2d_Gdx2DPixmap_load
+  94.63 MB       7.6%	52	 	                                       Java_com_badlogic_gdx_graphics_g2d_Gdx2DPixmap_load___3J_3BII
+  94.63 MB       7.6%	52	 	                                        Java_com_badlogic_gdx_graphics_g2d_Gdx2DPixmap_load
+  94.63 MB       7.6%	52	 	                                         gdx2d_load
+  94.62 MB       7.6%	45	 	                                          0x10a470b64
+  94.62 MB       7.6%	45	 	                                           0x10a4770c8
+  94.47 MB       7.6%	37	 	                                            0x10a482e9c
+  18.00 MB       1.4%	7	 	                                             0x10a486088
+
+

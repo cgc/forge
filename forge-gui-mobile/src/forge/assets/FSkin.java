@@ -402,17 +402,12 @@ public class FSkin {
             pxDefaultSleeves = new Pixmap(f8);
             //default avatar
             Forge.getAssets().loadTexture(f4);
-            System.err.println("[FSkin] avatar sprite f4=" + f4.path()
-                    + " exists=" + f4.exists()
-                    + " size=" + pxDefaultAvatars.getWidth() + "x" + pxDefaultAvatars.getHeight());
             //sleeves first set
             Forge.getAssets().loadTexture(f8);
             //preferred avatar
             if (f5.exists()) {
                 pxPreferredAvatars = new Pixmap(f5);
                 Forge.getAssets().loadTexture(f5);
-                System.err.println("[FSkin] preferred avatar sprite f5=" + f5.path()
-                        + " size=" + pxPreferredAvatars.getWidth() + "x" + pxPreferredAvatars.getHeight());
 
                 final int pw = pxPreferredAvatars.getWidth();
                 final int ph = pxPreferredAvatars.getHeight();
@@ -441,7 +436,6 @@ public class FSkin {
                     }
                 }
             }
-            System.err.println("[FSkin] avatars assembled: count=" + counter);
             if (f20.exists()) {
                 pxPreferredSleeves = new Pixmap(f20);
                 Forge.getAssets().loadTexture(f20);

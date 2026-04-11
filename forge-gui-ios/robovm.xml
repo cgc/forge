@@ -63,6 +63,7 @@
     <pattern>org.apache.harmony.security.**</pattern>
     <pattern>org.apache.xalan.processor.TransformerFactoryImpl</pattern>
     <pattern>com.badlogic.gdx.controllers.IosControllerManager</pattern>
+    <pattern>forge.util.StreamUtil</pattern>
     <pattern>com.ray3k.tenpatch.TenPatchDrawable</pattern>
   </forceLinkClasses>
   <frameworks>
