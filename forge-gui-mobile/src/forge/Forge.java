@@ -30,6 +30,7 @@ import forge.gui.GuiBase;
 import forge.gui.error.BugReporter;
 import forge.interfaces.IDeviceAdapter;
 import forge.localinstance.properties.ForgeConstants;
+import com.badlogic.gdx.scenes.scene2d.utils.ScissorStack;
 import forge.localinstance.properties.ForgePreferences;
 import forge.localinstance.properties.ForgePreferences.FPref;
 import forge.model.FModel;
@@ -49,8 +50,6 @@ import forge.util.*;
 import io.sentry.ScopeType;
 import io.sentry.Sentry;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.Consumer;
 
@@ -176,9 +175,12 @@ public class Forge implements ApplicationListener {
         if (OperatingSystem.isWindows())
             getDeviceAdapter().closeSplashScreen();
 
-        GuiBase.setIsAndroid(Gdx.app.getType() == Application.ApplicationType.Android);
+        GuiBase.setIsAndroid(Gdx.app.getType() == Application.ApplicationType.Android
+                || Gdx.app.getType() == Application.ApplicationType.iOS);
+        GuiBase.setIsIOS(Gdx.app.getType() == Application.ApplicationType.iOS);
 
-        if (!GuiBase.isAndroid() || (androidVersion > 25 && totalDeviceRAM > 3400)) {
+        // isIOS() guard: iOS sets isAndroid()=true but androidVersion=0; iOS is modern and should allow card backgrounds
+        if (!GuiBase.isAndroid() || GuiBase.isIOS() || (androidVersion > 25 && totalDeviceRAM > 3400)) {
             allowCardBG = true;
         }
         assets = new Assets();
@@ -200,7 +202,7 @@ public class Forge implements ApplicationListener {
          */
         Gdx.input.setCatchKey(Keys.BACK, true);
         destroyThis = true; //Prevent back()
-        if (Files.exists(Paths.get(ForgeConstants.DEFAULT_SKINS_DIR+ForgeConstants.ADV_TEXTURE_BG_FILE)))
+        if (FileUtil.doesFileExist(ForgeConstants.DEFAULT_SKINS_DIR+ForgeConstants.ADV_TEXTURE_BG_FILE))
             selector = getForgePreferences().getPref(FPref.UI_SELECTOR_MODE);
         boolean landscapeMode = !isPortraitMode;
         //update landscape mode preference if it doesn't match what the app loaded as
@@ -239,8 +241,57 @@ public class Forge implements ApplicationListener {
             if (totalDeviceRAM > 5000) //devices with more than 10GB RAM will have 600 Cache size, 400 Cache size for morethan 5GB RAM
                 cacheSize = totalDeviceRAM > 10000 ? 600 : 400;
         }
+        if (GuiBase.isIOS()) {
+            // iOS enforces a strict per-process active-memory limit (jetsam / memorystatus),
+            // typically ~50% of physical RAM.  On a 4 GB iPhone SE 3rd gen this is ~2 GB.
+            // Unlike Android (which can page memory), iOS will SIGKILL the app instantly
+            // when the limit is exceeded with no chance to recover.
+            //
+            // Card textures are the largest single controllable memory pool: at ~1.3 MB per
+            // card (RGBA8888, 488×680 → 488×680×4 bytes) the default cache of 300 cards ≈ 381 MB.  Reducing
+            // the ceiling here directly lowers peak memory during drafts, where the user
+            // cycles through hundreds of unique cards in succession.
+            //
+            // A RoboVM heapMaximum is also set in robovm.xml (1280 m) to cap the JVM heap.
+            // The tiers below are sized to leave ~300-500 MB headroom below the iOS kill
+            // limit after accounting for the JVM heap cap, skin/font textures, and the
+            // GL driver's own buffers.
+            final int iosCacheCap;
+            if (totalDeviceRAM <= 0) {
+                // RAM unknown (detection failed or pre-detection build): use the same
+                // conservative cap as the ≤ 4 GB tier, because the tightest plausible
+                // device (iPhone SE 3rd gen, 4 GB) is also the most common iOS target.
+                iosCacheCap = 100;
+            } else if (totalDeviceRAM <= 4096) {
+                // ≤ 4 GB devices: iPhone SE 2nd/3rd gen, iPhone 11, 12 mini, etc.
+                // iOS kill limit ≈ 2 GB.
+                iosCacheCap = 100;
+            } else if (totalDeviceRAM <= 6144) {
+                // ≤ 6 GB devices: iPhone 13, 14, etc.
+                // iOS kill limit ≈ 3 GB.
+                iosCacheCap = 150;
+            } else {
+                // > 6 GB devices: iPhone 15 Pro, 16+.
+                // Kill limit ≈ 4+ GB; still below desktop default of 300.
+                iosCacheCap = 200;
+            }
+            if (cacheSize > iosCacheCap)
+                cacheSize = iosCacheCap;
+        }
         if (!initialized) {
             initialized = true;
+
+            // Keep continuous rendering ON for the entire DB-loading phase so that
+            // Gdx.app.postRunnable() calls from worker threads never trigger
+            // IOSGraphics.requestRendering() → viewController.setPaused(false).
+            // That ObjC UIKit call must happen on the main thread; from a background
+            // thread it resolves to a null trampoline on the iOS simulator (pc=0x0
+            // crash) and silently no-ops on device, leaving the GL loop paused so
+            // that any WaitRunnable.invokeAndWait() deadlocks permanently.
+            // The matching stopContinuousRendering() is in afterDbLoaded(), called
+            // from the EDT once FSkin, drafts, and adventure resources are loaded,
+            // just before the final transition screen is shown.
+            startContinuousRendering();
 
             Runnable runnable = () -> {
                 safeToClose = false;
@@ -375,11 +426,13 @@ public class Forge implements ApplicationListener {
             e.printStackTrace();
         }
     }
+
     protected void afterDbLoaded() {
-        if (GuiBase.isAndroid() && autoCache)
+        if ((GuiBase.isAndroid() && autoCache) || (GuiBase.isIOS() && totalDeviceRAM > 0))
             getSplashScreen().getProgressBar().setDescription(getLocalizer().getMessage("lblFinishingStartup") + "\nDetected RAM: " + totalDeviceRAM + "MB. Cache size: " + cacheSize);
         else
             getSplashScreen().getProgressBar().setDescription(getLocalizer().getMessage("lblFinishingStartup"));
+
         //override transition & title bg
         try {
             FileHandle transitionFile = Config.instance().getFile("ui/transition.png");
@@ -391,7 +444,8 @@ public class Forge implements ApplicationListener {
                 getAssets().fallback_skins().put("transition", new Texture(transitionFile));
             if (titleBGFile.exists())
                 getAssets().fallback_skins().put("title", new Texture(titleBGFile));
-            AdventureScreen.preload();
+
+            if (!GuiBase.isIOS()) AdventureScreen.preload();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -414,6 +468,12 @@ public class Forge implements ApplicationListener {
                         loadAdventureResources(false);
                         isMobileAdventureMode = true;
                     }
+                    // Balance the startContinuousRendering() added in create() to guard
+                    // against background-thread requestRendering() → setPaused() during
+                    // loading.  All background loading threads are now done; decrement
+                    // the count so that the subsequent openHomeDefault() call can drive
+                    // it to zero and correctly disable continuous rendering on iOS.
+                    stopContinuousRendering();
                     //selection transition
                     setTransitionScreen(new TransitionScreen(() -> {
                         if (createNewAdventureMap) {
@@ -866,6 +926,28 @@ public class Forge implements ApplicationListener {
             ImageCache.getInstance().allowSingleLoad();
             ForgeAnimation.advanceAll();
 
+            // Reset scissor state at the start of every frame.
+            // SPD (and GL best-practice) always disables GL_SCISSOR_TEST before glClear so
+            // that the clear covers the full framebuffer.  Without this, a scissor
+            // rectangle leaked from a previous frame (e.g. an exception thrown between
+            // startClip / endClip) would confine both the clear AND subsequent batch.draw()
+            // calls to that stale rectangle — making cards appear as black squares while
+            // the rest of the UI still renders correctly inside the clipped region.
+            // ScissorStack.getScissors() is absent in this LibGDX build, so drain the stack
+            // via popScissors() — it calls glDisable(SCISSOR_TEST) automatically when empty.
+            int staleScissors = 0;
+            try {
+                // pop() on an empty LibGDX Array throws IllegalStateException; that's our
+                // natural termination condition.  Cap at 50 to guard against any future
+                // change in behaviour (nesting depth is never legitimately > a handful).
+                while (staleScissors < 50) {
+                    ScissorStack.popScissors();
+                    staleScissors++;
+                }
+            } catch (IllegalStateException ignored) {} // stack exhausted — expected exit
+            if (staleScissors > 0)
+                System.err.println("[Forge] render: cleared " + staleScissors + " stale scissor(s) from previous frame");
+            Gdx.gl.glDisable(GL20.GL_SCISSOR_TEST); // ensure disabled even if stack was already empty
             Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT); // Clear the screen.
             //set delta for rotation
             deltaTime += Gdx.graphics.getDeltaTime();

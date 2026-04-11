@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
 /**
  * DeckHints provides the ability for a Card to "want" another Card or type of
@@ -47,6 +48,14 @@ public class DeckHints {
     private boolean tokens = true;
     private List<Pair<Type, String>> filters = null;
 
+    // Pre-compiled patterns for the three delimiters used in DeckHints strings.
+    // String.split(String) compiles a new Pattern on every call; caching them
+    // here eliminates hundreds of thousands of ICU PatternNative allocations
+    // during card-DB initialisation.
+    private static final Pattern AMP  = Pattern.compile("\\&");
+    private static final Pattern DOLL = Pattern.compile("\\$");
+    private static final Pattern PIPE = Pattern.compile("\\|");
+
     /**
      * Construct a DeckHints from the SVar string.
      * 
@@ -54,7 +63,7 @@ public class DeckHints {
      *            SVar for DeckHints
      */
     public DeckHints(String hints) {
-        String[] pieces = hints.split("\\&");
+        String[] pieces = AMP.split(hints);
         if (pieces.length > 0) {
             for (String piece : pieces) {
                 Pair<Type, String> pair = parseHint(piece.trim());
@@ -145,7 +154,7 @@ public class DeckHints {
 
     private Pair<Type, String> parseHint(String hint) {
         Pair<Type, String> pair = null;
-        String[] pieces = hint.split("\\$");
+        String[] pieces = DOLL.split(hint);
         if (pieces.length == 2) {
             try {
                 Type typeValue = Type.valueOf(pieces[0].toUpperCase());
@@ -166,7 +175,7 @@ public class DeckHints {
         List<PaperCard> cards = new ArrayList<>();
 
         // this is case ABILITY, but other types can also use this when the implicit parsing would miss
-        String[] params = param.split("\\|");
+        String[] params = PIPE.split(param);
         for (String ability : params) {
             getMatchingItems(cardList, CardRulesPredicates.deckHas(type, ability), PaperCard::getRules).forEach(cards::add);
         }

@@ -109,7 +109,7 @@ public class FSkin {
         }
     }
     private static void useFallbackDir() {
-        preferredDir = GuiBase.isAndroid() ? Gdx.files.internal("fallback_skin") : Gdx.files.classpath("fallback_skin");
+        preferredDir = (GuiBase.isAndroid() || GuiBase.isIOS()) ? Gdx.files.internal("fallback_skin") : Gdx.files.classpath("fallback_skin");
     }
     public static void loadLight(String skinName, final SplashScreen splashScreen,FileHandle prefDir) {
         preferredDir = prefDir;

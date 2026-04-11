@@ -1,0 +1,4 @@
+# Local Maven repository populated by scripts/patch-robovm-soot.sh and
+# scripts/build-java-stubs.sh. Contains the patched robovm-dist-compiler jar
+# and the java-stubs jar; never committed.
+local-repo/

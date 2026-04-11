@@ -38,6 +38,10 @@ public class AssetsDownloader {
     public static void checkForUpdates(boolean exited, Runnable runnable) {
         if (exited)
             return;
+        if (GuiBase.isIOS()) { //iOS resources are bundled in the IPA; no separate update/download needed
+            run(runnable);
+            return;
+        }
         final String versionString = Forge.getDeviceAdapter().getVersionString();
         Forge.getSplashScreen().getProgressBar().setDescription("Checking for updates...");
         if (versionString.contains("GIT")) {
@@ -59,7 +63,7 @@ public class AssetsDownloader {
         final String versionText = isSnapshots ? snapsURL + "version.txt" : releaseURL + "maven-metadata.xml";
         FileHandle assetsDir = Gdx.files.absolute(ASSETS_DIR);
         FileHandle resDir = Gdx.files.absolute(RES_DIR);
-        FileHandle buildTxtFileHandle = GuiBase.isAndroid() ? Gdx.files.internal("build.txt") : Gdx.files.classpath("build.txt");
+        FileHandle buildTxtFileHandle = (GuiBase.isAndroid() || GuiBase.isIOS()) ? Gdx.files.internal("build.txt") : Gdx.files.classpath("build.txt");
         final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         boolean verifyUpdatable = false;
         boolean mandatory = false;

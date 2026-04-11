@@ -12,7 +12,7 @@
 - GitHub account
 - Libgdx (optional: familiarity with this library is helpful for mobile platform development)
 - Android SDK (optional: for Android releases)
-- RoboVM (optional: for iOS releases) (TBD: Current status of support by libgdx)
+- MobiVM (optional: for iOS releases; community fork of RoboVM, supports libGDX 1.x — macOS + Xcode required)
 
 ## Project Quick Setup
 
@@ -107,7 +107,7 @@ Screen layout and game logic revolving around the GUI is found here. For example
 
 #### forge-gui-ios
 
-Libgdx-based backend targeting iOS. Relies on forge-gui-mobile for GUI logic.
+Libgdx-based backend targeting iOS via [MobiVM](https://mobivm.github.io/) (AOT compilation of Java to native iOS). Relies on forge-gui-mobile for GUI logic. Requires macOS and Xcode to build; see [iOS-Builds.md](docs/Development/iOS-Builds.md) for setup instructions.
 
 #### forge-gui-mobile
 

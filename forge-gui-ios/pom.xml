@@ -6,6 +6,9 @@
         <packaging.type>jar</packaging.type>
         <build.min.memory>-Xms128m</build.min.memory>
         <build.max.memory>-Xmx2048m</build.max.memory>
+        <robovm.version>10.2.2.4-SNAPSHOT</robovm.version>
+        <!-- Auto-detected via the apple-silicon profile below; override with -Dios.simulator.arch=... -->
+        <ios.simulator.arch>x86_64</ios.simulator.arch>
     </properties>
 
     <parent>
@@ -18,6 +21,31 @@
     <packaging>${packaging.type}</packaging>
     <name>Forge iOS</name>
 
+    <!--
+      Local file-system repository for the java-stubs JAR (forge:java-stubs:3.0).
+      This JAR contains only java.lang.Record, which is absent from robovmx's
+      robovm-rt.  All other Java 8 APIs (java.util.stream.*, java.util.function.*,
+      java.time.*, java.nio.file.*, etc.) are provided natively by robovmx's
+      robovm-rt and no longer require stubs.
+      Built by: bash scripts/build-java-stubs.sh
+    -->
+    <repositories>
+        <repository>
+            <id>forge-local</id>
+            <url>file://${project.basedir}/local-repo</url>
+            <releases><enabled>true</enabled></releases>
+            <snapshots><enabled>false</enabled></snapshots>
+        </repository>
+    </repositories>
+    <pluginRepositories>
+        <pluginRepository>
+            <id>forge-local</id>
+            <url>file://${project.basedir}/local-repo</url>
+            <releases><enabled>true</enabled></releases>
+            <snapshots><enabled>false</enabled></snapshots>
+        </pluginRepository>
+    </pluginRepositories>
+
     <build>
         <sourceDirectory>src</sourceDirectory>
         <plugins>
@@ -27,6 +55,88 @@
                     <source>17</source>
                     <target>17</target>
                 </configuration>
+            </plugin>
+            <!--
+              Override the root-pom RequirePluginVersions enforcer rule to exempt
+              com.robovmx:robovm-maven-plugin.  robovmx only publishes SNAPSHOT
+              artifacts; the project-wide policy that disallows SNAPSHOT plugin
+              versions cannot be satisfied for this iOS-only plugin.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-versions</id>
+                        <configuration>
+                            <rules>
+                                <requireMavenVersion>
+                                    <version>[3.8.1,)</version>
+                                </requireMavenVersion>
+                                <requireJavaVersion>
+                                    <version>17</version>
+                                </requireJavaVersion>
+                                <requirePluginVersions>
+                                    <unCheckedPluginList>com.robovmx:robovm-maven-plugin</unCheckedPluginList>
+                                </requirePluginVersions>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!--
+              BreakIterator desugaring: robovmx's robovm-rt includes full Java 8 APIs,
+              so the only remaining bytecode rewrite is:
+                • BreakIterator.getLineInstance(Locale) → IosUtil.getLineBreakIterator(Locale)
+              ICU line-break data files are absent from the iOS app bundle.  IosUtil provides
+              a pure-Java character-boundary fallback that works without ICU data.
+
+              See scripts/StreamDesugar.java and scripts/desugar-streams.sh for details.
+            -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>desugar-streams</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>bash</executable>
+                            <arguments>
+                                <argument>${project.basedir}/../scripts/desugar-streams.sh</argument>
+                                <!-- classes directories (for forge-gui-ios itself and sibling modules) -->
+                                <argument>${project.basedir}/../forge-core/target/classes</argument>
+                                <argument>${project.basedir}/../forge-ai/target/classes</argument>
+                                <argument>${project.basedir}/../forge-gui/target/classes</argument>
+                                <argument>${project.basedir}/../forge-game/target/classes</argument>
+                                <argument>${project.basedir}/../forge-gui-mobile/target/classes</argument>
+                                <argument>${project.build.outputDirectory}</argument>
+                                <!-- JAR files: in a Maven reactor build every sibling module is
+                                     packaged (phase=package) before forge-gui-ios starts, so the
+                                     JARs in target/ exist at this point but contain untransformed
+                                     bytecode.  RoboVM's Maven plugin resolves inter-module
+                                     dependencies to these JARs (not to target/classes), so we must
+                                     transform them in-place here, before the package phase begins. -->
+                                <argument>${project.basedir}/../forge-core/target/forge-core-${project.version}.jar</argument>
+                                <argument>${project.basedir}/../forge-ai/target/forge-ai-${project.version}.jar</argument>
+                                <argument>${project.basedir}/../forge-gui/target/forge-gui-${project.version}.jar</argument>
+                                <argument>${project.basedir}/../forge-game/target/forge-game-${project.version}.jar</argument>
+                                <argument>${project.basedir}/../forge-gui-mobile/target/forge-gui-mobile-${project.version}.jar</argument>
+                                <!-- Third-party JARs containing serializable-lambda bytecode (Pattern 65).
+                                     JGraphT 1.5.2 SupplierUtil uses serializable-lambda intersection casts
+                                     in its <clinit>; RoboVM does not support altMetafactory serialisation
+                                     so the CHECKCAST java/io/Serializable throws ClassCastException at
+                                     class-init time on iOS.  Transforming the JAR here is idempotent and
+                                     semantically neutral on standard JVMs (the cast would succeed on JDK). -->
+                                <argument>${settings.localRepository}/org/jgrapht/jgrapht-core/1.5.2/jgrapht-core-1.5.2.jar</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
         <resources>
@@ -69,5 +179,155 @@
             <artifactId>gdx-backend-robovm</artifactId>
             <version>1.13.5</version>
         </dependency>
+        <dependency>
+            <groupId>com.badlogicgames.gdx</groupId>
+            <artifactId>gdx-platform</artifactId>
+            <version>1.13.5</version>
+            <classifier>natives-ios</classifier>
+        </dependency>
+        <dependency>
+            <groupId>com.badlogicgames.gdx</groupId>
+            <artifactId>gdx-freetype-platform</artifactId>
+            <version>1.13.5</version>
+            <classifier>natives-ios</classifier>
+        </dependency>
+        <dependency>
+            <groupId>com.badlogicgames.gdx</groupId>
+            <artifactId>gdx-box2d-platform</artifactId>
+            <version>1.13.5</version>
+            <classifier>natives-ios</classifier>
+        </dependency>
+        <dependency>
+            <groupId>com.badlogicgames.gdx-controllers</groupId>
+            <artifactId>gdx-controllers-ios</artifactId>
+            <version>2.2.4</version>
+        </dependency>
+        <!-- java.lang.Record stub: robovmx's robovm-rt includes full Java 8 APIs but
+             does not yet include java.lang.Record (added in Java 16).  This minimal
+             stub JAR supplies the Record abstract class so that record classes load
+             successfully at runtime on iOS.  All other Java 8 stubs (stream, function,
+             time, nio.file, Optional, StringJoiner, CompletableFuture, etc.) are
+             no longer needed because robovmx's robovm-rt provides them natively.
+             Built by: bash scripts/build-java-stubs.sh
+
+             Version 3.0 contains only java.lang.Record.  Using version 3.0 (not any
+             earlier version) is essential: Maven caches release artifacts permanently
+             in ~/.m2 and will use a previously built stubs jar for every subsequent
+             build.  Version 3.0 has never been cached so Maven always resolves it
+             fresh from forge-local. -->
+        <dependency>
+            <groupId>forge</groupId>
+            <artifactId>java-stubs</artifactId>
+            <version>3.0</version>
+        </dependency>
+
+        <!--
+          javax.xml.transform.TransformerFactory.newInstance() on robovmx's Android-based
+          libcore has a hardcoded fallback to org.apache.xalan.processor.TransformerFactoryImpl.
+          That class is absent from robovm-rt, causing NoClassDefFoundError when any code
+          calls TransformerFactory.newInstance() (e.g. XmlUtil.saveDocument).
+          Adding the real Xalan JARs provides that class so the lookup succeeds.
+          xalan:serializer is required at runtime by Xalan's TransformerIdentityImpl.
+          Both are pre-Java-8 code with no security vulnerabilities (checked 2026-03-09).
+        -->
+        <dependency>
+            <groupId>xalan</groupId>
+            <artifactId>xalan</artifactId>
+            <version>2.7.3</version>
+        </dependency>
+        <dependency>
+            <groupId>xalan</groupId>
+            <artifactId>serializer</artifactId>
+            <version>2.7.3</version>
+        </dependency>
     </dependencies>
+
+    <profiles>
+        <profile>
+            <id>ios-device</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.robovmx</groupId>
+                        <artifactId>robovm-maven-plugin</artifactId>
+                        <version>${robovm.version}</version>
+                        <executions>
+                            <execution>
+                                <id>ios-device-build</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>create-ipa</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <propertiesFile>robovm.properties</propertiesFile>
+                            <configFile>robovm.xml</configFile>
+                            <arch>arm64</arch>
+                        </configuration>
+                        <!--
+                          Patched robovm-dist-compiler: fixes four Soot bugs that crash
+                          AOT compilation of Java Record classes (NoSuchMethodError /
+                          RuntimeException: Attempt to create RefType containing a /).
+                          Built by: bash scripts/patch-robovm-soot.sh
+                          (called automatically from scripts/install-robovmx.sh)
+                        -->
+                        <dependencies>
+                            <dependency>
+                                <groupId>com.robovmx</groupId>
+                                <artifactId>robovm-dist-compiler</artifactId>
+                                <version>10.2.2.4-patched</version>
+                            </dependency>
+                        </dependencies>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>ios-simulator</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.robovmx</groupId>
+                        <artifactId>robovm-maven-plugin</artifactId>
+                        <version>${robovm.version}</version>
+                        <executions>
+                            <execution>
+                                <id>ios-simulator-build</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>iphone-sim</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <propertiesFile>robovm.properties</propertiesFile>
+                            <configFile>robovm.xml</configFile>
+                            <arch>${ios.simulator.arch}</arch>
+                        </configuration>
+                        <!-- Patched dist-compiler (same as ios-device profile above). -->
+                        <dependencies>
+                            <dependency>
+                                <groupId>com.robovmx</groupId>
+                                <artifactId>robovm-dist-compiler</artifactId>
+                                <version>10.2.2.4-patched</version>
+                            </dependency>
+                        </dependencies>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <!-- Automatically use arm64 simulator slice on Apple Silicon Macs. -->
+            <id>apple-silicon</id>
+            <activation>
+                <os>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <ios.simulator.arch>arm64-simulator</ios.simulator.arch>
+            </properties>
+        </profile>
+    </profiles>
 </project>

@@ -1,0 +1,38 @@
+--- a/soot/coffi/CONSTANT_MethodHandle_info.java
++++ b/soot/coffi/CONSTANT_MethodHandle_info.java
+@@ -18,6 +18,11 @@
+  */
+ package soot.coffi;
+ 
++import java.util.Collections;
++import soot.Scene;
++import soot.SootClass;
++import soot.SootMethodRef;
++import soot.Type;
+ import soot.Value;
+ import soot.jimple.*;
+ 
+@@ -76,6 +81,23 @@
+  
+ 	   public Value createJimpleConstantValue(cp_info[] constant_pool) {
+ 	       // RoboVM note: Changed to return a SootMethodHandle
++	       // Kinds 1-4 are field refs (REF_getField/putField/getStatic/putStatic);
++	       // model each as a zero-arg synthetic method ref so we avoid an InvokeExpr cast.
++	       if (kind >= 1 && kind <= 4) {
++	           CONSTANT_Fieldref_info fieldRef = (CONSTANT_Fieldref_info) constant_pool[target_index];
++	           CONSTANT_Class_info cc = (CONSTANT_Class_info) constant_pool[fieldRef.class_index];
++	           CONSTANT_NameAndType_info cn = (CONSTANT_NameAndType_info) constant_pool[fieldRef.name_and_type_index];
++	           String className = cc.toString(constant_pool).replace('/', '.');
++	           String nameAndType = cn.toString(constant_pool);
++	           String fieldName = nameAndType.substring(0, nameAndType.indexOf(":"));
++	           String typeName = nameAndType.substring(nameAndType.indexOf(":") + 1);
++	           Type fieldType = Util.v().jimpleTypeOfFieldDescriptor(typeName);
++	           boolean isStatic = (kind == 3 || kind == 4);
++	           SootClass declaringClass = Scene.v().getSootClass(className);
++	           SootMethodRef ref = Scene.v().makeMethodRef(
++	               declaringClass, fieldName, Collections.emptyList(), fieldType, isStatic);
++	           return Jimple.v().newMethodHandle(kind, ref);
++	       }
+ 	       InvokeExpr expr = (InvokeExpr) constant_pool[target_index].createJimpleConstantValue(constant_pool);
+ 	       return Jimple.v().newMethodHandle(kind, expr.getMethodRef());
+ 	   }

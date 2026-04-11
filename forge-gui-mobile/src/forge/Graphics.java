@@ -956,19 +956,25 @@ public class Graphics {
         if (image == null)
             return;
         float radius = ImageCache.getInstance().getRadius(image);
-        batch.end();
-        shaderRoundedRect.bind();
-        shaderRoundedRect.setUniformf("u_resolution", image.getWidth(), image.getHeight());
-        shaderRoundedRect.setUniformf("edge_radius", (float)(image.getHeight() / image.getWidth()) * radius);
-        shaderRoundedRect.setUniformf("u_gray", drawGray ? 0.8f : 0f);
-        batch.setShader(shaderRoundedRect);
-        batch.begin();
-        //draw
-        batch.draw(image, adjustX(x), adjustY(y, h), w, h);
-        //reset
-        batch.end();
-        batch.setShader(null);
-        batch.begin();
+        if (shaderRoundedRect.isCompiled()) {
+            batch.end();
+            shaderRoundedRect.bind();
+            shaderRoundedRect.setUniformf("u_resolution", image.getWidth(), image.getHeight());
+            shaderRoundedRect.setUniformf("edge_radius", (float)(image.getHeight() / image.getWidth()) * radius);
+            shaderRoundedRect.setUniformf("u_gray", drawGray ? 0.8f : 0f);
+            batch.setShader(shaderRoundedRect);
+            batch.begin();
+            //draw
+            batch.draw(image, adjustX(x), adjustY(y, h), w, h);
+            //reset
+            batch.end();
+            batch.setShader(null);
+            batch.begin();
+        } else {
+            // shaderRoundedRect failed to compile: fall back to plain batch draw so the
+            // card image is at least visible (no rounded corners, but not a black square).
+            batch.draw(image, adjustX(x), adjustY(y, h), w, h);
+        }
         if (foilEffect && !drawGray) {
             drawFoil(x, y, w, h, radius);
         }
@@ -983,21 +989,27 @@ public class Graphics {
     public void drawCardRoundRect(Texture image, float x, float y, float w, float h, float originX, float originY, float rotation, float modR, boolean drawFoil) {
         if (image == null)
             return;
-        batch.end();
-        shaderRoundedRect.bind();
-        shaderRoundedRect.setUniformf("u_resolution", image.getWidth(), image.getHeight());
-        shaderRoundedRect.setUniformf("edge_radius", (float)(image.getHeight() / image.getWidth()) * (ImageCache.getInstance().getRadius(image) * modR));
-        shaderRoundedRect.setUniformf("u_gray", 0f);
-        batch.setShader(shaderRoundedRect);
-        batch.begin();
-        //draw
-        drawRotatedImage(image, x, y, w, h, originX, originY, 0, 0, image.getWidth(), image.getHeight(), rotation);
-        if (drawFoil)
-            drawFoil(x, y, w, h, modR, true);
-        //reset
-        batch.end();
-        batch.setShader(null);
-        batch.begin();
+        if (shaderRoundedRect.isCompiled()) {
+            batch.end();
+            shaderRoundedRect.bind();
+            shaderRoundedRect.setUniformf("u_resolution", image.getWidth(), image.getHeight());
+            shaderRoundedRect.setUniformf("edge_radius", (float)(image.getHeight() / image.getWidth()) * (ImageCache.getInstance().getRadius(image) * modR));
+            shaderRoundedRect.setUniformf("u_gray", 0f);
+            batch.setShader(shaderRoundedRect);
+            batch.begin();
+            //draw
+            drawRotatedImage(image, x, y, w, h, originX, originY, 0, 0, image.getWidth(), image.getHeight(), rotation);
+            if (drawFoil)
+                drawFoil(x, y, w, h, modR, true);
+            batch.end();
+            batch.setShader(null);
+            batch.begin();
+        } else {
+            // Fallback: render without rounded corners so cards are visible.
+            drawRotatedImage(image, x, y, w, h, originX, originY, 0, 0, image.getWidth(), image.getHeight(), rotation);
+            if (drawFoil)
+                drawFoil(x, y, w, h, modR, true);
+        }
     }
 
     public void drawNoiseFade(TextureRegion image, float x, float y, float w, float h, Float time) {

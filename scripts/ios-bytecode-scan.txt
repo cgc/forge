@@ -1,0 +1,220 @@
+════════════════════════════════════════════════════════════════════════════════
+ iOS Bytecode API Scan — Java 9-11 call sites + native method declarations
+ Scans for method calls that will NoSuchMethodError on iOS if not
+ patched by StreamDesugar or natively provided by robovmx robovm-rt.
+ Also scans for native method declarations (RISK:NATIVE — EXC_BAD_ACCESS at 0x0
+ if the JNI library/xcframework is not linked) and for serializable-lambda
+ INVOKEDYNAMIC (Pattern 65 target).
+════════════════════════════════════════════════════════════════════════════════
+
+ NOTE: This file was generated before native method scanning was added to ApiScan.
+ Re-run to get RISK:NATIVE section (requires libgdx JARs in ~/.m2):
+   bash scripts/ios-bytecode-scan.sh > scripts/ios-bytecode-scan.txt
+
+ Summary: 0 RISK:HIGH call sites, 47 CLAIMED, 27 PATCHED, 86 serializable-lambda site(s)
+
+────────────────────────────────────────────────────────────────────────────────
+ RISK: RISK:HIGH — NOT patched, NOT claimed; action required if reachable on iOS
+────────────────────────────────────────────────────────────────────────────────
+  (none found)
+
+────────────────────────────────────────────────────────────────────────────────
+ CLAIMED: CLAIMED  — listed as provided by robovmx robovm-rt (should be safe)
+────────────────────────────────────────────────────────────────────────────────
+  [Java 9] Objects.requireNonNullElseGet(T,Supplier) — Java 9 [claimed by robovmx]
+           2 call site(s):
+    forge.card.CardDb.getRules
+    forge.gamemodes.limited.BoosterDraft.createDraft
+  [Java 9] Objects.requireNonNullElse(T,T) — Java 9 [claimed by robovmx]
+           42 call site(s):
+    forge.card.CardRules.getDisplayNameForVariant
+    forge.card.CardRules.getDisplayNameForVariant
+    forge.game.spellability.LandAbility.canPlay
+    forge.game.spellability.TargetRestrictions.isMinTargetsChosen
+    forge.game.spellability.Spell.canPlayFromHost
+    forge.game.spellability.SpellAbility.getOriginalAbility
+    forge.game.spellability.SpellAbility.getOptionalKeywordAmount
+    forge.game.replacement.ReplaceAddCounter.hasAnyInCounterMap
+    forge.game.replacement.ReplacementHandler.executeReplacement
+    forge.game.replacement.ReplacementHandler.executeReplacement
+    forge.game.replacement.ReplacementHandler.executeReplacement
+    forge.game.ability.effects.DayTimeEffect.resolve
+    forge.game.ability.effects.ChangeZoneEffect.changeZonePlayerInvariant
+    forge.game.ability.effects.VentureEffect.getDungeonCard
+    forge.game.ability.effects.VentureEffect.getDungeonCard
+    forge.game.ability.AbilityUtils.calculateAmount
+    forge.game.ability.AbilityUtils.calculateAmount
+    forge.game.Game.getChangeZoneLKIInfo
+    forge.game.combat.AttackConstraints.getLegalAttackers
+    forge.game.combat.AttackRequirement.countViolations
+    forge.game.combat.GlobalAttackRestrictions.getGlobalRestrictions
+    forge.game.player.PlayerView.getOpponents
+    forge.game.card.token.TokenInfo.getProtoType
+    forge.game.card.token.TokenInfo.getProtoType
+    forge.game.card.ActivationTable.getOriginal
+    forge.game.card.CardState.getTypeWithChanges
+    forge.game.card.TokenCreateTable.add
+    forge.game.card.CardTraitChanges.getAbilities
+    forge.game.card.CardTraitChanges.getRemovedAbilities
+    forge.game.card.CardTraitChanges.getTriggers
+    forge.game.card.CardTraitChanges.getReplacements
+    forge.game.card.CardTraitChanges.getStaticAbilities
+    forge.game.GameEntityCounterTable.put
+    forge.game.GameEntityCounterTable.get
+    forge.game.GameEntityCounterTable.filterTable
+    forge.game.GameEntityCounterTable.filterTable
+    forge.game.phase.PhaseHandler.declareAttackersTurnBasedAction
+    forge.game.phase.PhaseHandler.declareBlockersTurnBasedAction
+    forge.ai.AiAttackController.doRevengeOfRavensAttackLogic
+    forge.ai.AiCostDecision.visit
+    forge.gamemodes.match.input.InputSelectTargets.showMessage
+    forge.player.PlayerControllerHuman.sideboard
+  [Java 11] Optional.isEmpty() — Java 11 [claimed by robovmx]
+           1 call site(s):
+    forge.util.RSSReader.getCommitLog
+  [Java 11] String.isBlank() — Java 11 [claimed + StreamDesugar P59]
+           1 call site(s):
+    forge.game.ability.effects.ManaEffect.resolve
+  [Java 11] String.repeat(int) — Java 11 [claimed + StreamDesugar P60]
+           1 call site(s):
+    forge.game.keyword.Firebending.formatReminderText
+
+────────────────────────────────────────────────────────────────────────────────
+ PATCHED: PATCHED  — rewritten at build time by StreamDesugar.java (safe)
+────────────────────────────────────────────────────────────────────────────────
+  [Java 11] Predicate.not(Predicate) — Java 11 [StreamDesugar P58]
+           17 call site(s):
+    forge.card.CardRulesPredicates.<clinit>
+    forge.game.staticability.StaticAbilityContinuous.applyContinuousAbility
+    forge.game.ability.effects.AnimateEffectBase.doAnimate
+    forge.game.combat.AttackRestrictionType.getPredicate
+    forge.game.card.CardState.getManaAbilities
+    forge.ai.ability.MutateAi.canPlay
+    forge.ai.ability.AttachAi.attachAIPumpPreference
+    forge.ai.ability.ChooseSourceAi.chooseSingleCard
+    forge.ai.ComputerUtil.getCardsToDiscardFromOpponent
+    forge.ai.AiController.lambda$chooseSpellAbilityToPlayFromList$9
+    forge.ai.ComputerUtilCost.paymentChoicesWithoutTargets
+    forge.gamemodes.net.server.FServerManager.broadcastExcept
+    forge.gamemodes.quest.BoosterUtils.<clinit>
+    forge.gamemodes.quest.BoosterUtils.<clinit>
+    forge.gamemodes.quest.BoosterUtils.<clinit>
+    forge.gamemodes.planarconquest.ConquestData.getAccessiblePlaneCount
+    forge.adventure.scene.AdventureDeckEditor$AdventureEventEditorConfig.getBasicLandSets
+  [Java 8] Executors.newWorkStealingPool() — ForkJoinPool crash on iOS [StreamDesugar P64]
+           2 call site(s):
+    forge.util.ThreadUtil.refreshServicePool
+    forge.util.ThreadUtil.<clinit>
+  [Java 8] CompletableFuture.supplyAsync(Supplier) — ForkJoinPool crash on iOS [StreamDesugar P61]
+           6 call site(s):
+    forge.StaticData.audit
+    forge.ai.AiAttackController.declareAttackers
+    forge.gamemodes.limited.BoosterDraft.loadCustomDrafts
+    forge.adventure.world.World.generateNew
+    forge.adventure.world.World.generateNew
+    forge.adventure.world.World.generateNew
+  [Java 9] CompletableFuture.completeOnTimeout(T,long,TimeUnit) — Java 9 [StreamDesugar P62]
+           1 call site(s):
+    forge.ai.AiAttackController.declareAttackers
+  [Java 8] List.parallelStream() — ForkJoinPool crash on iOS [StreamDesugar P63]
+           1 call site(s):
+    forge.deck.FDeckChooser.lambda$new$6
+
+────────────────────────────────────────────────────────────────────────────────
+ SERIALIZABLE_LAMBDA: INVOKEDYNAMIC with altMetafactory+FLAG_SERIALIZABLE
+   RoboVM does not generate Serializable lambda proxies; the CHECKCAST
+   java/io/Serializable that follows always throws ClassCastException.
+   Fixed by StreamDesugar Pattern 65 (strip the CHECKCAST).
+────────────────────────────────────────────────────────────────────────────────
+  86 site(s):
+    forge.game.ability.effects.ControlPlayerEffect.resolve
+    forge.game.ability.effects.ControlPlayerEffect.$deserializeLambda$
+    forge.game.ability.effects.ControlPlayerEffect.$deserializeLambda$
+    forge.game.ability.effects.ControlPlayerEffect.lambda$resolve$8d5501f2$1
+    forge.game.ability.effects.RepeatEachEffect.resolve
+    forge.game.ability.effects.RepeatEachEffect.$deserializeLambda$
+    forge.game.ability.effects.DetainEffect.resolve
+    forge.game.ability.effects.DetainEffect.$deserializeLambda$
+    forge.gamemodes.limited.LimitedPlayer.handleWhispergearSneak
+    forge.gamemodes.limited.LimitedPlayer.handleIllusionaryInformant
+    forge.gamemodes.limited.LimitedPlayer.chooseCardToExchange
+    forge.gamemodes.limited.LimitedPlayer.$deserializeLambda$
+    forge.gamemodes.limited.LimitedPlayer.$deserializeLambda$
+    forge.gamemodes.limited.LimitedPlayer.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$FilterOption.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$FilterOption.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$FilterOption.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$FilterOption.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$FilterOption.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$FilterOption.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$FilterOption.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$FilterOption.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$FilterOption.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$FilterOption.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$FilterOption.<clinit>
+    forge.itemmanager.AdvancedSearch$FilterOption.<clinit>
+    forge.itemmanager.AdvancedSearch$FilterOption.<clinit>
+    forge.itemmanager.AdvancedSearch$FilterOption.<clinit>
+    forge.itemmanager.AdvancedSearch$FilterOption.<clinit>
+    forge.itemmanager.AdvancedSearch$FilterOption.<clinit>
+    forge.itemmanager.AdvancedSearch$FilterOption.<clinit>
+    forge.itemmanager.AdvancedSearch$FilterOption.<clinit>
+    forge.itemmanager.AdvancedSearch$FilterOption.<clinit>
+    forge.itemmanager.AdvancedSearch$FilterOption.<clinit>
+    forge.itemmanager.AdvancedSearch$Model.addFilterControl
+    forge.itemmanager.AdvancedSearch$Model.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$ColorEvaluator.<init>
+    forge.itemmanager.AdvancedSearch$ColorEvaluator.<init>
+    forge.itemmanager.AdvancedSearch$ColorEvaluator.$deserializeLambda$
+    forge.itemmanager.AdvancedSearch$ColorEvaluator.$deserializeLambda$
+    forge.player.PlayerControllerHuman.chooseSprocket
+    forge.player.PlayerControllerHuman.chooseTarget
+    forge.player.PlayerControllerHuman.$deserializeLambda$
+    forge.player.PlayerControllerHuman.$deserializeLambda$
+    forge.screens.quest.NewQuestScreen.<init>
+    forge.screens.quest.NewQuestScreen.$deserializeLambda$
+    forge.screens.planarconquest.ConquestAEtherScreen$ColorButton.<init>
+    forge.screens.planarconquest.ConquestAEtherScreen$ColorButton.$deserializeLambda$
+    forge.itemmanager.filters.ToggleButtonsFilter$ToggleButton.<init>
+    forge.itemmanager.filters.ToggleButtonsFilter$ToggleButton.$deserializeLambda$
+    org.jgrapht.graph.DefaultGraphSpecificsStrategy.getIntrusiveEdgesSpecificsFactory
+    org.jgrapht.graph.DefaultGraphSpecificsStrategy.getSpecificsFactory
+    org.jgrapht.graph.DefaultGraphSpecificsStrategy.$deserializeLambda$
+    org.jgrapht.graph.DefaultGraphSpecificsStrategy.$deserializeLambda$
+    org.jgrapht.graph.FastLookupGraphSpecificsStrategy.getIntrusiveEdgesSpecificsFactory
+    org.jgrapht.graph.FastLookupGraphSpecificsStrategy.getSpecificsFactory
+    org.jgrapht.graph.FastLookupGraphSpecificsStrategy.$deserializeLambda$
+    org.jgrapht.graph.FastLookupGraphSpecificsStrategy.$deserializeLambda$
+    org.jgrapht.util.WeightCombiner.$deserializeLambda$
+    org.jgrapht.util.WeightCombiner.$deserializeLambda$
+    org.jgrapht.util.WeightCombiner.$deserializeLambda$
+    org.jgrapht.util.WeightCombiner.$deserializeLambda$
+    org.jgrapht.util.WeightCombiner.$deserializeLambda$
+    org.jgrapht.util.WeightCombiner.$deserializeLambda$
+    org.jgrapht.util.WeightCombiner.<clinit>
+    org.jgrapht.util.WeightCombiner.<clinit>
+    org.jgrapht.util.WeightCombiner.<clinit>
+    org.jgrapht.util.WeightCombiner.<clinit>
+    org.jgrapht.util.WeightCombiner.<clinit>
+    org.jgrapht.util.WeightCombiner.<clinit>
+    org.jgrapht.util.SupplierUtil.getThrowingSupplier
+    org.jgrapht.util.SupplierUtil.createIntegerSupplier
+    org.jgrapht.util.SupplierUtil.createLongSupplier
+    org.jgrapht.util.SupplierUtil.createRandomUUIDStringSupplier
+    org.jgrapht.util.SupplierUtil.createStringSupplier
+    org.jgrapht.util.SupplierUtil.$deserializeLambda$
+    org.jgrapht.util.SupplierUtil.$deserializeLambda$
+    org.jgrapht.util.SupplierUtil.$deserializeLambda$
+    org.jgrapht.util.SupplierUtil.$deserializeLambda$
+    org.jgrapht.util.SupplierUtil.$deserializeLambda$
+    org.jgrapht.util.SupplierUtil.$deserializeLambda$
+    org.jgrapht.util.SupplierUtil.$deserializeLambda$
+    org.jgrapht.util.SupplierUtil.$deserializeLambda$
+    org.jgrapht.util.SupplierUtil.<clinit>
+    org.jgrapht.util.SupplierUtil.<clinit>
+    org.jgrapht.util.SupplierUtil.<clinit>
+
+════════════════════════════════════════════════════════════════════════════════
+ No RISK:HIGH call sites found — all Java 9-11 APIs are patched or claimed.
+ SERIALIZABLE LAMBDAS: 86 site(s) found (see section above). Fixed by StreamDesugar Pattern 65.
+════════════════════════════════════════════════════════════════════════════════

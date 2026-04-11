@@ -168,7 +168,8 @@ public class HostedMatch {
         game.AI_TIMEOUT = FModel.getPreferences().getPrefInt(FPref.MATCH_AI_TIMEOUT);
         // Android API 31 and above can use completeOnTimeout -> CompletableFuture:
         //https://developer.android.com/reference/java/util/concurrent/CompletableFuture#completeOnTimeout(T,%20long,%20java.util.concurrent.TimeUnit)
-        game.AI_CAN_USE_TIMEOUT = !GuiBase.isAndroid() || GuiBase.getAndroidAPILevel() > 30;
+        // isIOS() guard: iOS sets isAndroid()=true but getAndroidAPILevel()=0; iOS is modern and can use AI timeouts
+        game.AI_CAN_USE_TIMEOUT = !GuiBase.isAndroid() || GuiBase.isIOS() || GuiBase.getAndroidAPILevel() > 30;
 
         StaticData.instance().setSourceImageForClone(FModel.getPreferences().getPrefBoolean(FPref.UI_CLONE_MODE_SOURCE));
 

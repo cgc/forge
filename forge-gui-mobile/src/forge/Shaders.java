@@ -156,8 +156,8 @@ public class Shaders {
             "uniform vec2 u_resolution;\n" +
             "uniform float edge_radius;\n" +
             "uniform float u_gray;\n" +
-            "LOWP vec4 color = vec4(1.0,1.0,1.0,1.0);\n" +
-            "float gradientIntensity = 0.5;\n" +
+            "const vec4 color = vec4(1.0,1.0,1.0,1.0);\n" +
+            "const float gradientIntensity = 0.5;\n" +
             "\n" +
             "void main() {\n" +
             "    vec2 uv = v_texCoords;\n" +
@@ -192,8 +192,8 @@ public class Shaders {
             "uniform vec2 u_resolution;\n" +
             "uniform float edge_radius;\n" +
             "uniform float u_time;\n" +
-            "LOWP vec4 color = vec4(1.0,1.0,1.0,1.0);\n" +
-            "float gradientIntensity = 0.5;\n" +
+            "const vec4 color = vec4(1.0,1.0,1.0,1.0);\n" +
+            "const float gradientIntensity = 0.5;\n" +
             "const float contrast =    1.5   ;\n" +
             "vec3 barronSpline(vec3 x, float shape) {\n" +
             "        const float turning = 0.5;\n" +

@@ -254,8 +254,9 @@ public enum FSkinTexture implements FImage {
     public void draw(Graphics g, float x, float y, float w, float h) {
         if (!isloaded)
             load();
-        if (hasError)
+        if (hasError) {
             return;
+        }
         if (repeat) {
             g.drawRepeatingImage(texture, x, y, w, h);
         } else {

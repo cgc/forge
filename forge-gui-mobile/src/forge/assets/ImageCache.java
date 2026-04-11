@@ -262,24 +262,28 @@ public class ImageCache {
 
         Texture image;
         File imageFile = ImageKeys.getImageFile(imageKey);
-        if (useDefaultIfNotFound) {
-            // Load from file and add to cache if not found in cache initially.
-            image = getAsset(imageFile);
 
-            if (image != null) {
-                return image;
-            }
-
-            if (imageLoaded) { //prevent loading more than one image each render for performance
-                if (!delayLoadRequested) {
-                    //ensure images continue to load even if no input is being received
-                    delayLoadRequested = true;
-                    Gdx.graphics.requestRendering();
-                }
-                return null;
-            }
-            imageLoaded = true;
+        // Check cache first — this fast path applies regardless of useDefaultIfNotFound.
+        image = getAsset(imageFile);
+        if (image != null) {
+            return image;
         }
+
+        // Not in cache — need to load from disk.
+        // Throttle to one new image load per render frame regardless of useDefaultIfNotFound.
+        // Without this, callers that pass useDefaultIfNotFound=false (e.g. ImageView drawing
+        // a draft pack) bypassed the throttle entirely: all N card images were decoded, GPU-
+        // uploaded and border-sampled in a single frame, causing a large memory spike on first
+        // display that could OOM the process on iOS.
+        if (imageLoaded) {
+            if (!delayLoadRequested) {
+                //ensure images continue to load even if no input is being received
+                delayLoadRequested = true;
+                Gdx.graphics.requestRendering();
+            }
+            return null;
+        }
+        imageLoaded = true;
 
         try {
             image = loadAsset(imageKey, imageFile, others);
@@ -347,7 +351,17 @@ public class ImageCache {
                     radius = 25;
                 else
                     radius = 22;
-                updateImageRecord(cardTexture.toString(), isCloserToWhite(getpixelColor(cardTexture)), radius, cardTexture.toString().contains(".fullborder.") || cardTexture.toString().contains("tokens"));
+                String cardTextureStr = cardTexture.toString();
+                boolean isFullBorder = cardTextureStr.contains(".fullborder.") || cardTextureStr.contains("tokens");
+                try {
+                    String pixColor = getpixelColor(fileName);
+                    updateImageRecord(cardTextureStr, isCloserToWhite(pixColor), radius, isFullBorder);
+                } catch (Exception e) {
+                    // getpixelColor() can fail if the file can't be re-read (e.g. on some
+                    // iOS sandboxed paths).  Use a default dark border so the texture is
+                    // still returned and rendered.
+                    updateImageRecord(cardTextureStr, Pair.of(Color.valueOf("#171717").toString(), false), radius, isFullBorder);
+                }
             }
             return cardTexture;
         }
@@ -515,6 +529,39 @@ public class ImageCache {
         return borderColor(t);
     }
 
+    /**
+     * Samples the border pixel of a card texture by loading an independent Pixmap
+     * directly from the file, instead of calling {@code consumePixmap()} on the
+     * texture's own {@code TextureData}.
+     *
+     * <p>On some iOS/Metal GL-emulation layers the TextureData pixmap shares backing
+     * memory with the live GPU texture; calling {@code consumePixmap()} and then
+     * {@code pixmap.dispose()} on that shared buffer corrupts the uploaded texture,
+     * causing cards to render as solid black.  Creating a completely separate Pixmap
+     * from the original file avoids this entirely (the same approach used by
+     * Shattered Pixel Dungeon's {@code SmartTexture}).
+     */
+    public String getpixelColor(String filePath) {
+        Pixmap pixmap = new Pixmap(Gdx.files.absolute(filePath));
+        try {
+            boolean isFullBorder = filePath.contains(".fullborder.");
+            int px = 1, py = 1;
+            if (isFullBorder) {
+                float rscale = 0.96f;
+                int rw = Math.round(pixmap.getWidth() * rscale);
+                int rh = Math.round(pixmap.getHeight() * rscale);
+                px = Math.round((pixmap.getWidth() - rw) / 2f) + 1;
+                py = Math.round((pixmap.getHeight() - rh) / 2f) - 2 + 1;
+            }
+            return new Color(pixmap.getPixel(px, py)).toString();
+        } finally {
+            pixmap.dispose();
+        }
+    }
+
+    /** @deprecated Use {@link #getpixelColor(String)} with the file path to avoid
+     *  touching the texture's internal TextureData. */
+    @Deprecated
     public String getpixelColor(Texture i) {
         if (!i.getTextureData().isPrepared()) {
             i.getTextureData().prepare(); //prepare texture

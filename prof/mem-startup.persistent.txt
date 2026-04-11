@@ -1,0 +1,513 @@
+Bytes Used	Count		Symbol Name
+ 616.47 MB      99.4%	24415	 	start
+ 616.47 MB      99.4%	24415	 	 main
+ 614.53 MB      99.1%	23976	 	  rvmRun
+ 614.53 MB      99.1%	23976	 	   rvmCallVoidClassMethod
+ 614.53 MB      99.1%	23976	 	    rvmCallVoidClassMethodA
+ 614.43 MB      99.1%	23855	 	     callVoidMethod
+ 614.43 MB      99.1%	23855	 	      _call0
+ 614.43 MB      99.1%	23855	 	       [J]forge.ios.Main.main([Ljava/lang/String;)V
+ 614.41 MB      99.1%	23848	 	        [j]org.robovm.apple.uikit.UIApplication.main([Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Class;)V[clinit]
+ 614.40 MB      99.1%	23844	 	         [J]org.robovm.apple.uikit.UIApplication.main([Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Class;)V
+ 614.40 MB      99.1%	23844	 	          [J]org.robovm.apple.uikit.UIApplication.main(ILorg/robovm/rt/bro/ptr/BytePtr$BytePtrPtr;Ljava/lang/String;Ljava/lang/String;)I
+ 614.40 MB      99.1%	23843	 	           UIApplicationMain
+ 613.72 MB      99.0%	22276	 	            -[UIApplication _run]
+ 613.71 MB      99.0%	22178	 	             GSEventRunModal
+ 613.71 MB      99.0%	22178	 	              _CFRunLoopRunSpecificWithOptions
+ 613.71 MB      99.0%	22178	 	               __CFRunLoopRun
+ 453.24 MB      73.1%	21302	 	                __CFRunLoopDoSources0
+ 453.24 MB      73.1%	21302	 	                 __CFRunLoopDoSource0
+ 453.24 MB      73.1%	21301	 	                  __CFRUNLOOP_IS_CALLING_OUT_TO_A_SOURCE0_PERFORM_FUNCTION__
+ 403.98 MB      65.1%	10749	 	                   UC::DriverCore::continueProcessing()
+ 403.98 MB      65.1%	10729	 	                    schedulerStepScheduledMainSectionContinue
+ 403.98 MB      65.1%	10719	 	                     _UIUpdateSequenceRunNext
+ 403.95 MB      65.1%	10481	 	                      CA::Display::DisplayLink::dispatch_deferred_display_links(unsigned int)
+ 403.95 MB      65.1%	10481	 	                       CA::Display::DisplayLink::dispatch_items(unsigned long long, unsigned long long, unsigned long long)
+ 403.95 MB      65.1%	10481	 	                        CA::Display::DisplayLinkItem::dispatch_(CA::SignPost::Interval<(CA::SignPost::CAEventCode)835322056>&)
+ 403.95 MB      65.1%	10481	 	                         -[GLKViewController _updateAndDraw]
+ 348.02 MB      56.1%	1988	 	                          [j]com.badlogic.gdx.backends.iosrobovm.IOSGraphics$IOSViewDelegate.$cb$glkViewControllerUpdate$(Lcom/badlogic/gdx/backends/iosrobovm/IOSGraphics$IOSViewDelegate;Lorg/robovm/objc/Selector;Lorg/robovm/apple/glkit/GLKViewController;)V[callback]
+ 348.02 MB      56.1%	1988	 	                           [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics$IOSViewDelegate.$cb$glkViewControllerUpdate$(Lcom/badlogic/gdx/backends/iosrobovm/IOSGraphics$IOSViewDelegate;Lorg/robovm/objc/Selector;Lorg/robovm/apple/glkit/GLKViewController;)V
+ 348.02 MB      56.1%	1988	 	                            [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics$IOSViewDelegate.update(Lorg/robovm/apple/glkit/GLKViewController;)V
+ 348.02 MB      56.1%	1988	 	                             [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics.update(Lorg/robovm/apple/glkit/GLKViewController;)V
+ 348.02 MB      56.1%	1988	 	                              [J]com.badlogic.gdx.backends.iosrobovm.IOSApplication.processRunnables()V
+ 293.41 MB      47.3%	1137	 	                               [J]forge.assets.FSkinFont$1.run()V
+ 146.70 MB      23.6%	565	 	                                [J]forge.assets.Assets$MemoryTrackingAssetManager.finishLoadingAsset(Ljava/lang/String;)Ljava/lang/Object;
+ 146.70 MB      23.6%	565	 	                                 [J]com.badlogic.gdx.assets.AssetManager.finishLoadingAsset(Ljava/lang/String;)Ljava/lang/Object;
+ 146.70 MB      23.6%	565	 	                                  [j]com.badlogic.gdx.assets.AssetManager.update()Z[synchronized]
+ 146.70 MB      23.6%	565	 	                                   [J]com.badlogic.gdx.assets.AssetManager.update()Z
+ 146.70 MB      23.6%	565	 	                                    [J]com.badlogic.gdx.assets.AssetManager.updateTask()Z
+ 146.70 MB      23.6%	565	 	                                     [J]com.badlogic.gdx.assets.AssetLoadingTask.update()Z
+ 146.70 MB      23.6%	565	 	                                      [J]com.badlogic.gdx.assets.AssetLoadingTask.handleAsyncLoader()V
+ 146.70 MB      23.6%	565	 	                                       [J]com.badlogic.gdx.assets.loaders.TextureLoader.loadSync(Lcom/badlogic/gdx/assets/AssetManager;Ljava/lang/String;Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/assets/AssetLoaderParameters;)Ljava/lang/Object;
+ 146.70 MB      23.6%	565	 	                                        [J]com.badlogic.gdx.assets.loaders.TextureLoader.loadSync(Lcom/badlogic/gdx/assets/AssetManager;Ljava/lang/String;Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/assets/loaders/TextureLoader$TextureParameter;)Lcom/badlogic/gdx/graphics/Texture;
+ 146.70 MB      23.6%	565	 	                                         [J]com.badlogic.gdx.graphics.Texture.<init>(Lcom/badlogic/gdx/graphics/TextureData;)V
+ 146.70 MB      23.6%	565	 	                                          [J]com.badlogic.gdx.graphics.Texture.<init>(IILcom/badlogic/gdx/graphics/TextureData;)V
+ 146.70 MB      23.6%	565	 	                                           [J]com.badlogic.gdx.graphics.Texture.load(Lcom/badlogic/gdx/graphics/TextureData;)V
+ 146.61 MB      23.6%	377	 	                                            [j]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;)V[clinit]
+ 146.61 MB      23.6%	377	 	                                             [J]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;)V
+ 146.61 MB      23.6%	377	 	                                              [J]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;I)V
+ 146.61 MB      23.6%	377	 	                                               [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glTexImage2D(IIIIIIIILjava/nio/Buffer;)V
+ 146.61 MB      23.6%	377	 	                                                [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glTexImage2DJNI(IIIIIIIILjava/nio/Buffer;)V
+ 146.61 MB      23.6%	377	 	                                                 Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glTexImage2DJNI
+ 146.61 MB      23.6%	377	 	                                                  Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glTexImage2DJNI__IIIIIIIILjava_nio_Buffer_2
+ 146.61 MB      23.6%	377	 	                                                   glTexImage2D
+ 146.61 MB      23.6%	377	 	                                                    glTexImage2D_Exec
+ 146.61 MB      23.6%	377	 	                                                     gldModifyTexSubImage
+ 146.61 MB      23.6%	377	 	                                                      GLDTextureRec::load()
+ 146.61 MB      23.6%	377	 	                                                       GLDTextureRec::update(unsigned int, unsigned short*)
+ 146.59 MB      23.6%	283	 	                                                        GLDTextureRec::loadPrivateTexture(unsigned int, unsigned short*)
+ 146.59 MB      23.6%	283	 	                                                         GLDTextureRec::allocMetalTexture()
+ 146.56 MB      23.6%	189	 	                                                          -[AGXTexture initWithDevice:desc:isSuballocDisabled:]
+ 146.47 MB      23.6%	95	 	                                                           -[IOGPUMetalTexture initWithDevice:descriptor:sysMemSize:sysMemRowBytes:vidMemSize:vidMemRowBytes:args:argsSize:]
+ 146.47 MB      23.6%	95	 	                                                            -[IOGPUMetalResource initWithDevice:options:args:argsSize:]
+ 146.46 MB      23.6%	94	 	                                                             IOGPUResourceCreate
+ 146.70 MB      23.6%	572	 	                                [J]forge.assets.FSkinFont$1$1.<init>(Lforge/assets/FSkinFont$1;Lcom/badlogic/gdx/graphics/TextureData;)V
+ 146.70 MB      23.6%	572	 	                                 [J]com.badlogic.gdx.graphics.Texture.<init>(Lcom/badlogic/gdx/graphics/TextureData;)V
+ 146.70 MB      23.6%	572	 	                                  [J]com.badlogic.gdx.graphics.Texture.<init>(IILcom/badlogic/gdx/graphics/TextureData;)V
+ 146.70 MB      23.6%	572	 	                                   [J]com.badlogic.gdx.graphics.Texture.load(Lcom/badlogic/gdx/graphics/TextureData;)V
+ 146.60 MB      23.6%	383	 	                                    [j]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;)V[clinit]
+ 146.60 MB      23.6%	383	 	                                     [J]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;)V
+ 146.60 MB      23.6%	383	 	                                      [J]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;I)V
+ 146.60 MB      23.6%	383	 	                                       [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glTexImage2D(IIIIIIIILjava/nio/Buffer;)V
+ 146.60 MB      23.6%	383	 	                                        [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glTexImage2DJNI(IIIIIIIILjava/nio/Buffer;)V
+ 146.60 MB      23.6%	383	 	                                         Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glTexImage2DJNI
+ 146.60 MB      23.6%	383	 	                                          Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glTexImage2DJNI__IIIIIIIILjava_nio_Buffer_2
+ 146.60 MB      23.6%	383	 	                                           glTexImage2D
+ 146.60 MB      23.6%	383	 	                                            glTexImage2D_Exec
+ 146.60 MB      23.6%	383	 	                                             gldModifyTexSubImage
+ 146.60 MB      23.6%	383	 	                                              GLDTextureRec::load()
+ 146.60 MB      23.6%	383	 	                                               GLDTextureRec::update(unsigned int, unsigned short*)
+ 146.59 MB      23.6%	289	 	                                                GLDTextureRec::loadPrivateTexture(unsigned int, unsigned short*)
+ 146.59 MB      23.6%	289	 	                                                 GLDTextureRec::allocMetalTexture()
+ 146.56 MB      23.6%	195	 	                                                  -[AGXTexture initWithDevice:desc:isSuballocDisabled:]
+ 146.46 MB      23.6%	94	 	                                                   -[IOGPUMetalTexture initWithDevice:descriptor:sysMemSize:sysMemRowBytes:vidMemSize:vidMemRowBytes:args:argsSize:]
+ 146.46 MB      23.6%	94	 	                                                    -[IOGPUMetalResource initWithDevice:options:args:argsSize:]
+ 146.46 MB      23.6%	94	 	                                                     IOGPUResourceCreate
+  49.22 MB       7.9%	90	 	                               [J]forge.screens.LoadingOverlay$$Lambda$4.run()V
+  49.22 MB       7.9%	90	 	                                [j]forge.screens.LoadingOverlay.lambda$show$1(Ljava/lang/Runnable;Lforge/screens/LoadingOverlay;)V[clinit]
+  49.22 MB       7.9%	90	 	                                 [J]forge.screens.LoadingOverlay.lambda$show$1(Ljava/lang/Runnable;Lforge/screens/LoadingOverlay;)V
+  49.22 MB       7.9%	90	 	                                  [J]forge.screens.limited.NewDraftScreen$$Lambda$1.run()V
+  49.22 MB       7.9%	90	 	                                   [j]forge.gamemodes.limited.BoosterDraft.initializeCustomDrafts()V[clinit]
+  49.22 MB       7.9%	90	 	                                    [J]forge.gamemodes.limited.BoosterDraft.initializeCustomDrafts()V
+  49.22 MB       7.9%	90	 	                                     [J]forge.gamemodes.limited.BoosterDraft.loadCustomDrafts()Ljava/util/List;
+  49.22 MB       7.9%	90	 	                                      [j]forge.util.StreamUtil.completableFutureSupplyAsync(Ljava/util/function/Supplier;)Ljava/util/concurrent/CompletableFuture;[clinit]
+  49.22 MB       7.9%	90	 	                                       [J]forge.util.StreamUtil.completableFutureSupplyAsync(Ljava/util/function/Supplier;)Ljava/util/concurrent/CompletableFuture;
+  49.22 MB       7.9%	90	 	                                        [j]java.util.concurrent.CompletableFuture.supplyAsync(Ljava/util/function/Supplier;Ljava/util/concurrent/Executor;)Ljava/util/concurrent/CompletableFuture;[clinit]
+  49.22 MB       7.9%	90	 	                                         [J]java.util.concurrent.CompletableFuture.supplyAsync(Ljava/util/function/Supplier;Ljava/util/concurrent/Executor;)Ljava/util/concurrent/CompletableFuture;
+  49.22 MB       7.9%	90	 	                                          [J]java.util.concurrent.CompletableFuture.asyncSupplyStage(Ljava/util/concurrent/Executor;Ljava/util/function/Supplier;)Ljava/util/concurrent/CompletableFuture;
+  49.22 MB       7.9%	90	 	                                           [J]java.util.concurrent.ThreadPoolExecutor.execute(Ljava/lang/Runnable;)V
+  49.22 MB       7.9%	90	 	                                            [J]java.util.concurrent.ThreadPoolExecutor.addWorker(Ljava/lang/Runnable;Z)Z
+  49.22 MB       7.9%	90	 	                                             [j]java.lang.Thread.start()V[synchronized]
+  49.22 MB       7.9%	90	 	                                              [J]java.lang.Thread.start()V
+  49.22 MB       7.9%	90	 	                                               [J]java.lang.Thread.internalStart(Ljava/lang/Thread;)V
+  49.22 MB       7.9%	90	 	                                                rvmStartThread
+  49.22 MB       7.9%	90	 	                                                 GC_pthread_create
+  49.22 MB       7.9%	90	 	                                                  _pthread_create
+  55.93 MB       9.0%	8493	 	                          -[GLKView _display:]
+  52.01 MB       8.3%	8462	 	                           0x10511232c
+  52.01 MB       8.3%	8462	 	                            0x1051121f0
+  52.01 MB       8.3%	8462	 	                             [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics$1.$cb$drawRect$(Lcom/badlogic/gdx/backends/iosrobovm/IOSGraphics$1;Lorg/robovm/objc/Selector;Lorg/robovm/apple/coregraphics/CGRect;)V
+  52.01 MB       8.3%	8462	 	                              [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics$1.draw(Lorg/robovm/apple/coregraphics/CGRect;)V
+  52.01 MB       8.3%	8462	 	                               [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics.draw(Lorg/robovm/apple/glkit/GLKView;Lorg/robovm/apple/coregraphics/CGRect;)V
+  49.82 MB       8.0%	8458	 	                                [J]forge.Forge.render()V
+  35.20 MB       5.6%	2464	 	                                 [J]forge.screens.FScreen.draw(Lforge/Graphics;)V
+  35.20 MB       5.6%	2464	 	                                  [J]forge.toolbox.FContainer.draw(Lforge/Graphics;)V
+  35.12 MB       5.6%	2456	 	                                   [J]forge.Graphics.draw(Lforge/toolbox/FDisplayObject;)V
+  35.09 MB       5.6%	2442	 	                                    [J]forge.toolbox.FContainer.draw(Lforge/Graphics;)V
+  35.09 MB       5.6%	2442	 	                                     [J]forge.Graphics.draw(Lforge/toolbox/FDisplayObject;)V
+  35.09 MB       5.6%	2438	 	                                      [J]forge.toolbox.FContainer.draw(Lforge/Graphics;)V
+  35.09 MB       5.6%	2438	 	                                       [J]forge.Graphics.draw(Lforge/toolbox/FDisplayObject;)V
+  35.09 MB       5.6%	2438	 	                                        [J]forge.toolbox.FScrollPane.draw(Lforge/Graphics;)V
+  35.09 MB       5.6%	2438	 	                                         [J]forge.toolbox.FContainer.draw(Lforge/Graphics;)V
+  35.09 MB       5.6%	2438	 	                                          [J]forge.Graphics.draw(Lforge/toolbox/FDisplayObject;)V
+  35.09 MB       5.6%	2438	 	                                           [J]forge.itemmanager.views.ImageView$Group.draw(Lforge/Graphics;)V
+  35.09 MB       5.6%	2438	 	                                            [J]forge.itemmanager.views.ImageView$Pile.draw(Lforge/Graphics;)V
+  35.09 MB       5.6%	2438	 	                                             [J]forge.itemmanager.views.ImageView$ItemInfo.draw(Lforge/Graphics;)V
+  34.99 MB       5.6%	2391	 	                                              [j]forge.card.CardRenderer.drawCard(Lforge/Graphics;Lforge/item/IPaperCard;FFFFLforge/card/CardRenderer$CardStackPosition;)V[clinit]
+  34.99 MB       5.6%	2391	 	                                               [J]forge.card.CardRenderer.drawCard(Lforge/Graphics;Lforge/item/IPaperCard;FFFFLforge/card/CardRenderer$CardStackPosition;)V
+  27.15 MB       4.3%	202	 	                                                [J]forge.CachedCardImage.getImage()Lcom/badlogic/gdx/graphics/Texture;
+  27.15 MB       4.3%	202	 	                                                 [J]forge.assets.ImageCache.getImage(Ljava/lang/String;Z)Lcom/badlogic/gdx/graphics/Texture;
+  27.15 MB       4.3%	202	 	                                                  [J]forge.assets.ImageCache.getImage(Ljava/lang/String;ZZ)Lcom/badlogic/gdx/graphics/Texture;
+  25.84 MB       4.1%	145	 	                                                   [J]forge.assets.ImageCache.loadAsset(Ljava/lang/String;Ljava/io/File;Z)Lcom/badlogic/gdx/graphics/Texture;
+  25.84 MB       4.1%	145	 	                                                    [J]forge.assets.Assets$MemoryTrackingAssetManager.finishLoadingAsset(Ljava/lang/String;)Ljava/lang/Object;
+  25.84 MB       4.1%	145	 	                                                     [J]com.badlogic.gdx.assets.AssetManager.finishLoadingAsset(Ljava/lang/String;)Ljava/lang/Object;
+  25.84 MB       4.1%	145	 	                                                      [j]com.badlogic.gdx.assets.AssetManager.update()Z[synchronized]
+  25.84 MB       4.1%	145	 	                                                       [J]com.badlogic.gdx.assets.AssetManager.update()Z
+  25.84 MB       4.1%	145	 	                                                        [J]com.badlogic.gdx.assets.AssetManager.updateTask()Z
+  25.84 MB       4.1%	145	 	                                                         [J]com.badlogic.gdx.assets.AssetLoadingTask.update()Z
+  25.84 MB       4.1%	145	 	                                                          [J]com.badlogic.gdx.assets.AssetLoadingTask.handleAsyncLoader()V
+  25.84 MB       4.1%	145	 	                                                           [J]com.badlogic.gdx.assets.loaders.TextureLoader.loadSync(Lcom/badlogic/gdx/assets/AssetManager;Ljava/lang/String;Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/assets/AssetLoaderParameters;)Ljava/lang/Object;
+  25.84 MB       4.1%	145	 	                                                            [J]com.badlogic.gdx.assets.loaders.TextureLoader.loadSync(Lcom/badlogic/gdx/assets/AssetManager;Ljava/lang/String;Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/assets/loaders/TextureLoader$TextureParameter;)Lcom/badlogic/gdx/graphics/Texture;
+  25.84 MB       4.1%	145	 	                                                             [J]com.badlogic.gdx.graphics.Texture.<init>(Lcom/badlogic/gdx/graphics/TextureData;)V
+  25.84 MB       4.1%	145	 	                                                              [J]com.badlogic.gdx.graphics.Texture.<init>(IILcom/badlogic/gdx/graphics/TextureData;)V
+  25.84 MB       4.1%	145	 	                                                               [J]com.badlogic.gdx.graphics.Texture.load(Lcom/badlogic/gdx/graphics/TextureData;)V
+  25.82 MB       4.1%	101	 	                                                                [j]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;)V[clinit]
+  25.82 MB       4.1%	101	 	                                                                 [J]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;)V
+  25.82 MB       4.1%	101	 	                                                                  [J]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;I)V
+  25.82 MB       4.1%	101	 	                                                                   [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glTexImage2D(IIIIIIIILjava/nio/Buffer;)V
+  25.82 MB       4.1%	101	 	                                                                    [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glTexImage2DJNI(IIIIIIIILjava/nio/Buffer;)V
+  25.82 MB       4.1%	101	 	                                                                     Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glTexImage2DJNI
+  25.82 MB       4.1%	101	 	                                                                      Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glTexImage2DJNI__IIIIIIIILjava_nio_Buffer_2
+  25.82 MB       4.1%	101	 	                                                                       glTexImage2D
+  25.82 MB       4.1%	101	 	                                                                        glTexImage2D_Exec
+  15.33 MB       2.4%	90	 	                                                                         gldModifyTexSubImage
+  15.33 MB       2.4%	90	 	                                                                          GLDTextureRec::load()
+  15.33 MB       2.4%	90	 	                                                                           GLDTextureRec::update(unsigned int, unsigned short*)
+  15.33 MB       2.4%	68	 	                                                                            GLDTextureRec::loadPrivateTexture(unsigned int, unsigned short*)
+  15.33 MB       2.4%	68	 	                                                                             GLDTextureRec::allocMetalTexture()
+  15.32 MB       2.4%	46	 	                                                                              -[AGXTexture initWithDevice:desc:isSuballocDisabled:]
+  15.30 MB       2.4%	22	 	                                                                               -[IOGPUMetalTexture initWithDevice:descriptor:sysMemSize:sysMemRowBytes:vidMemSize:vidMemRowBytes:args:argsSize:]
+  15.30 MB       2.4%	22	 	                                                                                -[IOGPUMetalResource initWithDevice:options:args:argsSize:]
+  15.30 MB       2.4%	22	 	                                                                                 IOGPUResourceCreate
+  10.48 MB       1.6%	11	 	                                                                         gfxAllocateTextureLevel
+  10.48 MB       1.6%	11	 	                                                                          _malloc_type_malloc_outlined
+   7.15 MB       1.1%	952	 	                                                [j]forge.card.CardImageRenderer.drawCardImage(Lforge/Graphics;Lforge/game/card/CardView;ZFFFFLforge/card/CardRenderer$CardStackPosition;ZZ)V[clinit]
+   7.15 MB       1.1%	952	 	                                                 [J]forge.card.CardImageRenderer.drawCardImage(Lforge/Graphics;Lforge/game/card/CardView;ZFFFFLforge/card/CardRenderer$CardStackPosition;ZZ)V
+   7.15 MB       1.1%	952	 	                                                  [J]forge.card.CardImageRenderer.drawCardImage(Lforge/Graphics;Lforge/game/card/CardView;ZFFFFLforge/card/CardRenderer$CardStackPosition;ZZZZZ)V
+   8.58 MB       1.3%	80	 	                                 [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glClear(I)V
+   8.58 MB       1.3%	80	 	                                  Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glClear
+   8.58 MB       1.3%	80	 	                                   Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glClear__I
+   8.58 MB       1.3%	80	 	                                    glClear_Exec
+   8.58 MB       1.3%	80	 	                                     gldClearFramebufferData
+   7.85 MB       1.2%	40	 	                                      GLDContextRec::addRenderPassResources()
+   7.85 MB       1.2%	40	 	                                       GLDTextureRec::getTextureResource(unsigned int)
+   7.85 MB       1.2%	30	 	                                        GLDTextureRec::ensureResource()
+   7.85 MB       1.2%	30	 	                                         gliGetNewIOSurfaceES
+   7.85 MB       1.2%	30	 	                                          native_window_begin_iosurface(_EAGLNativeWindowObject*)
+   7.85 MB       1.2%	28	 	                                           allocate_buffer(unsigned int, unsigned int, unsigned int, unsigned int, _CAImageQueue*)
+   7.84 MB       1.2%	6	 	                                            CA::Render::create_iosurface_with_pixel_format(unsigned int, unsigned int, unsigned int, unsigned int, unsigned long long, __CFString const*)
+   7.84 MB       1.2%	6	 	                                             CA::SurfaceUtil::CAIOSurfaceCreate(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned long long, CA::SurfaceUtil::SurfaceAlignment, __CFString const*)
+   7.84 MB       1.2%	6	 	                                              IOSurfaceCreate
+   7.84 MB       1.2%	4	 	                                               -[IOSurface initWithProperties:]
+   7.84 MB       1.2%	4	 	                                                IOSurfaceClientCreateChild
+  49.25 MB       7.9%	10477	 	                   BSServiceMainRunLoopSourceHandler
+  49.25 MB       7.9%	10476	 	                    __BSSERVICEMAINRUNLOOPQUEUE_IS_CALLING_OUT_TO_A_BLOCK__
+  49.25 MB       7.9%	10476	 	                     _dispatch_block_invoke_direct
+  49.25 MB       7.9%	10476	 	                      _dispatch_client_callout
+  49.14 MB       7.9%	9910	 	                       -[FBSWorkspace _calloutQueue_executeCalloutFromSource:withBlock:]
+  49.08 MB       7.9%	9422	 	                        __92-[FBSWorkspaceScenesClient createSceneWithIdentity:parameters:transitionContext:completion:]_block_invoke_2
+  49.08 MB       7.9%	9422	 	                         -[FBSWorkspaceScenesClient _callOutQueue_sendDidCreateForScene:transitionContext:completion:]
+  49.08 MB       7.9%	9404	 	                          -[FBSWorkspace _calloutQueue_executeCalloutFromSource:withBlock:]
+  49.08 MB       7.9%	9403	 	                           __93-[FBSWorkspaceScenesClient _callOutQueue_sendDidCreateForScene:transitionContext:completion:]_block_invoke.349
+  49.08 MB       7.9%	9402	 	                            -[FBSScene _callOutQueue_didCreateWithTransitionContext:alternativeCreationCallout:completion:]
+  49.08 MB       7.9%	9402	 	                             -[FBSScene _callOutQueue_maybeCoalesceClientSettingsUpdates:]
+  49.08 MB       7.9%	9400	 	                              __95-[FBSScene _callOutQueue_didCreateWithTransitionContext:alternativeCreationCallout:completion:]_block_invoke
+  49.07 MB       7.9%	9227	 	                               -[UIApplicationSceneClientAgent scene:didInitializeWithEvent:completion:]
+  49.07 MB       7.9%	9227	 	                                -[UIApplication workspace:didCreateScene:withTransitionContext:completion:]
+  49.02 MB       7.9%	8562	 	                                 -[UIScene scene:didUpdateWithDiff:transitionContext:completion:]
+  49.02 MB       7.9%	8558	 	                                  -[UIScene _emitSceneSettingsUpdateResponseForCompletion:afterSceneUpdateWork:]
+  49.02 MB       7.9%	8536	 	                                   __64-[UIScene scene:didUpdateWithDiff:transitionContext:completion:]_block_invoke.218
+  49.01 MB       7.9%	8342	 	                                    -[_UIWindowSceneFBSSceneTransitionContextDrivenLifecycleSettingsDiffAction _performActionsForUIScene:withUpdatedFBSScene:settingsDiff:fromSettings:transitionContext:lifecycleActionType:]
+  49.01 MB       7.9%	8324	 	                                     _UISceneSettingsDiffActionPerformChangesWithTransitionContextAndCompletion
+  49.01 MB       7.9%	8320	 	                                      +[BSAnimationSettings(UIKit) tryAnimatingWithSettings:fromCurrentState:actions:completion:]
+  49.01 MB       7.9%	8320	 	                                       __186-[_UIWindowSceneFBSSceneTransitionContextDrivenLifecycleSettingsDiffAction _performActionsForUIScene:withUpdatedFBSScene:settingsDiff:fromSettings:transitionContext:lifecycleActionType:]_block_invoke
+  49.01 MB       7.9%	8282	 	                                        -[_UISceneLifecycleMultiplexer uiScene:transitionedFromState:withTransitionContext:]
+  49.00 MB       7.9%	8277	 	                                         -[_UISceneLifecycleMultiplexer _evalTransitionToSettings:fromSettings:forceExit:withTransitionStore:]
+  49.00 MB       7.9%	8277	 	                                          -[_UISceneLifecycleMultiplexer _performBlock:withApplicationOfDeactivationReasons:fromReasons:]
+  49.00 MB       7.9%	8276	 	                                           __101-[_UISceneLifecycleMultiplexer _evalTransitionToSettings:fromSettings:forceExit:withTransitionStore:]_block_invoke
+  49.00 MB       7.9%	8221	 	                                            _UIScenePerformActionsWithLifecycleActionMask
+  49.00 MB       7.9%	8212	 	                                             -[_UISceneLifecycleMultiplexer completeApplicationLaunchWithFBSScene:transitionContext:]
+  49.00 MB       7.9%	8203	 	                                              -[UIApplication _runWithMainScene:transitionContext:completion:]
+  48.98 MB       7.9%	7978	 	                                               -[UIApplication _callInitializationDelegatesWithActions:forScene:payload:fromOriginatingProcess:]
+  48.98 MB       7.9%	7975	 	                                                -[UIApplication _handleDelegateCallbacksWithOptions:isSuspended:restoreState:]
+  48.98 MB       7.9%	7962	 	                                                 [j]com.badlogic.gdx.backends.iosrobovm.IOSApplication$Delegate.$cb$application$didFinishLaunchingWithOptions$(Lcom/badlogic/gdx/backends/iosrobovm/IOSApplication$Delegate;Lorg/robovm/objc/Selector;Lorg/robovm/apple/uikit/UIApplication;Lorg/robovm/apple/uikit/UIApplicationLaunchOptions;)Z[callback]
+  48.98 MB       7.9%	7962	 	                                                  [J]com.badlogic.gdx.backends.iosrobovm.IOSApplication$Delegate.$cb$application$didFinishLaunchingWithOptions$(Lcom/badlogic/gdx/backends/iosrobovm/IOSApplication$Delegate;Lorg/robovm/objc/Selector;Lorg/robovm/apple/uikit/UIApplication;Lorg/robovm/apple/uikit/UIApplicationLaunchOptions;)Z
+  48.98 MB       7.9%	7962	 	                                                   [J]forge.ios.Main.didFinishLaunching(Lorg/robovm/apple/uikit/UIApplication;Lorg/robovm/apple/uikit/UIApplicationLaunchOptions;)Z
+  48.98 MB       7.9%	7962	 	                                                    [J]com.badlogic.gdx.backends.iosrobovm.IOSApplication$Delegate.didFinishLaunching(Lorg/robovm/apple/uikit/UIApplication;Lorg/robovm/apple/uikit/UIApplicationLaunchOptions;)Z
+  48.79 MB       7.8%	6294	 	                                                     [J]com.badlogic.gdx.backends.iosrobovm.IOSApplication.didFinishLaunching(Lorg/robovm/apple/uikit/UIApplication;Lorg/robovm/apple/uikit/UIApplicationLaunchOptions;)Z
+  24.34 MB       3.9%	2374	 	                                                      [J]forge.Forge.create()V
+  20.17 MB       3.2%	136	 	                                                       [j]forge.assets.FSkin.loadLight(Ljava/lang/String;Lforge/screens/SplashScreen;)V[clinit]
+  20.17 MB       3.2%	136	 	                                                        [J]forge.assets.FSkin.loadLight(Ljava/lang/String;Lforge/screens/SplashScreen;)V
+  16.14 MB       2.6%	108	 	                                                         [J]forge.assets.Assets.loadTexture(Lcom/badlogic/gdx/files/FileHandle;)V
+  16.14 MB       2.6%	108	 	                                                          [J]forge.assets.Assets.loadTexture(Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/assets/loaders/TextureLoader$TextureParameter;)V
+  16.14 MB       2.6%	108	 	                                                           [J]forge.assets.Assets$MemoryTrackingAssetManager.finishLoadingAsset(Ljava/lang/String;)Ljava/lang/Object;
+  16.14 MB       2.6%	108	 	                                                            [J]com.badlogic.gdx.assets.AssetManager.finishLoadingAsset(Ljava/lang/String;)Ljava/lang/Object;
+  16.14 MB       2.6%	108	 	                                                             [j]com.badlogic.gdx.assets.AssetManager.update()Z[synchronized]
+  16.14 MB       2.6%	108	 	                                                              [J]com.badlogic.gdx.assets.AssetManager.update()Z
+  16.14 MB       2.6%	108	 	                                                               [J]com.badlogic.gdx.assets.AssetManager.updateTask()Z
+  16.14 MB       2.6%	108	 	                                                                [J]com.badlogic.gdx.assets.AssetLoadingTask.update()Z
+  16.14 MB       2.6%	108	 	                                                                 [J]com.badlogic.gdx.assets.AssetLoadingTask.handleAsyncLoader()V
+  16.14 MB       2.6%	108	 	                                                                  [J]com.badlogic.gdx.assets.loaders.TextureLoader.loadSync(Lcom/badlogic/gdx/assets/AssetManager;Ljava/lang/String;Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/assets/AssetLoaderParameters;)Ljava/lang/Object;
+  16.14 MB       2.6%	108	 	                                                                   [J]com.badlogic.gdx.assets.loaders.TextureLoader.loadSync(Lcom/badlogic/gdx/assets/AssetManager;Ljava/lang/String;Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/assets/loaders/TextureLoader$TextureParameter;)Lcom/badlogic/gdx/graphics/Texture;
+  16.14 MB       2.6%	108	 	                                                                    [J]com.badlogic.gdx.graphics.Texture.<init>(Lcom/badlogic/gdx/graphics/TextureData;)V
+  16.14 MB       2.6%	108	 	                                                                     [J]com.badlogic.gdx.graphics.Texture.<init>(IILcom/badlogic/gdx/graphics/TextureData;)V
+  16.14 MB       2.6%	108	 	                                                                      [J]com.badlogic.gdx.graphics.Texture.load(Lcom/badlogic/gdx/graphics/TextureData;)V
+  16.12 MB       2.6%	72	 	                                                                       [j]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;)V[clinit]
+  16.12 MB       2.6%	72	 	                                                                        [J]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;)V
+  16.12 MB       2.6%	72	 	                                                                         [J]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;I)V
+  16.12 MB       2.6%	72	 	                                                                          [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glTexImage2D(IIIIIIIILjava/nio/Buffer;)V
+  16.12 MB       2.6%	72	 	                                                                           [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glTexImage2DJNI(IIIIIIIILjava/nio/Buffer;)V
+  16.12 MB       2.6%	72	 	                                                                            Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glTexImage2DJNI
+  16.12 MB       2.6%	72	 	                                                                             Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glTexImage2DJNI__IIIIIIIILjava_nio_Buffer_2
+  16.12 MB       2.6%	72	 	                                                                              glTexImage2D
+  16.12 MB       2.6%	72	 	                                                                               glTexImage2D_Exec
+  16.12 MB       2.6%	72	 	                                                                                gldModifyTexSubImage
+  16.12 MB       2.6%	72	 	                                                                                 GLDTextureRec::load()
+  16.12 MB       2.6%	72	 	                                                                                  GLDTextureRec::update(unsigned int, unsigned short*)
+  16.12 MB       2.6%	54	 	                                                                                   GLDTextureRec::loadPrivateTexture(unsigned int, unsigned short*)
+  16.12 MB       2.6%	54	 	                                                                                    GLDTextureRec::allocMetalTexture()
+  16.11 MB       2.6%	36	 	                                                                                     -[AGXTexture initWithDevice:desc:isSuballocDisabled:]
+  16.10 MB       2.5%	18	 	                                                                                      -[IOGPUMetalTexture initWithDevice:descriptor:sysMemSize:sysMemRowBytes:vidMemSize:vidMemRowBytes:args:argsSize:]
+  16.10 MB       2.5%	18	 	                                                                                       -[IOGPUMetalResource initWithDevice:options:args:argsSize:]
+  16.10 MB       2.5%	18	 	                                                                                        IOGPUResourceCreate
+  23.44 MB       3.7%	880	 	                                                      [J]org.robovm.apple.glkit.GLKView.display()V
+  23.44 MB       3.7%	880	 	                                                       [j]org.robovm.objc.$M.void_objc_msgSend_instance(Lorg/robovm/apple/foundation/NSObject;Lorg/robovm/objc/Selector;)V[clinit]
+  23.44 MB       3.7%	880	 	                                                        [J]org.robovm.objc.$M.void_objc_msgSend_instance(Lorg/robovm/apple/foundation/NSObject;Lorg/robovm/objc/Selector;)V
+  23.44 MB       3.7%	880	 	                                                         [J]org.robovm.objc.$M.void_objc_msgSendSuper(Lorg/robovm/objc/ObjCSuper;Lorg/robovm/objc/Selector;)V
+  23.44 MB       3.7%	879	 	                                                          -[GLKView _display:]
+  23.41 MB       3.7%	832	 	                                                           0x10511232c
+  23.41 MB       3.7%	832	 	                                                            0x1051121f0
+  23.41 MB       3.7%	832	 	                                                             [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics$1.$cb$drawRect$(Lcom/badlogic/gdx/backends/iosrobovm/IOSGraphics$1;Lorg/robovm/objc/Selector;Lorg/robovm/apple/coregraphics/CGRect;)V
+  23.41 MB       3.7%	832	 	                                                              [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics$1.draw(Lorg/robovm/apple/coregraphics/CGRect;)V
+  23.41 MB       3.7%	832	 	                                                               [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics.draw(Lorg/robovm/apple/glkit/GLKView;Lorg/robovm/apple/coregraphics/CGRect;)V
+  23.41 MB       3.7%	832	 	                                                                [J]forge.Forge.render()V
+  23.03 MB       3.7%	796	 	                                                                 [J]forge.toolbox.FContainer.draw(Lforge/Graphics;)V
+  23.03 MB       3.7%	796	 	                                                                  [J]forge.screens.SplashScreen.drawBackground(Lforge/Graphics;)V
+  23.03 MB       3.7%	796	 	                                                                   [J]forge.screens.SplashScreen$BGAnimation.drawBackground(Lforge/Graphics;)V
+  23.03 MB       3.7%	796	 	                                                                    [J]forge.screens.SplashScreen.showSplash(Lforge/Graphics;F)V
+  23.03 MB       3.7%	796	 	                                                                     [J]forge.screens.SplashScreen.drawDisclaimer(Lforge/Graphics;)V
+  15.06 MB       2.4%	176	 	                                                                      [J]forge.Graphics.drawText(Ljava/lang/String;Lforge/assets/FSkinFont;Lcom/badlogic/gdx/graphics/Color;FFFFZIZ)V
+  15.04 MB       2.4%	168	 	                                                                       [J]forge.assets.FSkinFont.shrink()Lforge/assets/FSkinFont;
+  15.04 MB       2.4%	168	 	                                                                        [J]forge.assets.FSkinFont._get(I)Lforge/assets/FSkinFont;
+  15.04 MB       2.4%	168	 	                                                                         [J]forge.assets.FSkinFont.<init>(I)V
+  15.04 MB       2.4%	168	 	                                                                          [J]forge.assets.FSkinFont.updateFont()V
+  15.04 MB       2.4%	168	 	                                                                           [J]forge.assets.FSkinFont.generateFont(Lcom/badlogic/gdx/files/FileHandle;Ljava/lang/String;I)V
+  15.04 MB       2.4%	168	 	                                                                            [j]forge.gui.FThreads.invokeInEdtNowOrLater(Ljava/lang/Runnable;)V[clinit]
+  15.04 MB       2.4%	168	 	                                                                             [J]forge.gui.FThreads.invokeInEdtNowOrLater(Ljava/lang/Runnable;)V
+  15.04 MB       2.4%	168	 	                                                                              [J]forge.GuiMobile.invokeInEdtNow(Ljava/lang/Runnable;)V
+  15.04 MB       2.4%	168	 	                                                                               [J]forge.assets.FSkinFont$1.run()V
+   7.52 MB       1.2%	84	 	                                                                                [J]forge.assets.FSkinFont$1$1.<init>(Lforge/assets/FSkinFont$1;Lcom/badlogic/gdx/graphics/TextureData;)V
+   7.52 MB       1.2%	84	 	                                                                                 [J]com.badlogic.gdx.graphics.Texture.<init>(Lcom/badlogic/gdx/graphics/TextureData;)V
+   7.52 MB       1.2%	84	 	                                                                                  [J]com.badlogic.gdx.graphics.Texture.<init>(IILcom/badlogic/gdx/graphics/TextureData;)V
+   7.52 MB       1.2%	84	 	                                                                                   [J]com.badlogic.gdx.graphics.Texture.load(Lcom/badlogic/gdx/graphics/TextureData;)V
+   7.51 MB       1.2%	56	 	                                                                                    [j]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;)V[clinit]
+   7.51 MB       1.2%	56	 	                                                                                     [J]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;)V
+   7.51 MB       1.2%	56	 	                                                                                      [J]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;I)V
+   7.51 MB       1.2%	56	 	                                                                                       [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glTexImage2D(IIIIIIIILjava/nio/Buffer;)V
+   7.51 MB       1.2%	56	 	                                                                                        [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glTexImage2DJNI(IIIIIIIILjava/nio/Buffer;)V
+   7.51 MB       1.2%	56	 	                                                                                         Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glTexImage2DJNI
+   7.51 MB       1.2%	56	 	                                                                                          Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glTexImage2DJNI__IIIIIIIILjava_nio_Buffer_2
+   7.51 MB       1.2%	56	 	                                                                                           glTexImage2D
+   7.51 MB       1.2%	56	 	                                                                                            glTexImage2D_Exec
+   7.51 MB       1.2%	56	 	                                                                                             gldModifyTexSubImage
+   7.51 MB       1.2%	56	 	                                                                                              GLDTextureRec::load()
+   7.51 MB       1.2%	56	 	                                                                                               GLDTextureRec::update(unsigned int, unsigned short*)
+   7.50 MB       1.2%	42	 	                                                                                                GLDTextureRec::loadPrivateTexture(unsigned int, unsigned short*)
+   7.50 MB       1.2%	42	 	                                                                                                 GLDTextureRec::allocMetalTexture()
+   7.50 MB       1.2%	28	 	                                                                                                  -[AGXTexture initWithDevice:desc:isSuballocDisabled:]
+   7.49 MB       1.2%	14	 	                                                                                                   -[IOGPUMetalTexture initWithDevice:descriptor:sysMemSize:sysMemRowBytes:vidMemSize:vidMemRowBytes:args:argsSize:]
+   7.49 MB       1.2%	14	 	                                                                                                    -[IOGPUMetalResource initWithDevice:options:args:argsSize:]
+   7.49 MB       1.2%	14	 	                                                                                                     IOGPUResourceCreate
+   7.52 MB       1.2%	84	 	                                                                                [J]forge.assets.Assets$MemoryTrackingAssetManager.finishLoadingAsset(Ljava/lang/String;)Ljava/lang/Object;
+   7.52 MB       1.2%	84	 	                                                                                 [J]com.badlogic.gdx.assets.AssetManager.finishLoadingAsset(Ljava/lang/String;)Ljava/lang/Object;
+   7.52 MB       1.2%	84	 	                                                                                  [j]com.badlogic.gdx.assets.AssetManager.update()Z[synchronized]
+   7.52 MB       1.2%	84	 	                                                                                   [J]com.badlogic.gdx.assets.AssetManager.update()Z
+   7.52 MB       1.2%	84	 	                                                                                    [J]com.badlogic.gdx.assets.AssetManager.updateTask()Z
+   7.52 MB       1.2%	84	 	                                                                                     [J]com.badlogic.gdx.assets.AssetLoadingTask.update()Z
+   7.52 MB       1.2%	84	 	                                                                                      [J]com.badlogic.gdx.assets.AssetLoadingTask.handleAsyncLoader()V
+   7.52 MB       1.2%	84	 	                                                                                       [J]com.badlogic.gdx.assets.loaders.TextureLoader.loadSync(Lcom/badlogic/gdx/assets/AssetManager;Ljava/lang/String;Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/assets/AssetLoaderParameters;)Ljava/lang/Object;
+   7.52 MB       1.2%	84	 	                                                                                        [J]com.badlogic.gdx.assets.loaders.TextureLoader.loadSync(Lcom/badlogic/gdx/assets/AssetManager;Ljava/lang/String;Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/assets/loaders/TextureLoader$TextureParameter;)Lcom/badlogic/gdx/graphics/Texture;
+   7.52 MB       1.2%	84	 	                                                                                         [J]com.badlogic.gdx.graphics.Texture.<init>(Lcom/badlogic/gdx/graphics/TextureData;)V
+   7.52 MB       1.2%	84	 	                                                                                          [J]com.badlogic.gdx.graphics.Texture.<init>(IILcom/badlogic/gdx/graphics/TextureData;)V
+   7.52 MB       1.2%	84	 	                                                                                           [J]com.badlogic.gdx.graphics.Texture.load(Lcom/badlogic/gdx/graphics/TextureData;)V
+   7.51 MB       1.2%	56	 	                                                                                            [j]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;)V[clinit]
+   7.51 MB       1.2%	56	 	                                                                                             [J]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;)V
+   7.51 MB       1.2%	56	 	                                                                                              [J]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;I)V
+   7.51 MB       1.2%	56	 	                                                                                               [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glTexImage2D(IIIIIIIILjava/nio/Buffer;)V
+   7.51 MB       1.2%	56	 	                                                                                                [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glTexImage2DJNI(IIIIIIIILjava/nio/Buffer;)V
+   7.51 MB       1.2%	56	 	                                                                                                 Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glTexImage2DJNI
+   7.51 MB       1.2%	56	 	                                                                                                  Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glTexImage2DJNI__IIIIIIIILjava_nio_Buffer_2
+   7.51 MB       1.2%	56	 	                                                                                                   glTexImage2D
+   7.51 MB       1.2%	56	 	                                                                                                    glTexImage2D_Exec
+   7.51 MB       1.2%	56	 	                                                                                                     gldModifyTexSubImage
+   7.51 MB       1.2%	56	 	                                                                                                      GLDTextureRec::load()
+   7.51 MB       1.2%	56	 	                                                                                                       GLDTextureRec::update(unsigned int, unsigned short*)
+   7.50 MB       1.2%	42	 	                                                                                                        GLDTextureRec::loadPrivateTexture(unsigned int, unsigned short*)
+   7.50 MB       1.2%	42	 	                                                                                                         GLDTextureRec::allocMetalTexture()
+   7.50 MB       1.2%	28	 	                                                                                                          -[AGXTexture initWithDevice:desc:isSuballocDisabled:]
+   7.49 MB       1.2%	14	 	                                                                                                           -[IOGPUMetalTexture initWithDevice:descriptor:sysMemSize:sysMemRowBytes:vidMemSize:vidMemRowBytes:args:argsSize:]
+   7.49 MB       1.2%	14	 	                                                                                                            -[IOGPUMetalResource initWithDevice:options:args:argsSize:]
+   7.49 MB       1.2%	14	 	                                                                                                             IOGPUResourceCreate
+ 160.43 MB      25.8%	634	 	                __CFRunLoopDoSource1
+ 160.43 MB      25.8%	634	 	                 __CFRUNLOOP_IS_CALLING_OUT_TO_A_SOURCE1_PERFORM_FUNCTION__
+ 160.43 MB      25.8%	634	 	                  __CFMachPortPerform
+ 160.43 MB      25.8%	634	 	                   UC::DriverCore::continueProcessing()
+ 160.43 MB      25.8%	634	 	                    schedulerStepScheduledMainSectionContinue
+ 160.43 MB      25.8%	634	 	                     _UIUpdateSequenceRunNext
+ 160.43 MB      25.8%	634	 	                      CA::Display::DisplayLink::dispatch_deferred_display_links(unsigned int)
+ 160.43 MB      25.8%	634	 	                       CA::Display::DisplayLink::dispatch_items(unsigned long long, unsigned long long, unsigned long long)
+ 160.43 MB      25.8%	634	 	                        CA::Display::DisplayLinkItem::dispatch_(CA::SignPost::Interval<(CA::SignPost::CAEventCode)835322056>&)
+ 160.43 MB      25.8%	634	 	                         -[GLKViewController _updateAndDraw]
+ 160.18 MB      25.8%	510	 	                          [j]com.badlogic.gdx.backends.iosrobovm.IOSGraphics$IOSViewDelegate.$cb$glkViewControllerUpdate$(Lcom/badlogic/gdx/backends/iosrobovm/IOSGraphics$IOSViewDelegate;Lorg/robovm/objc/Selector;Lorg/robovm/apple/glkit/GLKViewController;)V[callback]
+ 160.18 MB      25.8%	510	 	                           [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics$IOSViewDelegate.$cb$glkViewControllerUpdate$(Lcom/badlogic/gdx/backends/iosrobovm/IOSGraphics$IOSViewDelegate;Lorg/robovm/objc/Selector;Lorg/robovm/apple/glkit/GLKViewController;)V
+ 160.18 MB      25.8%	510	 	                            [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics$IOSViewDelegate.update(Lorg/robovm/apple/glkit/GLKViewController;)V
+ 160.18 MB      25.8%	510	 	                             [J]com.badlogic.gdx.backends.iosrobovm.IOSGraphics.update(Lorg/robovm/apple/glkit/GLKViewController;)V
+ 160.18 MB      25.8%	510	 	                              [J]com.badlogic.gdx.backends.iosrobovm.IOSApplication.processRunnables()V
+ 130.51 MB      21.0%	305	 	                               [J]forge.Forge$$Lambda$14.run()V
+ 130.51 MB      21.0%	305	 	                                [J]forge.Forge.lambda$afterDbLoaded$1()V
+ 130.51 MB      21.0%	305	 	                                 [j]forge.assets.FSkin.loadFull(Lforge/screens/SplashScreen;)V[clinit]
+ 130.51 MB      21.0%	305	 	                                  [J]forge.assets.FSkin.loadFull(Lforge/screens/SplashScreen;)V
+  90.31 MB      14.5%	134	 	                                   [J]forge.assets.Assets.loadTexture(Lcom/badlogic/gdx/files/FileHandle;)V
+  90.31 MB      14.5%	134	 	                                    [J]forge.assets.Assets.loadTexture(Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/assets/loaders/TextureLoader$TextureParameter;)V
+  90.31 MB      14.5%	134	 	                                     [J]forge.assets.Assets$MemoryTrackingAssetManager.finishLoadingAsset(Ljava/lang/String;)Ljava/lang/Object;
+  90.31 MB      14.5%	134	 	                                      [J]com.badlogic.gdx.assets.AssetManager.finishLoadingAsset(Ljava/lang/String;)Ljava/lang/Object;
+  90.31 MB      14.5%	134	 	                                       [j]com.badlogic.gdx.assets.AssetManager.update()Z[synchronized]
+  90.31 MB      14.5%	134	 	                                        [J]com.badlogic.gdx.assets.AssetManager.update()Z
+  90.31 MB      14.5%	134	 	                                         [J]com.badlogic.gdx.assets.AssetManager.updateTask()Z
+  90.31 MB      14.5%	134	 	                                          [J]com.badlogic.gdx.assets.AssetLoadingTask.update()Z
+  90.31 MB      14.5%	134	 	                                           [J]com.badlogic.gdx.assets.AssetLoadingTask.handleAsyncLoader()V
+  90.31 MB      14.5%	134	 	                                            [J]com.badlogic.gdx.assets.loaders.TextureLoader.loadSync(Lcom/badlogic/gdx/assets/AssetManager;Ljava/lang/String;Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/assets/AssetLoaderParameters;)Ljava/lang/Object;
+  90.31 MB      14.5%	134	 	                                             [J]com.badlogic.gdx.assets.loaders.TextureLoader.loadSync(Lcom/badlogic/gdx/assets/AssetManager;Ljava/lang/String;Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/assets/loaders/TextureLoader$TextureParameter;)Lcom/badlogic/gdx/graphics/Texture;
+  90.31 MB      14.5%	134	 	                                              [J]com.badlogic.gdx.graphics.Texture.<init>(Lcom/badlogic/gdx/graphics/TextureData;)V
+  90.31 MB      14.5%	134	 	                                               [J]com.badlogic.gdx.graphics.Texture.<init>(IILcom/badlogic/gdx/graphics/TextureData;)V
+  90.31 MB      14.5%	134	 	                                                [J]com.badlogic.gdx.graphics.Texture.load(Lcom/badlogic/gdx/graphics/TextureData;)V
+  90.29 MB      14.5%	90	 	                                                 [j]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;)V[clinit]
+  90.29 MB      14.5%	90	 	                                                  [J]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;)V
+  90.29 MB      14.5%	90	 	                                                   [J]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;I)V
+  90.29 MB      14.5%	90	 	                                                    [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glTexImage2D(IIIIIIIILjava/nio/Buffer;)V
+  90.29 MB      14.5%	90	 	                                                     [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glTexImage2DJNI(IIIIIIIILjava/nio/Buffer;)V
+  90.29 MB      14.5%	90	 	                                                      Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glTexImage2DJNI
+  90.29 MB      14.5%	90	 	                                                       Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glTexImage2DJNI__IIIIIIIILjava_nio_Buffer_2
+  90.29 MB      14.5%	90	 	                                                        glTexImage2D
+  90.29 MB      14.5%	90	 	                                                         glTexImage2D_Exec
+  69.66 MB      11.2%	88	 	                                                          gldModifyTexSubImage
+  69.66 MB      11.2%	88	 	                                                           GLDTextureRec::load()
+  69.66 MB      11.2%	88	 	                                                            GLDTextureRec::update(unsigned int, unsigned short*)
+  69.66 MB      11.2%	66	 	                                                             GLDTextureRec::loadPrivateTexture(unsigned int, unsigned short*)
+  69.66 MB      11.2%	66	 	                                                              GLDTextureRec::allocMetalTexture()
+  69.65 MB      11.2%	44	 	                                                               -[AGXTexture initWithDevice:desc:isSuballocDisabled:]
+  69.63 MB      11.2%	22	 	                                                                -[IOGPUMetalTexture initWithDevice:descriptor:sysMemSize:sysMemRowBytes:vidMemSize:vidMemRowBytes:args:argsSize:]
+  69.63 MB      11.2%	22	 	                                                                 -[IOGPUMetalResource initWithDevice:options:args:argsSize:]
+  69.63 MB      11.2%	22	 	                                                                  IOGPUResourceCreate
+  20.62 MB       3.3%	2	 	                                                          gfxAllocateTextureLevel
+  20.62 MB       3.3%	2	 	                                                           _malloc_type_malloc_outlined
+  22.23 MB       3.5%	108	 	                                   [J]forge.assets.FSkinImage.load(Lcom/badlogic/gdx/graphics/Pixmap;)V
+  22.23 MB       3.5%	108	 	                                    [J]forge.assets.FSkinImageImpl.load(Lcom/badlogic/gdx/graphics/Pixmap;)V
+  22.23 MB       3.5%	108	 	                                     [J]forge.assets.Assets.getTexture(Lcom/badlogic/gdx/files/FileHandle;ZZ)Lcom/badlogic/gdx/graphics/Texture;
+  22.23 MB       3.5%	108	 	                                      [J]forge.assets.Assets$MemoryTrackingAssetManager.finishLoadingAsset(Ljava/lang/String;)Ljava/lang/Object;
+  22.23 MB       3.5%	108	 	                                       [J]com.badlogic.gdx.assets.AssetManager.finishLoadingAsset(Ljava/lang/String;)Ljava/lang/Object;
+  22.23 MB       3.5%	108	 	                                        [j]com.badlogic.gdx.assets.AssetManager.update()Z[synchronized]
+  22.23 MB       3.5%	108	 	                                         [J]com.badlogic.gdx.assets.AssetManager.update()Z
+  22.23 MB       3.5%	108	 	                                          [J]com.badlogic.gdx.assets.AssetManager.updateTask()Z
+  22.23 MB       3.5%	108	 	                                           [J]com.badlogic.gdx.assets.AssetLoadingTask.update()Z
+  22.23 MB       3.5%	108	 	                                            [J]com.badlogic.gdx.assets.AssetLoadingTask.handleAsyncLoader()V
+  22.23 MB       3.5%	108	 	                                             [J]com.badlogic.gdx.assets.loaders.TextureLoader.loadSync(Lcom/badlogic/gdx/assets/AssetManager;Ljava/lang/String;Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/assets/AssetLoaderParameters;)Ljava/lang/Object;
+  22.23 MB       3.5%	108	 	                                              [J]com.badlogic.gdx.assets.loaders.TextureLoader.loadSync(Lcom/badlogic/gdx/assets/AssetManager;Ljava/lang/String;Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/assets/loaders/TextureLoader$TextureParameter;)Lcom/badlogic/gdx/graphics/Texture;
+  22.23 MB       3.5%	108	 	                                               [J]com.badlogic.gdx.graphics.Texture.<init>(Lcom/badlogic/gdx/graphics/TextureData;)V
+  22.23 MB       3.5%	108	 	                                                [J]com.badlogic.gdx.graphics.Texture.<init>(IILcom/badlogic/gdx/graphics/TextureData;)V
+  22.23 MB       3.5%	108	 	                                                 [J]com.badlogic.gdx.graphics.Texture.load(Lcom/badlogic/gdx/graphics/TextureData;)V
+  22.22 MB       3.5%	72	 	                                                  [j]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;)V[clinit]
+  22.22 MB       3.5%	72	 	                                                   [J]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;)V
+  22.22 MB       3.5%	72	 	                                                    [J]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;I)V
+  22.22 MB       3.5%	72	 	                                                     [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glTexImage2D(IIIIIIIILjava/nio/Buffer;)V
+  22.22 MB       3.5%	72	 	                                                      [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glTexImage2DJNI(IIIIIIIILjava/nio/Buffer;)V
+  22.22 MB       3.5%	72	 	                                                       Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glTexImage2DJNI
+  22.22 MB       3.5%	72	 	                                                        Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glTexImage2DJNI__IIIIIIIILjava_nio_Buffer_2
+  22.22 MB       3.5%	72	 	                                                         glTexImage2D
+  22.22 MB       3.5%	72	 	                                                          glTexImage2D_Exec
+  22.22 MB       3.5%	72	 	                                                           gldModifyTexSubImage
+  22.22 MB       3.5%	72	 	                                                            GLDTextureRec::load()
+  22.22 MB       3.5%	72	 	                                                             GLDTextureRec::update(unsigned int, unsigned short*)
+  22.21 MB       3.5%	54	 	                                                              GLDTextureRec::loadPrivateTexture(unsigned int, unsigned short*)
+  22.21 MB       3.5%	54	 	                                                               GLDTextureRec::allocMetalTexture()
+  22.21 MB       3.5%	36	 	                                                                -[AGXTexture initWithDevice:desc:isSuballocDisabled:]
+  22.19 MB       3.5%	18	 	                                                                 -[IOGPUMetalTexture initWithDevice:descriptor:sysMemSize:sysMemRowBytes:vidMemSize:vidMemRowBytes:args:argsSize:]
+  22.19 MB       3.5%	18	 	                                                                  -[IOGPUMetalResource initWithDevice:options:args:argsSize:]
+  22.19 MB       3.5%	18	 	                                                                   IOGPUResourceCreate
+  11.28 MB       1.8%	49	 	                                   [J]forge.assets.FSkinImageImpl.load(Lcom/badlogic/gdx/graphics/Pixmap;)V
+  11.28 MB       1.8%	49	 	                                    [J]forge.assets.Assets.getTexture(Lcom/badlogic/gdx/files/FileHandle;ZZ)Lcom/badlogic/gdx/graphics/Texture;
+  11.28 MB       1.8%	49	 	                                     [J]forge.assets.Assets$MemoryTrackingAssetManager.finishLoadingAsset(Ljava/lang/String;)Ljava/lang/Object;
+  11.28 MB       1.8%	49	 	                                      [J]com.badlogic.gdx.assets.AssetManager.finishLoadingAsset(Ljava/lang/String;)Ljava/lang/Object;
+  11.28 MB       1.8%	49	 	                                       [j]com.badlogic.gdx.assets.AssetManager.update()Z[synchronized]
+  11.28 MB       1.8%	49	 	                                        [J]com.badlogic.gdx.assets.AssetManager.update()Z
+  11.28 MB       1.8%	49	 	                                         [J]com.badlogic.gdx.assets.AssetManager.updateTask()Z
+  11.28 MB       1.8%	49	 	                                          [J]com.badlogic.gdx.assets.AssetLoadingTask.update()Z
+  11.28 MB       1.8%	49	 	                                           [J]com.badlogic.gdx.assets.AssetLoadingTask.handleAsyncLoader()V
+  11.28 MB       1.8%	49	 	                                            [J]com.badlogic.gdx.assets.loaders.TextureLoader.loadSync(Lcom/badlogic/gdx/assets/AssetManager;Ljava/lang/String;Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/assets/AssetLoaderParameters;)Ljava/lang/Object;
+  11.28 MB       1.8%	49	 	                                             [J]com.badlogic.gdx.assets.loaders.TextureLoader.loadSync(Lcom/badlogic/gdx/assets/AssetManager;Ljava/lang/String;Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/assets/loaders/TextureLoader$TextureParameter;)Lcom/badlogic/gdx/graphics/Texture;
+  11.28 MB       1.8%	49	 	                                              [J]com.badlogic.gdx.graphics.Texture.<init>(Lcom/badlogic/gdx/graphics/TextureData;)V
+  11.28 MB       1.8%	49	 	                                               [J]com.badlogic.gdx.graphics.Texture.<init>(IILcom/badlogic/gdx/graphics/TextureData;)V
+  11.28 MB       1.8%	49	 	                                                [J]com.badlogic.gdx.graphics.Texture.load(Lcom/badlogic/gdx/graphics/TextureData;)V
+  11.27 MB       1.8%	33	 	                                                 [j]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;)V[clinit]
+  11.27 MB       1.8%	33	 	                                                  [J]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;)V
+  11.27 MB       1.8%	33	 	                                                   [J]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;I)V
+  11.27 MB       1.8%	33	 	                                                    [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glTexImage2D(IIIIIIIILjava/nio/Buffer;)V
+  11.27 MB       1.8%	33	 	                                                     [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glTexImage2DJNI(IIIIIIIILjava/nio/Buffer;)V
+  11.27 MB       1.8%	33	 	                                                      Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glTexImage2DJNI
+  11.27 MB       1.8%	33	 	                                                       Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glTexImage2DJNI__IIIIIIIILjava_nio_Buffer_2
+  11.27 MB       1.8%	33	 	                                                        glTexImage2D
+  11.27 MB       1.8%	33	 	                                                         glTexImage2D_Exec
+  11.27 MB       1.8%	33	 	                                                          gldModifyTexSubImage
+  11.27 MB       1.8%	33	 	                                                           GLDTextureRec::load()
+  11.27 MB       1.8%	33	 	                                                            GLDTextureRec::update(unsigned int, unsigned short*)
+  11.27 MB       1.8%	25	 	                                                             GLDTextureRec::loadPrivateTexture(unsigned int, unsigned short*)
+  11.27 MB       1.8%	25	 	                                                              GLDTextureRec::allocMetalTexture()
+  11.26 MB       1.8%	17	 	                                                               -[AGXTexture initWithDevice:desc:isSuballocDisabled:]
+  11.26 MB       1.8%	9	 	                                                                -[IOGPUMetalTexture initWithDevice:descriptor:sysMemSize:sysMemRowBytes:vidMemSize:vidMemRowBytes:args:argsSize:]
+  11.26 MB       1.8%	9	 	                                                                 -[IOGPUMetalResource initWithDevice:options:args:argsSize:]
+  11.25 MB       1.8%	8	 	                                                                  IOGPUResourceCreate
+  21.83 MB       3.5%	192	 	                               [J]forge.assets.FSkinFont$1.run()V
+  10.92 MB       1.7%	96	 	                                [J]forge.assets.Assets$MemoryTrackingAssetManager.finishLoadingAsset(Ljava/lang/String;)Ljava/lang/Object;
+  10.92 MB       1.7%	96	 	                                 [J]com.badlogic.gdx.assets.AssetManager.finishLoadingAsset(Ljava/lang/String;)Ljava/lang/Object;
+  10.92 MB       1.7%	96	 	                                  [j]com.badlogic.gdx.assets.AssetManager.update()Z[synchronized]
+  10.92 MB       1.7%	96	 	                                   [J]com.badlogic.gdx.assets.AssetManager.update()Z
+  10.92 MB       1.7%	96	 	                                    [J]com.badlogic.gdx.assets.AssetManager.updateTask()Z
+  10.92 MB       1.7%	96	 	                                     [J]com.badlogic.gdx.assets.AssetLoadingTask.update()Z
+  10.92 MB       1.7%	96	 	                                      [J]com.badlogic.gdx.assets.AssetLoadingTask.handleAsyncLoader()V
+  10.92 MB       1.7%	96	 	                                       [J]com.badlogic.gdx.assets.loaders.TextureLoader.loadSync(Lcom/badlogic/gdx/assets/AssetManager;Ljava/lang/String;Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/assets/AssetLoaderParameters;)Ljava/lang/Object;
+  10.92 MB       1.7%	96	 	                                        [J]com.badlogic.gdx.assets.loaders.TextureLoader.loadSync(Lcom/badlogic/gdx/assets/AssetManager;Ljava/lang/String;Lcom/badlogic/gdx/files/FileHandle;Lcom/badlogic/gdx/assets/loaders/TextureLoader$TextureParameter;)Lcom/badlogic/gdx/graphics/Texture;
+  10.92 MB       1.7%	96	 	                                         [J]com.badlogic.gdx.graphics.Texture.<init>(Lcom/badlogic/gdx/graphics/TextureData;)V
+  10.92 MB       1.7%	96	 	                                          [J]com.badlogic.gdx.graphics.Texture.<init>(IILcom/badlogic/gdx/graphics/TextureData;)V
+  10.92 MB       1.7%	96	 	                                           [J]com.badlogic.gdx.graphics.Texture.load(Lcom/badlogic/gdx/graphics/TextureData;)V
+  10.90 MB       1.7%	64	 	                                            [j]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;)V[clinit]
+  10.90 MB       1.7%	64	 	                                             [J]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;)V
+  10.90 MB       1.7%	64	 	                                              [J]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;I)V
+  10.90 MB       1.7%	64	 	                                               [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glTexImage2D(IIIIIIIILjava/nio/Buffer;)V
+  10.90 MB       1.7%	64	 	                                                [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glTexImage2DJNI(IIIIIIIILjava/nio/Buffer;)V
+  10.90 MB       1.7%	64	 	                                                 Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glTexImage2DJNI
+  10.90 MB       1.7%	64	 	                                                  Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glTexImage2DJNI__IIIIIIIILjava_nio_Buffer_2
+  10.90 MB       1.7%	64	 	                                                   glTexImage2D
+  10.90 MB       1.7%	64	 	                                                    glTexImage2D_Exec
+  10.90 MB       1.7%	64	 	                                                     gldModifyTexSubImage
+  10.90 MB       1.7%	64	 	                                                      GLDTextureRec::load()
+  10.90 MB       1.7%	64	 	                                                       GLDTextureRec::update(unsigned int, unsigned short*)
+  10.90 MB       1.7%	48	 	                                                        GLDTextureRec::loadPrivateTexture(unsigned int, unsigned short*)
+  10.90 MB       1.7%	48	 	                                                         GLDTextureRec::allocMetalTexture()
+  10.89 MB       1.7%	32	 	                                                          -[AGXTexture initWithDevice:desc:isSuballocDisabled:]
+  10.88 MB       1.7%	16	 	                                                           -[IOGPUMetalTexture initWithDevice:descriptor:sysMemSize:sysMemRowBytes:vidMemSize:vidMemRowBytes:args:argsSize:]
+  10.88 MB       1.7%	16	 	                                                            -[IOGPUMetalResource initWithDevice:options:args:argsSize:]
+  10.88 MB       1.7%	16	 	                                                             IOGPUResourceCreate
+  10.92 MB       1.7%	96	 	                                [J]forge.assets.FSkinFont$1$1.<init>(Lforge/assets/FSkinFont$1;Lcom/badlogic/gdx/graphics/TextureData;)V
+  10.92 MB       1.7%	96	 	                                 [J]com.badlogic.gdx.graphics.Texture.<init>(Lcom/badlogic/gdx/graphics/TextureData;)V
+  10.92 MB       1.7%	96	 	                                  [J]com.badlogic.gdx.graphics.Texture.<init>(IILcom/badlogic/gdx/graphics/TextureData;)V
+  10.92 MB       1.7%	96	 	                                   [J]com.badlogic.gdx.graphics.Texture.load(Lcom/badlogic/gdx/graphics/TextureData;)V
+  10.90 MB       1.7%	64	 	                                    [j]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;)V[clinit]
+  10.90 MB       1.7%	64	 	                                     [J]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;)V
+  10.90 MB       1.7%	64	 	                                      [J]com.badlogic.gdx.graphics.GLTexture.uploadImageData(ILcom/badlogic/gdx/graphics/TextureData;I)V
+  10.90 MB       1.7%	64	 	                                       [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glTexImage2D(IIIIIIIILjava/nio/Buffer;)V
+  10.90 MB       1.7%	64	 	                                        [J]com.badlogic.gdx.backends.iosrobovm.IOSGLES20.glTexImage2DJNI(IIIIIIIILjava/nio/Buffer;)V
+  10.90 MB       1.7%	64	 	                                         Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glTexImage2DJNI
+  10.90 MB       1.7%	64	 	                                          Java_com_badlogic_gdx_backends_iosrobovm_IOSGLES20_glTexImage2DJNI__IIIIIIIILjava_nio_Buffer_2
+  10.90 MB       1.7%	64	 	                                           glTexImage2D
+  10.90 MB       1.7%	64	 	                                            glTexImage2D_Exec
+  10.90 MB       1.7%	64	 	                                             gldModifyTexSubImage
+  10.90 MB       1.7%	64	 	                                              GLDTextureRec::load()
+  10.90 MB       1.7%	64	 	                                               GLDTextureRec::update(unsigned int, unsigned short*)
+  10.90 MB       1.7%	48	 	                                                GLDTextureRec::loadPrivateTexture(unsigned int, unsigned short*)
+  10.90 MB       1.7%	48	 	                                                 GLDTextureRec::allocMetalTexture()
+  10.89 MB       1.7%	32	 	                                                  -[AGXTexture initWithDevice:desc:isSuballocDisabled:]
+  10.88 MB       1.7%	16	 	                                                   -[IOGPUMetalTexture initWithDevice:descriptor:sysMemSize:sysMemRowBytes:vidMemSize:vidMemRowBytes:args:argsSize:]
+  10.88 MB       1.7%	16	 	                                                    -[IOGPUMetalResource initWithDevice:options:args:argsSize:]
+  10.88 MB       1.7%	16	 	                                                     IOGPUResourceCreate
+   7.83 MB       1.2%	13	 	                               [J]forge.Forge$$Lambda$16.run()V
+   7.83 MB       1.2%	13	 	                                [j]forge.Forge.lambda$afterDbLoaded$3()V[clinit]
+   7.83 MB       1.2%	13	 	                                 [J]forge.Forge.lambda$afterDbLoaded$3()V
+   7.83 MB       1.2%	13	 	                                  [J]forge.Forge.takeScreenshot()Lcom/badlogic/gdx/graphics/g2d/TextureRegion;
+   7.83 MB       1.2%	13	 	                                   [j]forge.gui.FThreads.invokeInEdtNowOrLater(Ljava/lang/Runnable;)V[clinit]
+   7.83 MB       1.2%	13	 	                                    [J]forge.gui.FThreads.invokeInEdtNowOrLater(Ljava/lang/Runnable;)V
+   7.83 MB       1.2%	13	 	                                     [J]forge.GuiMobile.invokeInEdtNow(Ljava/lang/Runnable;)V
+   7.83 MB       1.2%	13	 	                                      [J]forge.Forge$$Lambda$11.run()V
+   7.83 MB       1.2%	13	 	                                       [j]forge.Forge.lambda$takeScreenshot$0()V[clinit]
+   7.83 MB       1.2%	13	 	                                        [J]forge.Forge.lambda$takeScreenshot$0()V
+
+

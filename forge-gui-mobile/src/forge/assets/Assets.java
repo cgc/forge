@@ -59,12 +59,12 @@ public class Assets implements Disposable {
         String titleFilename = Forge.isLandscapeMode() ? "title_bg_lq.png" : "title_bg_lq_portrait.png";
         try {
             //init titleLQ
-            if (GuiBase.isAndroid())
+            if (GuiBase.isAndroid() || GuiBase.isIOS())
                 getTexture(Gdx.files.internal("fallback_skin").child(titleFilename));
             else
                 getTexture(Gdx.files.classpath("fallback_skin").child(titleFilename));
             //init transition
-            if (GuiBase.isAndroid())
+            if (GuiBase.isAndroid() || GuiBase.isIOS())
                 getTexture(Gdx.files.internal("fallback_skin").child("transition.png"));
             else
                 getTexture(Gdx.files.classpath("fallback_skin").child("transition.png"));
@@ -249,9 +249,17 @@ public class Assets implements Disposable {
     public TextureParameter getTextureFilter() {
         if (textureParameter == null)
             textureParameter = new TextureParameter();
-        if (Forge.isTextureFilteringEnabled()) {
+        if (Forge.isTextureFilteringEnabled() && !GuiBase.isIOS()) {
             textureParameter.genMipMaps = true;
             textureParameter.minFilter = Texture.TextureFilter.MipMapLinearLinear;
+            textureParameter.magFilter = Texture.TextureFilter.Linear;
+        } else if (Forge.isTextureFilteringEnabled()) {
+            // iOS GLES2 does not support mipmaps on NPOT textures (GL_OES_texture_npot is absent
+            // on iOS simulators and many devices).  Requesting mipmap generation on an NPOT texture
+            // makes it "texture-incomplete" and renders as solid black.  Card images (e.g. 488x680)
+            // are always NPOT, so we must use Linear filtering without mipmaps on iOS.
+            textureParameter.genMipMaps = false;
+            textureParameter.minFilter = Texture.TextureFilter.Linear;
             textureParameter.magFilter = Texture.TextureFilter.Linear;
         } else {
             textureParameter.genMipMaps = false;

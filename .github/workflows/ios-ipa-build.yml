@@ -1,0 +1,99 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches:
+      - 'copilot/spec-out-forge-ios-support'
+    paths:
+      - 'forge-gui-ios/**'
+      - 'forge-gui-mobile/**'
+      - '.github/workflows/ios-ipa-build.yml'
+  workflow_dispatch:
+
+jobs:
+  build-ipa:
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Install robovmx (robovm-rt with Java 8 APIs)
+        run: bash scripts/install-robovmx.sh
+
+      - name: Build java.lang.Record stub for robovmx
+        run: bash scripts/build-java-stubs.sh
+
+      - name: Build all modules and package iOS IPA (unsigned)
+        run: |
+          export _JAVA_OPTIONS="-Xmx4g"
+          # -am builds all upstream modules first, then forge-gui-ios with the ios-device profile.
+          # Keeping both in one Maven reactor avoids the ${revision} resolution issue that occurs
+          # when running a second mvn invocation against an already-installed (flattened) parent POM.
+          # robovm.iosSkipSigning=true produces an unsigned IPA re-signable with AltStore/Sideloadly/Xcode.
+          mvn -U -B clean install -pl forge-gui-ios -am -P ios-device \
+            -Drobovm.iosSkipSigning=true \
+            -Dmaven.test.skip=true
+
+      - name: Locate and stage IPA
+        run: |
+          IPA=$(find forge-gui-ios/target -name "*.ipa" 2>/dev/null | head -1)
+          if [ -n "$IPA" ]; then
+            echo "IPA produced by create-ipa goal: $IPA"
+            cp "$IPA" forge-ios.ipa
+          else
+            echo "create-ipa did not produce an IPA; packaging .app bundle manually..."
+            APP=$(find forge-gui-ios -name "*.app" -type d 2>/dev/null | head -1)
+            if [ -n "$APP" ]; then
+              mkdir -p /tmp/ipa_build/Payload
+              cp -r "$APP" /tmp/ipa_build/Payload/
+              (cd /tmp/ipa_build && zip -r "$GITHUB_WORKSPACE/forge-ios.ipa" Payload/)
+              echo "IPA manually packaged from: $APP"
+            else
+              echo "::error::No .app bundle found; cannot create IPA."
+              exit 1
+            fi
+          fi
+          # Generate a dSYM bundle for symbolication.
+          # robovmx's Maven plugin does NOT support generateDsym — dsymutil must be run
+          # manually.  When built with -Drobovm.debug=true, DWARF info is embedded in the
+          # binary (forge.ios.Main inside the .app bundle); dsymutil extracts it into
+          # a separate .app.dSYM for use with atos or Instruments.
+          # app.name=Forge → bundle: Forge.app; app.executable=forge.ios.Main → binary.
+          APP=$(find forge-gui-ios -name "*.app" -type d -not -name "*.dSYM" 2>/dev/null | head -1)
+          if [ -n "$APP" ] && [ -f "$APP/forge.ios.Main" ]; then
+            DSYM="${APP}.dSYM"
+            echo "Running: dsymutil \"$APP/forge.ios.Main\" -o \"$DSYM\""
+            if dsymutil "$APP/forge.ios.Main" -o "$DSYM"; then
+              echo "dSYM generated: $DSYM"
+              (cd "$(dirname "$DSYM")" && zip -r "$GITHUB_WORKSPACE/forge-ios.app.dSYM.zip" "$(basename "$DSYM")")
+              echo "dSYM staged as forge-ios.app.dSYM.zip"
+              echo "To symbolicate: atos -arch arm64 -o Forge.app.dSYM/Contents/Resources/DWARF/forge.ios.Main -l <load-address> <address>"
+            else
+              echo "::warning::dsymutil failed (build may not have used -Drobovm.debug=true)."
+            fi
+          else
+            echo "::warning::No .app/forge.ios.Main binary found; dSYM cannot be generated."
+          fi
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: forge-ios-ipa
+          path: forge-ios.ipa
+          if-no-files-found: error
+
+      - name: Upload dSYM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: forge-ios-dsym
+          path: forge-ios.app.dSYM.zip
+          if-no-files-found: warn

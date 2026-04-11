@@ -289,13 +289,35 @@ public class CardStorageReader {
         return entries;
     }
 
+    private static final int LOAD_TIMEOUT_MINUTES = 5;
+
+    private static void dumpAllThreadStacks() {
+        System.err.println("=== Thread dump (card loading timed out) ===");
+        Thread.getAllStackTraces().forEach((t, stack) -> {
+            System.err.println("Thread \"" + t.getName() + "\" (state: " + t.getState() + "):");
+            for (StackTraceElement ste : stack) {
+                System.err.println("\tat " + ste);
+            }
+        });
+        System.err.println("=== End thread dump ===");
+    }
+
     private void executeLoadTask(final Collection<CardRules> result, final List<Callable<List<CardRules>>> tasks, final CountDownLatch cdl) {
         try {
             if (useThreadPool) {
                 final ExecutorService executor = ThreadUtil.getComputingPool(0.5f);
-                final List<Future<List<CardRules>>> parts = executor.invokeAll(tasks);
+                final List<Future<List<CardRules>>> parts = executor.invokeAll(tasks, LOAD_TIMEOUT_MINUTES, TimeUnit.MINUTES);
+                final boolean anyTimedOut = parts.stream().anyMatch(Future::isCancelled);
+                if (anyTimedOut) {
+                    executor.shutdownNow();
+                    dumpAllThreadStacks();
+                    throw new RuntimeException("Card loading timed out after " + LOAD_TIMEOUT_MINUTES + " minutes");
+                }
                 executor.shutdown();
-                cdl.await();
+                if (!cdl.await(LOAD_TIMEOUT_MINUTES, TimeUnit.MINUTES)) {
+                    dumpAllThreadStacks();
+                    throw new RuntimeException("Card loading timed out after " + LOAD_TIMEOUT_MINUTES + " minutes");
+                }
                 for (final Future<List<CardRules>> pp : parts) {
                     result.addAll(pp.get());
                 }
@@ -304,9 +326,7 @@ public class CardStorageReader {
                     result.addAll(c.call());
                 }
             }
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
-        } catch (final Exception e) { // this clause comes from non-threaded branch
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
@@ -320,10 +340,12 @@ public class CardStorageReader {
             final int from = iPart * filesPerPart;
             final int till = iPart == maxParts - 1 ? totalFiles : from + filesPerPart;
             tasks.add(() -> {
-                final List<CardRules> res = loadCardsInRangeFromZip(entries, from, till);
-                cdl.countDown();
-                progressObserver.report(maxParts - (int)cdl.getCount(), maxParts);
-                return res;
+                try {
+                    return loadCardsInRangeFromZip(entries, from, till);
+                } finally {
+                    cdl.countDown();
+                    progressObserver.report(maxParts - (int)cdl.getCount(), maxParts);
+                }
             });
         }
         return tasks;
@@ -339,12 +361,8 @@ public class CardStorageReader {
             final int till = iPart == maxParts - 1 ? totalFiles : from + filesPerPart;
             tasks.add(() -> {
                 try {
-                    final List<CardRules> res = loadCardsInRange(allFiles, from, till);
-                    return res;
-                } catch (Exception ex) {
-                    throw ex;
+                    return loadCardsInRange(allFiles, from, till);
                 } finally {
-                    // make sure to continue loading when using multiple threads
                     cdl.countDown();
                     progressObserver.report(maxParts - (int)cdl.getCount(), maxParts);
                 }

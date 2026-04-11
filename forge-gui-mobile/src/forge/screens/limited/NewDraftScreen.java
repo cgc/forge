@@ -49,6 +49,13 @@ public class NewDraftScreen extends LaunchScreen {
             final LimitedPoolType poolType = SGuiChoose.oneOrNone(Forge.getLocalizer().getMessage("lblChooseDraftFormat"), LimitedPoolType.values(true));
             if (poolType == null) { return; }
 
+            // Hint the GC to collect post-init temporary objects (parsers, readers, etc.)
+            // before draft allocations begin.  On iOS (Boehm GC) this typically frees
+            // ~100-150 MB of heap that would otherwise stay as unreachable garbage until
+            // the GC is spontaneously triggered by allocation pressure mid-draft.
+            // On desktop HotSpot this is a low-cost no-op hint.
+            System.gc();
+
             final BoosterDraft draft = BoosterDraft.createDraft(poolType);
             if (draft == null) { return; }
 

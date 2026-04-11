@@ -1,0 +1,38 @@
+name: Test iOS build
+
+on:
+  push:
+    paths:
+      - 'forge-gui-ios/**'
+      - 'forge-gui-mobile/**'
+  pull_request:
+    paths:
+      - 'forge-gui-ios/**'
+      - 'forge-gui-mobile/**'
+
+jobs:
+  build:
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    name: Test iOS build with Java 17
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Install robovmx (robovm-rt with Java 8 APIs)
+        run: bash scripts/install-robovmx.sh
+
+      - name: Build java.lang.Record stub for robovmx
+        run: bash scripts/build-java-stubs.sh
+
+      - name: Build forge-gui-ios and all dependencies
+        run: |
+          export _JAVA_OPTIONS="-Xmx4g"
+          mvn -U -B clean install -pl forge-gui-ios -am -Dmaven.test.skip=true

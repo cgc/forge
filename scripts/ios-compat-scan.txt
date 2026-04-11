@@ -1,0 +1,485 @@
+════════════════════════════════════════════════════════════════════════════════
+ iOS Compatibility Scan
+ Tool:  scripts/ios-compat-scan.sh
+ Scope: forge-core, forge-game, forge-ai, forge-gui, forge-gui-mobile
+ Note:  forge-gui-ios excluded (it is the adaptation / fix layer).
+════════════════════════════════════════════════════════════════════════════════
+Generated: 2026-03-09 18:03 UTC
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 1  –  Call sites covered by StreamDesugar.java (safe on iOS)
+ Each entry below is rewritten at build time (mvn process-classes phase).
+────────────────────────────────────────────────────────────────────────────────
+
+  [P49] BreakIterator.getLineInstance(Locale)
+    forge-gui-mobile/src/forge/assets/TextRenderer.java:36:    private BreakIterator boundary = BreakIterator.getLineInstance(new Locale(Forge.locale));
+
+  [P50] File.toPath()
+    forge-core/src/main/java/forge/CardStorageReader.java:409:        try (InputStream fileInputStream = java.nio.file.Files.newInputStream(file.toPath())) {
+    forge-core/src/main/java/forge/util/StreamUtil.java:274:    /** Pattern 50: replacement for {@code file.toPath()}. */
+    forge-core/src/main/java/forge/util/FileUtil.java:113:        try (InputStream is = Files.newInputStream(source.toPath());
+    forge-core/src/main/java/forge/util/FileUtil.java:114:             OutputStream os = Files.newOutputStream(new File(destFilename).toPath())){
+    forge-core/src/main/java/forge/util/FileUtil.java:256:                    new InputStreamReader(Files.newInputStream(file.toPath()), StandardCharsets.UTF_8));
+    forge-gui/src/main/java/forge/localinstance/properties/ForgeProfileProperties.java:64:                props.load(Files.newInputStream(propFile.toPath()));
+    forge-gui/src/main/java/forge/gamemodes/tournament/TournamentIO.java:82:        try (GZIPInputStream zin = new GZIPInputStream(Files.newInputStream(xmlSaveFile.toPath()));
+    forge-gui/src/main/java/forge/gamemodes/tournament/TournamentIO.java:116:        try(final BufferedOutputStream bout = new BufferedOutputStream(Files.newOutputStream(getTournamentFile(gd0).toPath()));
+    forge-gui/src/main/java/forge/gamemodes/gauntlet/GauntletIO.java:101:        try (GZIPInputStream zin = new GZIPInputStream(Files.newInputStream(xmlSaveFile.toPath()));
+    forge-gui/src/main/java/forge/gamemodes/gauntlet/GauntletIO.java:137:        try(final BufferedOutputStream bout = new BufferedOutputStream(Files.newOutputStream(getGauntletFile(gd0).toPath()));
+    forge-gui/src/main/java/forge/gamemodes/quest/io/QuestDataIO.java:134:        try (GZIPInputStream zin = new GZIPInputStream(Files.newInputStream(xmlSaveFile.toPath()));
+    forge-gui/src/main/java/forge/gamemodes/quest/io/MainWorldDuelReader.java:44:        try (Stream<Path> stream = Files.walk(directory.toPath())) {
+    forge-gui/src/main/java/forge/util/ZipUtil.java:69:        ZipInputStream zis = new ZipInputStream(Files.newInputStream(fileZip.toPath()));
+    forge-gui-mobile/src/forge/util/LibGDXImageFetcher.java:86:            try(OutputStream out = Files.newOutputStream(destFile.file().toPath())) {
+
+  [P51] Paths.get(String, String…)
+    forge-core/src/main/java/forge/util/StreamUtil.java:277:    /** Pattern 51: replacement for {@code Paths.get(first, more)}. */
+    forge-core/src/main/java/forge/util/CardTranslation.java:27:        try (LineReader translationFile = new LineReader(Files.newInputStream(Paths.get(languagesDirectory + filename)), StandardCharsets.UTF_8)) {
+    forge-gui/src/main/java/forge/gui/download/GuiDownloadZipService.java:115:                OutputStream output = java.nio.file.Files.newOutputStream(Paths.get(destFile))) {
+    forge-gui/src/main/java/forge/gui/download/GuiDownloadZipService.java:236:        try (BufferedOutputStream out = new BufferedOutputStream(java.nio.file.Files.newOutputStream(Paths.get(outPath)))) {
+    forge-gui/src/main/java/forge/gamemodes/quest/io/QuestDataIO.java:429:            final BufferedOutputStream bout = new BufferedOutputStream(Files.newOutputStream(Paths.get(f)));
+    forge-gui/src/main/java/forge/gamemodes/quest/io/QuestDataIO.java:438:        try(final BufferedOutputStream boutUnp = new BufferedOutputStream(Files.newOutputStream(Paths.get(f)))) {
+    forge-gui-mobile/src/forge/assets/FSkinFont.java:372:            try (LineReader translationFile = new LineReader(Files.newInputStream(Paths.get(translationFilePath)),
+    forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:44:        Path source = Paths.get(Config.instance().getPlanePath(plane));
+    forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:45:        Path destination = Paths.get(Config.instance().getPlanePath("<user>" + newPlaneName.getText()));
+    forge-gui-mobile/src/forge/adventure/util/Config.java:127:        return (GuiBase.isAndroid() || GuiBase.isIOS()) ? ForgeConstants.ASSETS_DIR : Files.exists(Paths.get("./res")) ? "./" : Files.exists(Paths.get("./forge-gui/")) ? "./forge-gui/" : "../forge-gui";
+    forge-gui-mobile/src/forge/adventure/util/Config.java:192:            if (Files.exists(Paths.get(langFile))) {
+    forge-gui-mobile/src/forge/adventure/util/Config.java:196:            } else if (Files.exists(Paths.get(fullPath))) {
+
+  [P52] Files.newInputStream(Path, …)
+    forge-core/src/main/java/forge/CardStorageReader.java:409:        try (InputStream fileInputStream = java.nio.file.Files.newInputStream(file.toPath())) {
+    forge-core/src/main/java/forge/util/StreamUtil.java:284:    /** Pattern 52: replacement for {@code Files.newInputStream(path, opts)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:287:        return java.nio.file.Files.newInputStream(p, opts);
+    forge-core/src/main/java/forge/util/FileUtil.java:113:        try (InputStream is = Files.newInputStream(source.toPath());
+    forge-core/src/main/java/forge/util/FileUtil.java:256:                    new InputStreamReader(Files.newInputStream(file.toPath()), StandardCharsets.UTF_8));
+    forge-core/src/main/java/forge/util/CardTranslation.java:27:        try (LineReader translationFile = new LineReader(Files.newInputStream(Paths.get(languagesDirectory + filename)), StandardCharsets.UTF_8)) {
+    forge-gui/src/main/java/forge/localinstance/properties/ForgeProfileProperties.java:64:                props.load(Files.newInputStream(propFile.toPath()));
+    forge-gui/src/main/java/forge/gamemodes/tournament/TournamentIO.java:82:        try (GZIPInputStream zin = new GZIPInputStream(Files.newInputStream(xmlSaveFile.toPath()));
+    forge-gui/src/main/java/forge/gamemodes/gauntlet/GauntletIO.java:101:        try (GZIPInputStream zin = new GZIPInputStream(Files.newInputStream(xmlSaveFile.toPath()));
+    forge-gui/src/main/java/forge/gamemodes/quest/io/QuestDataIO.java:134:        try (GZIPInputStream zin = new GZIPInputStream(Files.newInputStream(xmlSaveFile.toPath()));
+    forge-gui/src/main/java/forge/util/ZipUtil.java:69:        ZipInputStream zis = new ZipInputStream(Files.newInputStream(fileZip.toPath()));
+    forge-gui-mobile/src/forge/assets/FSkinFont.java:372:            try (LineReader translationFile = new LineReader(Files.newInputStream(Paths.get(translationFilePath)),
+
+  [P53] Files.newOutputStream(Path, …)
+    forge-core/src/main/java/forge/util/StreamUtil.java:290:    /** Pattern 53: replacement for {@code Files.newOutputStream(path, opts)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:299:        return java.nio.file.Files.newOutputStream(p, opts);
+    forge-core/src/main/java/forge/util/FileUtil.java:114:             OutputStream os = Files.newOutputStream(new File(destFilename).toPath())){
+    forge-gui/src/main/java/forge/gui/download/GuiDownloadZipService.java:115:                OutputStream output = java.nio.file.Files.newOutputStream(Paths.get(destFile))) {
+    forge-gui/src/main/java/forge/gui/download/GuiDownloadZipService.java:236:        try (BufferedOutputStream out = new BufferedOutputStream(java.nio.file.Files.newOutputStream(Paths.get(outPath)))) {
+    forge-gui/src/main/java/forge/gamemodes/tournament/TournamentIO.java:116:        try(final BufferedOutputStream bout = new BufferedOutputStream(Files.newOutputStream(getTournamentFile(gd0).toPath()));
+    forge-gui/src/main/java/forge/gamemodes/gauntlet/GauntletIO.java:137:        try(final BufferedOutputStream bout = new BufferedOutputStream(Files.newOutputStream(getGauntletFile(gd0).toPath()));
+    forge-gui/src/main/java/forge/gamemodes/quest/io/QuestDataIO.java:429:            final BufferedOutputStream bout = new BufferedOutputStream(Files.newOutputStream(Paths.get(f)));
+    forge-gui/src/main/java/forge/gamemodes/quest/io/QuestDataIO.java:438:        try(final BufferedOutputStream boutUnp = new BufferedOutputStream(Files.newOutputStream(Paths.get(f)))) {
+    forge-gui-mobile/src/forge/util/LibGDXImageFetcher.java:86:            try(OutputStream out = Files.newOutputStream(destFile.file().toPath())) {
+
+  [P54] Files.walk(Path, …)
+    forge-core/src/main/java/forge/util/StreamUtil.java:302:    /** Pattern 54: replacement for {@code Files.walk(path, opts)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:309:        return java.nio.file.Files.walk(path, opts);
+    forge-gui/src/main/java/forge/gamemodes/quest/io/MainWorldDuelReader.java:44:        try (Stream<Path> stream = Files.walk(directory.toPath())) {
+    forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:47:        try (Stream<Path> stream = Files.walk(source)) {
+
+  [P55] Files.exists(Path, …)
+    forge-core/src/main/java/forge/util/StreamUtil.java:323:    /** Pattern 55: replacement for {@code Files.exists(path, opts)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:326:        return java.nio.file.Files.exists(p, opts);
+    forge-gui-mobile/src/forge/adventure/util/Config.java:127:        return (GuiBase.isAndroid() || GuiBase.isIOS()) ? ForgeConstants.ASSETS_DIR : Files.exists(Paths.get("./res")) ? "./" : Files.exists(Paths.get("./forge-gui/")) ? "./forge-gui/" : "../forge-gui";
+    forge-gui-mobile/src/forge/adventure/util/Config.java:192:            if (Files.exists(Paths.get(langFile))) {
+    forge-gui-mobile/src/forge/adventure/util/Config.java:196:            } else if (Files.exists(Paths.get(fullPath))) {
+
+  [P56] Files.createDirectories(Path, …)
+    forge-core/src/main/java/forge/util/StreamUtil.java:329:    /** Pattern 56: replacement for {@code Files.createDirectories(path, attrs)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:332:        return java.nio.file.Files.createDirectories(p, attrs);
+    forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:48:            Files.createDirectories(destination);
+
+  [P57] Files.copy(Path, Path, …)
+    forge-core/src/main/java/forge/util/StreamUtil.java:335:    /** Pattern 57: replacement for {@code Files.copy(src, dst, opts)}. */
+    forge-core/src/main/java/forge/util/StreamUtil.java:350:        return java.nio.file.Files.copy(src, dst, opts);
+    forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:51:                    Files.copy(s, destination.resolve(source.relativize(s)), REPLACE_EXISTING);
+
+  [P58] Predicate.not(Predicate) — Java 11 static method
+    forge-core/src/main/java/forge/card/CardRulesPredicates.java:561:    public static final Predicate<CardRules> IS_NON_CREATURE_SPELL = Predicate.not(
+    forge-core/src/main/java/forge/util/StreamUtil.java:166:    /** Pattern 58: replacement for {@code Predicate.not(target)} (Java 11).
+    forge-game/src/main/java/forge/game/staticability/StaticAbilityContinuous.java:330:                removeAbilities = Predicate.not(CardTraitBase::isManaAbility);
+    forge-game/src/main/java/forge/game/ability/effects/AnimateEffectBase.java:82:            removeAbilities = Predicate.not(CardTraitBase::isManaAbility);
+    forge-game/src/main/java/forge/game/combat/AttackRestrictionType.java:25:                        .and(Predicate.not(attacker::equals));
+    forge-game/src/main/java/forge/game/card/CardState.java:474:        newCol.removeIf(Predicate.not(SpellAbility::isManaAbility));
+    forge-ai/src/main/java/forge/ai/AiController.java:1622:                                Predicate.not(CardPredicates.LANDS.or(CardPredicates.hasKeyword("Storm")))
+    forge-ai/src/main/java/forge/ai/ability/ChooseSourceAi.java:131:                List<Card> oppCreatures = CardLists.filter(options, Predicate.not(
+    forge-ai/src/main/java/forge/ai/ability/MutateAi.java:24:        mutateTgts = CardLists.filter(mutateTgts, Predicate.not(
+    forge-ai/src/main/java/forge/ai/ability/AttachAi.java:1206:            prefList = CardLists.filter(prefList, Predicate.not(
+    forge-ai/src/main/java/forge/ai/ComputerUtil.java:2309:                    .filter(Predicate.not(goodChoices::contains))
+    forge-ai/src/main/java/forge/ai/ComputerUtilCost.java:709:            choices = IterableUtil.filter(choices, Predicate.not(CardPredicates.isController(ai).and(targets::contains)));
+    forge-gui/src/main/java/forge/gamemodes/net/server/FServerManager.java:213:        Predicate<RemoteClient> filter = Predicate.not(notTo::contains);
+    forge-gui/src/main/java/forge/gamemodes/quest/BoosterUtils.java:62:            .and(filterPioneer.and(Predicate.not(formats.getStandard().editionLegalPredicate)));
+    forge-gui/src/main/java/forge/gamemodes/quest/BoosterUtils.java:65:            .and(filterModern.and(Predicate.not(filterPioneer)));
+    forge-gui/src/main/java/forge/gamemodes/quest/BoosterUtils.java:69:            .and(Predicate.not(filterModern));
+    forge-gui/src/main/java/forge/gamemodes/planarconquest/ConquestData.java:198:        return (int) FModel.getPlanes().stream().filter(Predicate.not(ConquestPlane::isUnreachable)).count();
+    forge-gui-mobile/src/forge/adventure/scene/AdventureDeckEditor.java:221:                eventSets.removeIf(Predicate.not(CardEdition::hasBasicLands));
+
+  [P59] String.isBlank() — Java 11 (defensive; may be natively provided by robovmx)
+    forge-core/src/main/java/forge/util/StreamUtil.java:172:    /** Pattern 59: defensive replacement for {@code s.isBlank()} (Java 11).
+    forge-game/src/main/java/forge/game/ability/effects/ManaEffect.java:77:                if (combo.isBlank()) {
+
+  [P60] String.repeat(int) — Java 11 (defensive; filter out Strings./StringUtils. lines manually)
+    forge-core/src/main/java/forge/util/StreamUtil.java:178:    /** Pattern 60: defensive replacement for {@code s.repeat(count)} (Java 11).
+    forge-game/src/main/java/forge/game/cost/CostAdjustment.java:221:                cost.subtractManaCost(new ManaCost(Strings.repeat(cst + " ", num)));
+    forge-game/src/main/java/forge/game/cost/CostAdjustment.java:493:                    manaCost.subtractManaCost(new ManaCost(Strings.repeat(cost + " ", value)));
+    forge-game/src/main/java/forge/game/ability/effects/ReplaceManaEffect.java:75:            replaced = StringUtils.repeat(replaced, " ", Integer.parseInt(sa.getParam("ReplaceAmount")));
+    forge-game/src/main/java/forge/game/ability/effects/ManaEffect.java:257:                    sb.append(StringUtils.repeat(MagicColor.toShortString(color) + " ", chooser.getManaPool().getAmountOfColor(color)));
+    forge-game/src/main/java/forge/game/keyword/Firebending.java:11:            fire = "{R}".repeat(amount);
+    forge-ai/src/main/java/forge/ai/ComputerUtilMana.java:510:            manaProduced = StringUtils.repeat(manaProduced, " ", totalAmount);
+    forge-ai/src/main/java/forge/ai/ComputerUtilMana.java:542:                manaProduced.append(" ").append(StringUtils.repeat(produced, " ", pAmount));
+
+  [P61] CompletableFuture.supplyAsync(Supplier) — ForkJoinPool crash on iOS
+    forge-core/src/main/java/forge/util/StreamUtil.java:188:    // Pattern 61: CompletableFuture.supplyAsync(Supplier) uses ForkJoinPool.commonPool()
+    forge-core/src/main/java/forge/util/StreamUtil.java:213:     * Pattern 61: replacement for {@code CompletableFuture.supplyAsync(supplier)}.
+    forge-core/src/main/java/forge/util/StreamUtil.java:221:        return java.util.concurrent.CompletableFuture.supplyAsync(supplier, IOS_THREAD_POOL);
+    forge-core/src/main/java/forge/StaticData.java:798:                futures.add(CompletableFuture.supplyAsync(()-> {
+    forge-ai/src/main/java/forge/ai/AiAttackController.java:884:                futures.add(CompletableFuture.supplyAsync(()-> {
+    forge-gui/src/main/java/forge/gamemodes/limited/BoosterDraft.java:430:                        futures.add(CompletableFuture.supplyAsync(()-> {
+    forge-gui-mobile/src/forge/adventure/world/World.java:338:                        futures.add(CompletableFuture.supplyAsync(()-> {
+    forge-gui-mobile/src/forge/adventure/world/World.java:624:                futures.add(CompletableFuture.supplyAsync(()-> {
+    forge-gui-mobile/src/forge/adventure/world/World.java:661:                futures.add(CompletableFuture.supplyAsync(()-> {
+
+  [P62] CompletableFuture.completeOnTimeout — Java 9, absent from robovmx CF
+    forge-core/src/main/java/forge/util/StreamUtil.java:194:    // Pattern 62: CompletableFuture.completeOnTimeout(T, long, TimeUnit) is Java 9 and
+    forge-core/src/main/java/forge/util/StreamUtil.java:225:     * Pattern 62: replacement for {@code cf.completeOnTimeout(value, timeout, unit)} (Java 9).
+    forge-ai/src/main/java/forge/ai/AiAttackController.java:944:                CompletableFuture.allOf(futuresArray).completeOnTimeout(null, timeOut, TimeUnit.SECONDS).join();
+
+  [P63] Collection.parallelStream() — ForkJoinPool crash on iOS
+    forge-gui-mobile/src/forge/deck/FDeckChooser.java:189:                        AIDecks = lstDecks.getPool().toFlatList().parallelStream().filter(deckProxy -> deckProxy.getAI().inMainDeck == 0).collect(Collectors.toList());
+
+  [P64] Executors.newWorkStealingPool() — ForkJoinPool crash on iOS
+    forge-core/src/main/java/forge/util/ThreadUtil.java:49:    private static ExecutorService service = Executors.newWorkStealingPool();
+    forge-core/src/main/java/forge/util/ThreadUtil.java:54:        service = Executors.newWorkStealingPool();
+    forge-core/src/main/java/forge/util/StreamUtil.java:236:    // ── iOS Executors.newWorkStealingPool() desugaring ─────────────────────────
+    forge-core/src/main/java/forge/util/StreamUtil.java:237:    // Pattern 64: Executors.newWorkStealingPool() creates a ForkJoinPool that uses
+    forge-core/src/main/java/forge/util/StreamUtil.java:248:     * Pattern 64: replacement for {@code Executors.newWorkStealingPool()}.
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 2  –  Other java.nio.file.Files.* calls (NOT in StreamDesugar)
+ These are safe today only if every Path argument reaching them was first
+ created through a patched call site (P50 or P51 above) and therefore holds
+ an IosFilePath.  If a raw UnixPath can reach any of these methods, add a
+ new StreamDesugar pattern + StreamUtil helper.
+────────────────────────────────────────────────────────────────────────────────
+
+  [CHK] Files.delete(Path)
+    (none found)
+
+  [CHK] Files.deleteIfExists(Path)
+    (none found)
+
+  [CHK] Files.readAllBytes(Path)
+    (none found)
+
+  [CHK] Files.readAllLines(Path, …)
+    (none found)
+
+  [CHK] Files.write(Path, …)
+    (none found)
+
+  [CHK] Files.move(Path, Path, …)
+    (none found)
+
+  [CHK] Files.size(Path)
+    (none found)
+
+  [CHK] Files.isDirectory(Path, …)
+    (none found)
+
+  [CHK] Files.isRegularFile(Path,…)
+    (none found)
+
+  [CHK] Files.list(Path)
+    (none found)
+
+  [CHK] Files.createFile(Path, …)
+    (none found)
+
+  [CHK] Files.createTempFile(…)
+    (none found)
+
+  [CHK] Files.newByteChannel(…)
+    (none found)
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 2b  –  Other Java 11+ calls on existing JDK classes (NOT in StreamDesugar)
+ robovmx ships the Java 8 subset of java.lang / java.util; Java 9-11 additions
+ on existing classes (not new classes) cause NoSuchMethodError at runtime.
+ Add a StreamDesugar pattern + StreamUtil helper for any hit that appears in a
+ live code path.
+────────────────────────────────────────────────────────────────────────────────
+
+  [J11] String.strip/stripLeading/stripTrailing() — Java 11
+    (none found)
+
+  [J11] String.lines() — Java 11
+    forge-ai/src/main/java/forge/ai/GameState.java:490:        parse(br.lines());
+
+  [J9] Optional.ifPresentOrElse() — Java 9
+    (none found)
+
+  [J11] Optional.isEmpty() — Java 11 (robovmx provides this natively; listed for info)
+    forge-game/src/main/java/forge/game/spellability/StackItemView.java:87:                OptionalCostString += OptionalCostString.isEmpty() ? "Entwined" : ", Entwined";
+    forge-game/src/main/java/forge/game/spellability/StackItemView.java:89:                OptionalCostString += OptionalCostString.isEmpty() ? "Buyback" : ", Buyback";
+    forge-game/src/main/java/forge/game/spellability/StackItemView.java:91:                OptionalCostString += OptionalCostString.isEmpty() ? "Retraced" : ", Retraced";
+    forge-game/src/main/java/forge/game/spellability/StackItemView.java:93:                OptionalCostString += OptionalCostString.isEmpty() ? "Jumpstart" : ", Jumpstart";
+    forge-game/src/main/java/forge/game/spellability/StackItemView.java:95:                OptionalCostString += OptionalCostString.isEmpty() ? "Additional" : ", Additional";
+    forge-ai/src/main/java/forge/ai/ComputerUtil.java:1574:                if (!GameActionUtil.getOptionalCostValues(sa).isEmpty()) {
+    forge-gui-mobile/src/forge/screens/match/views/VStack.java:387:            String optionalCostString = !stackInstance.getOptionalCostString().isEmpty() ? " ("+ stackInstance.getOptionalCostString() + ")" : "";
+
+  [J9] Stream.takeWhile/dropWhile — Java 9
+    (none found)
+
+  [J10] List.copyOf/Set.copyOf/Map.copyOf — Java 10
+    forge-gui-mobile/src/forge/deck/FDeckEditor.java:320:                return List.copyOf(fnGetBasicLandSet.apply(currentDeck));
+    forge-gui-mobile/src/forge/screens/match/views/VField.java:212:        return List.copyOf(row);
+    forge-gui-mobile/src/forge/screens/match/views/VPlayerPanel.java:995:            List<ZoneType> keyList = List.copyOf(displayAreas.keySet());
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 2c  –  ForkJoinPool crash patterns (action required)
+ CompletableFuture.supplyAsync(Supplier) — no-executor overload — routes to
+ ForkJoinPool.commonPool(). ForkJoinWorkerThread.<clinit> reflects on
+ Thread.threadLocals which is absent from robovmx's robovm-rt, crashing with
+ NoSuchFieldException at the first async task submission.
+ Collection.parallelStream() and Executors.newWorkStealingPool() have the same
+ root cause: both create or use ForkJoinPool internally.
+ Patched by StreamDesugar P61 (supplyAsync), P62 (completeOnTimeout),
+ P63 (parallelStream), P64 (newWorkStealingPool).
+────────────────────────────────────────────────────────────────────────────────
+
+  [P61] CompletableFuture.supplyAsync(Supplier) — ForkJoin crash on iOS [StreamDesugar P61]
+    forge-core/src/main/java/forge/util/StreamUtil.java:188:    // Pattern 61: CompletableFuture.supplyAsync(Supplier) uses ForkJoinPool.commonPool()
+    forge-core/src/main/java/forge/util/StreamUtil.java:213:     * Pattern 61: replacement for {@code CompletableFuture.supplyAsync(supplier)}.
+    forge-core/src/main/java/forge/util/StreamUtil.java:221:        return java.util.concurrent.CompletableFuture.supplyAsync(supplier, IOS_THREAD_POOL);
+    forge-core/src/main/java/forge/StaticData.java:798:                futures.add(CompletableFuture.supplyAsync(()-> {
+    forge-ai/src/main/java/forge/ai/AiAttackController.java:884:                futures.add(CompletableFuture.supplyAsync(()-> {
+    forge-gui/src/main/java/forge/gamemodes/limited/BoosterDraft.java:430:                        futures.add(CompletableFuture.supplyAsync(()-> {
+    forge-gui-mobile/src/forge/adventure/world/World.java:338:                        futures.add(CompletableFuture.supplyAsync(()-> {
+    forge-gui-mobile/src/forge/adventure/world/World.java:624:                futures.add(CompletableFuture.supplyAsync(()-> {
+    forge-gui-mobile/src/forge/adventure/world/World.java:661:                futures.add(CompletableFuture.supplyAsync(()-> {
+
+  [P62] CompletableFuture.completeOnTimeout — Java 9, absent from robovmx CF [StreamDesugar P62]
+    forge-core/src/main/java/forge/util/StreamUtil.java:194:    // Pattern 62: CompletableFuture.completeOnTimeout(T, long, TimeUnit) is Java 9 and
+    forge-core/src/main/java/forge/util/StreamUtil.java:225:     * Pattern 62: replacement for {@code cf.completeOnTimeout(value, timeout, unit)} (Java 9).
+    forge-ai/src/main/java/forge/ai/AiAttackController.java:944:                CompletableFuture.allOf(futuresArray).completeOnTimeout(null, timeOut, TimeUnit.SECONDS).join();
+
+  [P63] Collection.parallelStream() — ForkJoinPool crash on iOS [StreamDesugar P63]
+    forge-gui-mobile/src/forge/deck/FDeckChooser.java:189:                        AIDecks = lstDecks.getPool().toFlatList().parallelStream().filter(deckProxy -> deckProxy.getAI().inMainDeck == 0).collect(Collectors.toList());
+
+  [P64] Executors.newWorkStealingPool() — ForkJoinPool crash on iOS [StreamDesugar P64]
+    forge-core/src/main/java/forge/util/ThreadUtil.java:49:    private static ExecutorService service = Executors.newWorkStealingPool();
+    forge-core/src/main/java/forge/util/ThreadUtil.java:54:        service = Executors.newWorkStealingPool();
+    forge-core/src/main/java/forge/util/StreamUtil.java:236:    // ── iOS Executors.newWorkStealingPool() desugaring ─────────────────────────
+    forge-core/src/main/java/forge/util/StreamUtil.java:237:    // Pattern 64: Executors.newWorkStealingPool() creates a ForkJoinPool that uses
+    forge-core/src/main/java/forge/util/StreamUtil.java:248:     * Pattern 64: replacement for {@code Executors.newWorkStealingPool()}.
+
+  [CHK] CompletableFuture.orTimeout — Java 9, absent from robovmx CF
+    (none found)
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 3  –  Other ICU-dependent / robovm-rt-specific patterns
+────────────────────────────────────────────────────────────────────────────────
+
+  [ICU] BreakIterator usages (getLineInstance covered by P49)
+    forge-gui-mobile/src/forge/assets/TextRenderer.java:36:    private BreakIterator boundary = BreakIterator.getLineInstance(new Locale(Forge.locale));
+
+  [ICU] com.android.icu direct references
+    (none found)
+
+  [ICU] NativeConverter direct references
+    forge-core/src/main/java/forge/util/StreamUtil.java:270:    // call sites that trigger Android ICU charset encoding (NativeConverter) which
+    forge-core/src/main/java/forge/util/StreamUtil.java:427:     * triggering Android ICU charset encoding ({@code NativeConverter}).
+    forge-core/src/main/java/forge/util/StreamUtil.java:428:     * On iOS, {@code NativeConverter}'s native methods are dead-stripped by the
+
+  [ICU] Charset.defaultCharset() — uses ICU on Android/robovm-rt
+    (none found)
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 3b  –  JAXP factory newInstance() — NoClassDefFoundError risk
+ robovmx's libcore FactoryFinder has hardcoded fallback class names for each
+ JAXP factory type.  If the fallback class is absent the first call to
+ *.newInstance() throws NoClassDefFoundError (not NoSuchMethodError).
+
+ Two-layer root cause for factories whose impl is NOT in robovm-rt:
+   Layer 1 (AOT): force-link alone is unreliable — Soot may skip third-party JARs.
+     Fix: "new Impl()" direct call + class-literal in Main.preWarmXxx() forces
+     Soot to AOT-compile the constructor and registers the class in the class table.
+   Layer 2 (bootstrap classloader): FactoryFinder calls Class.forName() from the
+     bootstrap classloader, which only sees robovm-rt.a classes.  App deps are
+     invisible even if compiled into the binary.
+     Fix: StreamDesugar pattern rewrites the *.newInstance() call site to a
+     StreamUtil helper that uses a pre-stored Class reference (from app-code context
+     where the AOT linker resolves app-class references directly).
+
+   TransformerFactory  → org.apache.xalan.processor.TransformerFactoryImpl
+       FIXED (two-part):
+         Part 1: xalan:xalan:2.7.3 + xalan:serializer:2.7.3 in forge-gui-ios/pom.xml
+                 + XALAN_TF_CLASS literal + Main.preWarmXalan() "new TFImpl()"
+                 → AOT-compiles constructor; registers class in class table.
+         Part 2: StreamDesugar Pattern 66 + StreamUtil.transformerFactoryNewInstance()
+                 → bypasses bootstrap Class.forName() via pre-stored Class reference.
+   DocumentBuilderFactory → org.apache.xerces.jaxp.DocumentBuilderFactoryImpl
+       Safe: Xerces IS in Android AOSP libcore and compiled into robovmx's robovm-rt.a.
+             The bootstrap classloader CAN find org.apache.xerces.* — no fix needed.
+   SAXParserFactory    → org.apache.xerces.jaxp.SAXParserFactoryImpl
+       Safe: Same as DocumentBuilderFactory.
+ If new JAXP factories appear under JAXP-CHK below, apply the two-part fix above
+ (do NOT rely on force-link alone; do NOT stop at Part 1).
+────────────────────────────────────────────────────────────────────────────────
+
+  [JAXP-FIXED] TransformerFactory.newInstance() — FIXED via Pattern 66 + StreamUtil.transformerFactoryNewInstance()
+    forge-core/src/main/java/forge/util/StreamUtil.java:354:    // Pattern 66: TransformerFactory.newInstance() fails in robovmx with
+    forge-core/src/main/java/forge/util/StreamUtil.java:356:    // app binary.  Root cause: TransformerFactory.newInstance() (in libcore/rt)
+    forge-core/src/main/java/forge/util/StreamUtil.java:367:    // StreamDesugar Pattern 66 rewrites every TransformerFactory.newInstance() call
+    forge-core/src/main/java/forge/util/StreamUtil.java:392:     * <p>On robovmx, {@code TransformerFactory.newInstance()} uses
+    forge-core/src/main/java/forge/util/StreamUtil.java:405:     * <p>Falls back to {@code TransformerFactory.newInstance()} on non-iOS
+    forge-core/src/main/java/forge/util/StreamUtil.java:422:        return javax.xml.transform.TransformerFactory.newInstance();
+    forge-gui/src/main/java/forge/util/XmlUtil.java:38:            final Transformer t = TransformerFactory.newInstance().newTransformer();
+    forge-gui/src/main/java/forge/util/XmlUtil.java:50:        Transformer t = TransformerFactory.newInstance().newTransformer();
+
+  [JAXP-SAFE] DocumentBuilderFactory.newInstance() — safe (Xerces bundled in robovmx robovm-rt)
+    forge-gui/src/main/java/forge/localinstance/achievements/AchievementCollection.java:148:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/localinstance/achievements/AchievementCollection.java:169:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/deck/io/DeckPreferences.java:128:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/deck/io/DeckPreferences.java:161:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/gui/card/CardPreferences.java:37:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/gui/card/CardPreferences.java:58:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/gamemodes/quest/io/QuestDataIO.java:190:        final DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/gamemodes/quest/bazaar/QuestBazaarManager.java:71:            builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/gamemodes/quest/bazaar/QuestPetStorage.java:47:            builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/itemmanager/ItemManagerConfig.java:267:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/itemmanager/ItemManagerConfig.java:342:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/util/XmlReader.java:22:        DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/util/XmlWriter.java:23:        DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+
+  [JAXP-SAFE] SAXParserFactory.newInstance() — safe (Xerces bundled in robovmx robovm-rt)
+    (none found)
+
+  [JAXP-CHK] Other *Factory.newInstance() calls — verify fallback class is in robovmx robovm-rt
+    forge-core/src/main/java/forge/util/StreamUtil.java:354:    // Pattern 66: TransformerFactory.newInstance() fails in robovmx with
+    forge-core/src/main/java/forge/util/StreamUtil.java:356:    // app binary.  Root cause: TransformerFactory.newInstance() (in libcore/rt)
+    forge-core/src/main/java/forge/util/StreamUtil.java:367:    // StreamDesugar Pattern 66 rewrites every TransformerFactory.newInstance() call
+    forge-core/src/main/java/forge/util/StreamUtil.java:392:     * <p>On robovmx, {@code TransformerFactory.newInstance()} uses
+    forge-core/src/main/java/forge/util/StreamUtil.java:405:     * <p>Falls back to {@code TransformerFactory.newInstance()} on non-iOS
+    forge-core/src/main/java/forge/util/StreamUtil.java:422:        return javax.xml.transform.TransformerFactory.newInstance();
+    forge-gui/src/main/java/forge/localinstance/achievements/AchievementCollection.java:148:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/localinstance/achievements/AchievementCollection.java:169:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/deck/io/DeckPreferences.java:128:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/deck/io/DeckPreferences.java:161:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/gui/card/CardPreferences.java:37:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/gui/card/CardPreferences.java:58:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/gamemodes/quest/io/QuestDataIO.java:190:        final DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/gamemodes/quest/bazaar/QuestBazaarManager.java:71:            builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/gamemodes/quest/bazaar/QuestPetStorage.java:47:            builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/itemmanager/ItemManagerConfig.java:267:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/itemmanager/ItemManagerConfig.java:342:            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/util/XmlReader.java:22:        DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/util/XmlWriter.java:23:        DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    forge-gui/src/main/java/forge/util/XmlUtil.java:38:            final Transformer t = TransformerFactory.newInstance().newTransformer();
+    forge-gui/src/main/java/forge/util/XmlUtil.java:50:        Transformer t = TransformerFactory.newInstance().newTransformer();
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 3c  –  Class.forName() / ServiceLoader — dynamic class loading
+ Class.forName() with a string that does not correspond to a Forge class, or
+ with any name resolved at runtime from external input, may throw
+ NoClassDefFoundError on iOS if that class was not compiled into the binary.
+ Note: force-link is not reliable for third-party JAR classes; prefer adding a
+ static class-literal (.class) reference in Main.java for each such class.
+────────────────────────────────────────────────────────────────────────────────
+
+  [FORNAME-CHK] Class.forName() calls — verify each loaded class is in the binary
+    forge-core/src/main/java/forge/util/StreamUtil.java:357:    // uses Class.forName() from the bootstrap classloader context, which in
+    forge-core/src/main/java/forge/util/StreamUtil.java:366:    // bypassing the broken Class.forName() path in libcore entirely.
+    forge-core/src/main/java/forge/util/StreamUtil.java:393:     * {@code Class.forName("org.apache.xalan.processor.TransformerFactoryImpl")}
+    forge-gui-mobile/src/forge/adventure/util/SaveFileData.java:341:                localClass = Class.forName(resultClassDescriptor.getName());
+
+  [SVC-LOAD-CHK] ServiceLoader.load() calls — verify service implementations are in binary
+    (none found)
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 3d  –  Xalan serializer dynamic class loading (WrappedRuntimeException)
+ Xalan's SerializerFactory loads output-handler class names from .properties
+ resource files.  These classes have NO bytecode references and are NOT compiled
+ into the AOT binary by Soot unless explicitly forced.
+ Fix: class-literal (.class) + direct new in preWarmXalan() in Main.java.
+   ToXMLStream   (XML output, used by XmlUtil) — FIXED in Main.java preWarmXalan()
+   ToHTMLStream  (HTML output)  — not used by Forge; no fix needed yet
+   ToTextStream  (text output)  — not used by Forge; no fix needed yet
+   ToUnknownStream (unknown)    — not used by Forge; no fix needed yet
+────────────────────────────────────────────────────────────────────────────────
+
+  [XALAN-XSLT] XSLT transform calls that could trigger Xalan serializer loading
+    (none found)
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 3e  –  libGDX native-symbols inventory (UnsatisfiedLinkError risk)
+ Each libGDX module that uses JNI needs a *-platform:natives-ios dependency in
+ forge-gui-ios/pom.xml.  Missing entries cause UnsatisfiedLinkError at runtime.
+   gdx-platform:natives-ios           — ADDED (gl/graphics JNI symbols)
+   gdx-freetype-platform:natives-ios  — ADDED (FreeType font JNI symbols)
+   gdx-box2d-platform:natives-ios     — ADDED (Box2D physics JNI symbols)
+ If a new UnsatisfiedLinkError for com.badlogic.gdx.* appears, check pom.xml.
+────────────────────────────────────────────────────────────────────────────────
+
+  [GDX-NATIVE-CHK] libGDX Box2D / Bullet usage — verify natives-ios dep is in pom.xml
+    forge-gui-mobile/src/forge/adventure/stage/MapStage.java:15:import com.badlogic.gdx.physics.box2d.*;
+    forge-gui-mobile/src/forge/adventure/stage/MapStage.java:54:    public com.badlogic.gdx.physics.box2d.World gdxWorld;
+    forge-gui-mobile/src/forge/adventure/util/pathfinding/Box2dRaycastCollisionDetector.java:8:import com.badlogic.gdx.physics.box2d.Fixture;
+    forge-gui-mobile/src/forge/adventure/util/pathfinding/Box2dRaycastCollisionDetector.java:9:import com.badlogic.gdx.physics.box2d.RayCastCallback;
+    forge-gui-mobile/src/forge/adventure/util/pathfinding/Box2dRaycastCollisionDetector.java:10:import com.badlogic.gdx.physics.box2d.World;
+    forge-gui-mobile/src/forge/adventure/util/pathfinding/NavigationMap.java:5:import com.badlogic.gdx.physics.box2d.*;
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 4  –  All java.nio.file.* imports (inventory)
+────────────────────────────────────────────────────────────────────────────────
+forge-core/src/main/java/forge/util/CardTranslation.java:8:import java.nio.file.Files;
+forge-core/src/main/java/forge/util/CardTranslation.java:9:import java.nio.file.Paths;
+forge-core/src/main/java/forge/util/FileUtil.java:26:import java.nio.file.Files;
+forge-core/src/main/java/forge/util/StreamUtil.java:18:import java.nio.file.CopyOption;
+forge-core/src/main/java/forge/util/StreamUtil.java:19:import java.nio.file.FileSystem;
+forge-core/src/main/java/forge/util/StreamUtil.java:20:import java.nio.file.FileVisitOption;
+forge-core/src/main/java/forge/util/StreamUtil.java:21:import java.nio.file.LinkOption;
+forge-core/src/main/java/forge/util/StreamUtil.java:22:import java.nio.file.OpenOption;
+forge-core/src/main/java/forge/util/StreamUtil.java:23:import java.nio.file.Path;
+forge-core/src/main/java/forge/util/StreamUtil.java:24:import java.nio.file.StandardOpenOption;
+forge-core/src/main/java/forge/util/StreamUtil.java:25:import java.nio.file.WatchEvent;
+forge-core/src/main/java/forge/util/StreamUtil.java:26:import java.nio.file.WatchKey;
+forge-core/src/main/java/forge/util/StreamUtil.java:27:import java.nio.file.WatchService;
+forge-core/src/main/java/forge/util/StreamUtil.java:28:import java.nio.file.attribute.FileAttribute;
+forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:21:import java.nio.file.Files;
+forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:22:import java.nio.file.Path;
+forge-gui-mobile/src/forge/adventure/scene/SettingsScene.java:23:import java.nio.file.Paths;
+forge-gui-mobile/src/forge/adventure/util/Config.java:29:import java.nio.file.Files;
+forge-gui-mobile/src/forge/adventure/util/Config.java:30:import java.nio.file.Paths;
+forge-gui-mobile/src/forge/assets/FSkinFont.java:5:import java.nio.file.Files;
+forge-gui-mobile/src/forge/assets/FSkinFont.java:6:import java.nio.file.Paths;
+forge-gui-mobile/src/forge/util/LibGDXImageFetcher.java:14:import java.nio.file.Files;
+forge-gui/src/main/java/forge/gamemodes/gauntlet/GauntletIO.java:24:import java.nio.file.Files;
+forge-gui/src/main/java/forge/gamemodes/quest/io/MainWorldDuelReader.java:6:import java.nio.file.Files;
+forge-gui/src/main/java/forge/gamemodes/quest/io/MainWorldDuelReader.java:7:import java.nio.file.Path;
+forge-gui/src/main/java/forge/gamemodes/quest/io/QuestDataIO.java:58:import java.nio.file.Files;
+forge-gui/src/main/java/forge/gamemodes/quest/io/QuestDataIO.java:59:import java.nio.file.Paths;
+forge-gui/src/main/java/forge/gamemodes/tournament/TournamentIO.java:20:import java.nio.file.Files;
+forge-gui/src/main/java/forge/gui/download/GuiDownloadZipService.java:15:import java.nio.file.Paths;
+forge-gui/src/main/java/forge/localinstance/properties/ForgeProfileProperties.java:22:import java.nio.file.Files;
+forge-gui/src/main/java/forge/util/ZipUtil.java:7:import java.nio.file.Files;
+
+────────────────────────────────────────────────────────────────────────────────
+ SECTION 5  –  Bytecode-level scan (authoritative; catches synthetic methods)
+────────────────────────────────────────────────────────────────────────────────
+ Source-level grep (Sections 1-4) can miss Java 9-11 API calls hidden inside
+ compiler-generated synthetic methods, lambda helpers, and enum clinit blocks.
+ For the authoritative scan, run scripts/ios-bytecode-scan.sh AFTER mvn compile:
+
+   mvn compile -pl forge-core,forge-game,forge-ai,forge-gui,forge-gui-mobile -am
+   bash scripts/ios-bytecode-scan.sh > scripts/ios-bytecode-scan.txt
+
+ The committed scripts/ios-bytecode-scan.txt shows the last known clean state.
+ Categories reported:
+   RISK:HIGH — not patched, not claimed → NoSuchMethodError on iOS
+   CLAIMED   — listed in build-java-stubs.sh as provided by robovmx robovm-rt
+   PATCHED   — rewritten by StreamDesugar.java at build time (safe)
+────────────────────────────────────────────────────────────────────────────────
+
+════════════════════════════════════════════════════════════════════════════════
+ Scan complete.
+════════════════════════════════════════════════════════════════════════════════
