@@ -6,7 +6,7 @@ import forge.StaticData;
 import forge.ai.AiProfileUtil;
 import forge.control.FControl.CloseAction;
 import forge.download.AutoUpdater;
-import forge.game.GameLogEntryType;
+import forge.game.GameLogVerbosity;
 import forge.gamemodes.net.server.FServerManager;
 import forge.gui.GuiBase;
 import forge.gui.UiCommand;
@@ -17,6 +17,7 @@ import forge.localinstance.properties.ForgeNetPreferences;
 import forge.localinstance.properties.ForgePreferences;
 import forge.localinstance.properties.ForgePreferences.FPref;
 import forge.localinstance.properties.PreferencesStore;
+import forge.menus.LayoutMenu;
 import forge.model.FModel;
 import forge.player.GamePlayerUtil;
 import forge.screens.deckeditor.CDeckEditorUI;
@@ -111,6 +112,7 @@ public enum CSubmenuPreferences implements ICDoc {
         lstControls.clear(); // just in case
         lstControls.add(Pair.of(view.getCbAnte(), FPref.UI_ANTE));
         lstControls.add(Pair.of(view.getCbAnteMatchRarity(), FPref.UI_ANTE_MATCH_RARITY));
+        lstControls.add(Pair.of(view.getCbAnteIncludeBasicLands(), FPref.UI_ANTE_INCLUDE_BASIC_LANDS));
         lstControls.add(Pair.of(view.getCbManaBurn(), FPref.UI_MANABURN));
         lstControls.add(Pair.of(view.getCbOrderCombatants(), FPref.LEGACY_ORDER_COMBATANTS));
         lstControls.add(Pair.of(view.getCbScaleLarger(), FPref.UI_SCALE_LARGER));
@@ -335,10 +337,18 @@ public enum CSubmenuPreferences implements ICDoc {
 
     private void initializeGameLogVerbosityComboBox() {
         final FPref userSetting = FPref.DEV_LOG_ENTRY_TYPE;
-        final FComboBoxPanel<GameLogEntryType> panel = this.view.getGameLogVerbosityComboBoxPanel();
-        final FComboBox<GameLogEntryType> comboBox = createComboBox(GameLogEntryType.values(), userSetting);
-        final GameLogEntryType selectedItem = GameLogEntryType.valueOf(this.prefs.getPref(userSetting));
+        final FComboBoxPanel<GameLogVerbosity> panel = this.view.getGameLogVerbosityComboBoxPanel();
+        final FComboBox<GameLogVerbosity> comboBox = createComboBox(GameLogVerbosity.values(), userSetting);
+        final GameLogVerbosity selectedItem = GameLogVerbosity.fromString(this.prefs.getPref(userSetting));
         panel.setComboBox(comboBox, selectedItem);
+
+        view.getBtnCustomLogSettings().setCommand(
+                (UiCommand) LayoutMenu::showCustomLogCategoriesDialog);
+        view.getBtnCustomLogSettings().setEnabled(selectedItem == GameLogVerbosity.CUSTOM);
+        comboBox.addItemListener(e -> {
+            view.getBtnCustomLogSettings().setEnabled(
+                    comboBox.getSelectedItem() == GameLogVerbosity.CUSTOM);
+        });
     }
 
     private void initializeCloseActionComboBox() {

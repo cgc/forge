@@ -80,7 +80,7 @@ public class Match {
     public void startGame(final Game game, Runnable startGameHook) {
         prepareAllZones(game);
         if (rules.useAnte()) {  // Deciding which cards go to ante
-            Multimap<Player, Card> list = game.chooseCardsForAnte(rules.getMatchAnteRarity());
+            Multimap<Player, Card> list = game.chooseCardsForAnte(rules.getMatchAnteRarity(), rules.getAnteIncludeBasicLands());
             for (Entry<Player, Card> kv : list.entries()) {
                 Player p = kv.getKey();
                 game.getAction().moveTo(ZoneType.Ante, kv.getValue(), null, AbilityKey.newMap());
@@ -435,6 +435,19 @@ public class Match {
             }
             // Other game types (like Quest) need to do something in their own calls to actually update data
         }
+    }
+
+    public GameOutcome.AnteResult getAnteResult(RegisteredPlayer player) {
+        GameOutcome.AnteResult out = new GameOutcome.AnteResult();
+        for (GameOutcome outcome : gameOutcomes.values()) {
+            GameOutcome.AnteResult gameAnte = outcome.getAnteResult(player);
+            if (gameAnte == null) {
+                continue;
+            }
+            out.addWon(gameAnte.wonCards);
+            out.addLost(gameAnte.lostCards);
+        }
+        return out;
     }
 
     /**

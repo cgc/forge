@@ -462,8 +462,17 @@ public class Main extends IOSApplication.Delegate {
         } catch (Throwable t) {
             nslog("createApplication: physicalMemory detection failed: " + t);
         }
-        final ApplicationListener app = Forge.getApp(null, new IOSClipboard(), new IOSAdapter(assetsDir), assetsDir, false, !isLandscape, iosPhysicalRAMMB, false, 0);
+        // Pass AndroidAPI=99 (a synthetic "modern" API level) so that GuiBase.getAndroidAPILevel()>30
+        // is satisfied on iOS.  This lets HostedMatch.java enable AI timeouts via the standard
+        // Android-API-level check without needing a separate isIOS() guard in that shared file.
+        // hwInfo=null (no HWInfo available on iOS); isTablet=false.
+        final ApplicationListener app = Forge.getApp(null, new IOSClipboard(), new IOSAdapter(assetsDir), assetsDir, false, !isLandscape, false, 99);
         nslog("createApplication: Forge.getApp() returned " + (app == null ? "null" : app.getClass().getName()));
+        // Set iOS physical RAM so Forge.create() can size the texture cache correctly.
+        // Forge.getApp() sets totalDeviceRAM from hwInfo.getTotalRam(), but hwInfo is null
+        // on iOS, so we assign the value detected above directly after the call.
+        Forge.totalDeviceRAM = iosPhysicalRAMMB;
+        nslog("createApplication: totalDeviceRAM=" + iosPhysicalRAMMB + "MB, androidAPI=99");
         // Replace the generic GuiMobile (set by Forge.getApp) with IosGuiMobile,
         // which throttles invokeInEdtLater to limit concurrent PixmapPacker instances.
         GuiBase.setInterface(new IosGuiMobile(assetsDir, 2));

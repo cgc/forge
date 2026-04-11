@@ -33,7 +33,7 @@ public class GameView extends TrackableObject {
 
     private final transient Game game; //TODO: Remove this when possible before network support added
     private final transient Match match; //TODO: Remove this when possible before network support added
-    private final transient GameLog gameLog;
+    private transient GameLog gameLog;
 
     public GameView(final Game game) {
         super(game.getId(), game.getTracker());
@@ -112,22 +112,6 @@ public class GameView extends TrackableObject {
         set(TrackableProperty.PlayerTurn, PlayerView.get(phaseHandler.getPlayerTurn()));
     }
 
-    public void updateNeedsPhaseRedrawn(PlayerView p, PhaseType ph) {
-        set(TrackableProperty.PlayerTurn, p);
-        set(TrackableProperty.Phase, ph);
-        set(TrackableProperty.NeedsPhaseRedrawn, true);
-    }
-
-    public boolean getNeedsPhaseRedrawn() {
-        if (get(TrackableProperty.NeedsPhaseRedrawn) == null)
-            return false;
-        return get(TrackableProperty.NeedsPhaseRedrawn);
-    }
-
-    public void clearNeedsPhaseRedrawn() {
-        set(TrackableProperty.NeedsPhaseRedrawn, false);
-    }
-
     public void updatePlanarPlayer(PlayerView p) {
         set(TrackableProperty.PlanarPlayer, p);
     }
@@ -200,6 +184,11 @@ public class GameView extends TrackableObject {
         return gameLog;
     }
 
+    /** Initialize the game log for network-deserialized GameViews (transient field is null after deserialization). */
+    public void initGameLog() {
+        this.gameLog = new GameLog();
+    }
+
     public TrackableCollection<CardView> getRevealedCollection() {
         return get(TrackableProperty.RevealedCardsCollection);
     }
@@ -234,9 +223,6 @@ public class GameView extends TrackableObject {
     public CombatView getCombat() {
         return get(TrackableProperty.CombatView);
     }
-    public void updateCombatView(CombatView combatView) {
-        set(TrackableProperty.CombatView, combatView);
-    }
 
     void updateCombat(Combat combat) {
         if (combat == null) {
@@ -256,24 +242,7 @@ public class GameView extends TrackableObject {
                     isBlocked ? CardView.getCollection(blockers) : null,
                     CardView.getCollection(blockers));
         }
-        updateCombatView(combatView);
-    }
-
-    public void serialize() {
-        /*try {
-            GameStateSerializer serializer = new GameStateSerializer(filename);
-            game.saveState(serializer);
-            serializer.writeEndOfFile();
-            serializer.bw.close();
-        }
-        catch (Exception e) {
-            e.printStackTrace();
-        }*/
-    }
-
-    public void deserialize() {
-        /*GameStateDeserializer deserializer = new GameStateDeserializer();
-        deserializer.readObject();*/
+        set(TrackableProperty.CombatView, combatView);
     }
 
     //TODO: Find better ways to make this information available to all GUIs without using the Game class
@@ -309,5 +278,13 @@ public class GameView extends TrackableObject {
 
     public AnteResult getAnteResult(PlayerView player) {
         return getOutcome().getAnteResult(player);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("GameView[id=%d, turn=%d, phase=%s, players=%d, gameOver=%b]",
+                getId(), getTurn(), getPhase(),
+                getPlayers() != null ? getPlayers().size() : 0,
+                isGameOver());
     }
 }
